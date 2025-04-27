@@ -16,8 +16,8 @@ import {
   type Auth,
   type User as FirebaseUser,
 } from "firebase/auth";
-import * as apiService from "../services/api";
-import { getToken } from "../services/api";
+import * as apiService from "../services/api.js";
+import { getToken } from "../services/api.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDxTr1s-l6CQc7OBA4Vr_8l2eVrGiN-BEg",

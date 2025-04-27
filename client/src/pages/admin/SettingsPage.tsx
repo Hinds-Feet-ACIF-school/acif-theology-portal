@@ -1,19 +1,17 @@
-"use client"
-
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { Button } from "../../components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "../../components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs"
-import { Input } from "../../components/ui/input"
-import { Textarea } from "../../components/ui/textarea"
-import { Checkbox } from "../../components/ui/checkbox"
-import { Label } from "../../components/ui/label"
-import { Switch } from "../../components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
+import { Button } from "../../components/ui/button.js"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "../../components/ui/card.js"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs.js"
+import { Input } from "../../components/ui/input.js"
+import { Textarea } from "../../components/ui/textarea.js"
+import { Checkbox } from "../../components/ui/checkbox.js"
+import { Label } from "../../components/ui/label.js"
+import { Switch } from "../../components/ui/switch.js"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select.js"
 import { ArrowLeft, Save, Globe, Bell, Shield, Users, Mail, PlusCircle } from "lucide-react"
 
-// Reusable theme classes based on the HomePage example
+
 const lightBg = 'bg-[#FFF8F0]';
 const darkBg = 'dark:bg-gray-950';
 const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';
@@ -22,25 +20,25 @@ const goldAccent = 'text-[#C5A467]';
 const goldBg = 'bg-[#C5A467]';
 const goldBgHover = 'hover:bg-[#B08F55]';
 const goldBorder = 'border-[#C5A467]';
-const lightCardBg = 'bg-[#FFFDFB]'; // Slightly whiter than main bg for cards
+const lightCardBg = 'bg-[#FFFDFB]';
 const darkCardBg = 'dark:bg-gray-900';
 const goldAccentBgLight = 'bg-[#C5A467]/10 dark:bg-[#C5A467]/15';
-const mutedText = 'text-gray-600 dark:text-gray-400'; // Consistent muted text
+const mutedText = 'text-gray-600 dark:text-gray-400';
 const inputBorder = 'border-gray-300 dark:border-gray-700';
-const focusRing = 'focus:ring-1 focus:ring-offset-0 focus:ring-[#C5A467]'; // Gold focus ring
-const switchActiveBg = 'data-[state=checked]:bg-[#C5A467]'; // Gold for active switch
-const checkboxIndicator = 'data-[state=checked]:bg-[#C5A467] data-[state=checked]:text-[#2A0F0F] border-[#4A1F1F] dark:border-[#E0D6C3]'; // Gold for checked checkbox
+const focusRing = 'focus:ring-1 focus:ring-offset-0 focus:ring-[#C5A467]';
+const switchActiveBg = 'data-[state=checked]:bg-[#C5A467]';
+const checkboxIndicator = 'data-[state=checked]:bg-[#C5A467] data-[state=checked]:text-[#2A0F0F] border-[#4A1F1F] dark:border-[#E0D6C3]';
 
 
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState("general")
 
   return (
-    // Apply base background colors
+
     <div className={`flex flex-col min-h-screen ${lightBg} ${darkBg}`}>
       <div className="container px-4 py-8 md:px-6">
         <div className="flex items-center gap-2 mb-6">
-          {/* Use gold for link */}
+
           <Link to="/admin" className={`flex items-center ${goldAccent} hover:underline`}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Admin Dashboard
@@ -49,16 +47,16 @@ export default function AdminSettingsPage() {
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            {/* Apply themed text colors */}
+
             <h1 className={`text-3xl font-bold tracking-tight ${deepBrown}`}>Settings</h1>
             <p className={`${midBrown}`}>Manage system settings and configurations</p>
           </div>
         </div>
 
         <Tabs defaultValue="general" className="space-y-8" onValueChange={setActiveTab}>
-          {/* Style TabsList and Triggers */}
+
           <TabsList className="bg-gray-100/50 dark:bg-gray-800/50 rounded-md">
-             {/* Use themed styles for tabs */}
+
             <TabsTrigger
               value="general"
               className={`${midBrown} data-[state=active]:${deepBrown} data-[state=active]:bg-[#FFF8F0] dark:data-[state=active]:bg-gray-900 data-[state=active]:shadow-sm`}
@@ -91,7 +89,7 @@ export default function AdminSettingsPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* === General Tab === */}
+
           <TabsContent value="general" className="space-y-6">
             <Card className={`${lightCardBg} ${darkCardBg} border ${inputBorder}`}>
               <CardHeader>
@@ -128,7 +126,7 @@ export default function AdminSettingsPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                {/* Primary button with gold background */}
+
                 <Button className={`${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold`}>
                   <Save className="mr-2 h-4 w-4" />
                   Save Changes
@@ -145,7 +143,7 @@ export default function AdminSettingsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="primaryColor" className={`${deepBrown}`}>Primary Color</Label>
                   <div className="flex items-center gap-2">
-                     {/* Use gold as the default primary color */}
+
                     <Input id="primaryColor" defaultValue="#C5A467" className={`w-32 ${lightCardBg} ${darkCardBg} ${inputBorder} ${deepBrown} ${focusRing}`} />
                     <div className="w-10 h-10 rounded-md bg-[#C5A467]"></div>
                   </div>
@@ -154,7 +152,7 @@ export default function AdminSettingsPage() {
                   <Label htmlFor="logo" className={`${deepBrown}`}>Logo</Label>
                   <div className="flex items-center gap-2">
                     <Input id="logo" type="file" className={`${lightCardBg} ${darkCardBg} ${inputBorder} ${deepBrown} file:text-[#4A1F1F] dark:file:text-[#E0D6C3] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-100/50 dark:file:bg-gray-800/50 hover:file:bg-gray-200/70 dark:hover:file:bg-gray-700/70`} />
-                    {/* Outline button with gold style */}
+
                     <Button variant="outline" className={`${goldBorder} ${goldAccent} hover:bg-[#C5A467]/10 dark:hover:bg-[#C5A467]/15 hover:text-[#A07F44] dark:hover:text-[#E0D6C3]`}>Upload</Button>
                   </div>
                 </div>
@@ -166,7 +164,7 @@ export default function AdminSettingsPage() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                   {/* Style Switch */}
+
                    <Switch id="darkMode" className={switchActiveBg} />
                    <Label htmlFor="darkMode" className={`${deepBrown}`}>Enable Dark Mode Option</Label>
                 </div>
@@ -185,7 +183,7 @@ export default function AdminSettingsPage() {
                 <CardDescription className={`${midBrown}`}>Configure language and timezone preferences</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Style Select components */}
+
                 <div className="space-y-2">
                   <Label htmlFor="language" className={`${deepBrown}`}>Default Language</Label>
                   <Select defaultValue="en">
@@ -242,7 +240,7 @@ export default function AdminSettingsPage() {
             </Card>
           </TabsContent>
 
-          {/* === Notifications Tab === */}
+
           <TabsContent value="notifications" className="space-y-6">
             <Card className={`${lightCardBg} ${darkCardBg} border ${inputBorder}`}>
               <CardHeader>
@@ -251,7 +249,7 @@ export default function AdminSettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4">
-                   {/* Style Switch labels and descriptions */}
+
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label htmlFor="assignment-notifications" className={`${deepBrown}`}>Assignment Notifications</Label>
@@ -344,7 +342,7 @@ The Apostolic Theology Team"
                 </div>
                 <div className="space-y-2">
                   <Label className={`${deepBrown}`}>Available Variables</Label>
-                   {/* Use themed text for variables list */}
+
                   <div className={`text-sm ${midBrown} space-y-1`}>
                     <p><code className="font-mono p-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">\[Student Name]</code> - Student's full name</p>
                     <p><code className="font-mono p-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">\[Course Name]</code> - Course title</p>
@@ -363,7 +361,7 @@ The Apostolic Theology Team"
             </Card>
           </TabsContent>
 
-          {/* === Security Tab === */}
+
           <TabsContent value="security" className="space-y-6">
             <Card className={`${lightCardBg} ${darkCardBg} border ${inputBorder}`}>
               <CardHeader>
@@ -467,7 +465,7 @@ The Apostolic Theology Team"
             </Card>
           </TabsContent>
 
-          {/* === Users Tab === */}
+
           <TabsContent value="users" className="space-y-6">
             <Card className={`${lightCardBg} ${darkCardBg} border ${inputBorder}`}>
               <CardHeader>
@@ -476,7 +474,7 @@ The Apostolic Theology Team"
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4">
-                   {/* Apply themed styles to role items */}
+
                   <div className={`flex items-center justify-between p-3 rounded-lg border ${inputBorder}`}>
                     <div>
                       <h3 className={`font-medium ${deepBrown}`}>Administrator</h3>
@@ -547,7 +545,7 @@ The Apostolic Theology Team"
                   </div>
                 </div>
                 <div className="space-y-2 pt-4">
-                    {/* Style Checkboxes and their labels */}
+
                    <Label className={`${deepBrown}`}>Required Registration Fields</Label>
                    <div className="space-y-2">
                      <div className="flex items-center space-x-2">
@@ -578,7 +576,7 @@ The Apostolic Theology Team"
             </Card>
           </TabsContent>
 
-          {/* === Integrations Tab === */}
+
           <TabsContent value="integrations" className="space-y-6">
             <Card className={`${lightCardBg} ${darkCardBg} border ${inputBorder}`}>
               <CardHeader>
@@ -587,14 +585,14 @@ The Apostolic Theology Team"
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4">
-                  {/* Style integration items and use gold accent */}
+
                   <div className={`flex items-center justify-between p-3 rounded-lg border ${inputBorder}`}>
                     <div className="flex items-center gap-3">
-                       {/* Use gold accent background */}
+
                       <div className={`rounded-full ${goldAccentBgLight} p-2`}>
-                         {/* SVG with gold accent color */}
+
                          <svg className={`h-6 w-6 ${goldAccent}`} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                           {/* Simplified SVG just showing the logo shape, color comes from CSS */}
+
                            <rect width="24" height="24" rx="4" fill="currentColor"/>
                            <path d="M7 15h10M7 11h10M7 7h10" stroke="white" strokeWidth="2" strokeLinecap="round" />
                          </svg>
@@ -674,7 +672,7 @@ Reference: [Student Name]"
               </CardHeader>
               <CardContent className="space-y-4">
                  <div className="space-y-4">
-                    {/* Apply same styling as Payment Integrations */}
+
                   <div className={`flex items-center justify-between p-3 rounded-lg border ${inputBorder}`}>
                     <div className="flex items-center gap-3">
                       <div className={`rounded-full ${goldAccentBgLight} p-2`}>

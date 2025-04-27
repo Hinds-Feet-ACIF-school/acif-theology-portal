@@ -1,5 +1,5 @@
 
-import { API } from "./api";
+import { API } from "./api.js";
 
 const AdminService = {
 
