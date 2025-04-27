@@ -25,6 +25,8 @@ import AdminQuizManagementPage from "./pages/admin/QuizManagementPage.js";
 
 import AdminReportsPage from "./pages/admin/ReportsPage.js";
 import AdminSettingsPage from "./pages/admin/SettingsPage.js";
+import AboutUsPage from "./pages/AboutUsPage.js"; 
+import ContactUsPage from "./pages/ContactUsPage.js";
 
 
 
@@ -43,9 +45,12 @@ function App() {
 
           <Route path="/" element={<HomePage />} />
           <Route path="/program-overview" element={<ProgramOverviewPage />} />
+          <Route path="/about" element={<AboutUsPage />} />
+          <Route path="/contact" element={<ContactUsPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/courses" element={<CoursesPage />} />
+
 
 
           <Route element={<ProtectedRoute requiredRole="student" />}>
