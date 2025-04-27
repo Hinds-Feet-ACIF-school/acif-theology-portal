@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button.js';
-import { BookOpen, Users, Target, ShieldCheck, HeartHandshake, GraduationCap } from 'lucide-react'; 
+import { BookOpen, Users, Target, ShieldCheck, HeartHandshake, GraduationCap } from 'lucide-react';
 import logo from "../assets/logo.jpg";
 const accentColor = "#C5A467";
 const accentHoverColor = "#B08F55";

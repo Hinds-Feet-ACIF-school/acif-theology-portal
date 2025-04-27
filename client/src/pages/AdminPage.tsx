@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
 import { Button } from "../components/ui/button.js";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs.js";
@@ -7,8 +7,9 @@ import { Input } from "../components/ui/input.js";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select.js";
 import { Progress } from "../components/ui/progress.js";
 import {
-  BookOpen, Users, FileText, Settings, PlusCircle, Search, Calendar, CheckCircle2, Clock, Edit, Eye, Trash2, ArrowUpRight, UserCircle, HelpCircle
+  BookOpen, Users, FileText, Settings, PlusCircle, Search, Calendar, CheckCircle2, Clock, Edit, Eye, Trash2, ArrowUpRight, UserCircle, HelpCircle, LogOut // Import LogOut icon
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext.js"; // Import useAuth
 
 const accentColor = "#C5A467";
 const accentHoverColor = "#B08F55";
@@ -64,6 +65,8 @@ export default function AdminPage() {
   const [courseStatusFilter, setCourseStatusFilter] = useState("all");
   const [quizSearch, setQuizSearch] = useState("");
   const [quizCourseFilter, setQuizCourseFilter] = useState("all");
+  const { logout, loading: authLoading } = useAuth(); // Get logout function and loading state
+  const navigate = useNavigate(); // Get navigate function
 
   const stats = [
     { id: 1, title: "Total Students", value: 124, icon: Users, change: "+12% from last month" },
@@ -121,6 +124,16 @@ export default function AdminPage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login', { replace: true }); // Redirect to login after logout
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Optionally show an error message to the user
+    }
+  };
+
   const inputClasses = `h-9 rounded-md px-3 text-sm ${inputBgLight} ${inputBgDark} ${inputBorderLight} ${inputBorderDark} ${focusBorderAccent} ${focusRingAccent} ${primaryTextLight} ${primaryTextDark}`;
   const selectTriggerClasses = `h-9 rounded-md px-3 text-sm w-full md:w-[180px] ${inputBgLight} ${inputBgDark} ${inputBorderLight} ${inputBorderDark} ${focusBorderAccent} ${focusRingAccent} ${primaryTextLight} ${primaryTextDark}`;
   const selectContentClasses = `border ${inputBorderLight} ${inputBorderDark} ${cardBgLight} ${cardBgDark} ${primaryTextLight} ${primaryTextDark}`;
@@ -148,6 +161,17 @@ export default function AdminPage() {
                     Settings
                 </Button>
             </Link>
+            {/* Logout Button Added Here */}
+            <Button
+              variant="outline"
+              size="sm"
+              className={`${outlineButtonClasses} text-red-600 dark:text-red-400 border-red-400/50 dark:border-red-400/50 hover:border-red-600 dark:hover:border-red-400 hover:text-red-700 dark:hover:text-red-300`}
+              onClick={handleLogout}
+              disabled={authLoading}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
         </div>
       </div>
 
@@ -294,7 +318,7 @@ export default function AdminPage() {
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <div className="relative flex-1 md:w-64">
                 <Search className={`absolute left-2.5 top-2.5 h-4 w-4 ${mutedTextLight} ${mutedTextDark}`} />
-                <Input placeholder="Search students..." className={`pl-8 ${inputClasses}`} value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
+                <Input placeholder="Search students..." className={`pl-8 ${inputClasses}`} value={studentSearch} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStudentSearch(e.target.value)} />
               </div>
                 <Select value={studentStatusFilter} onValueChange={setStudentStatusFilter}>
                 <SelectTrigger className={selectTriggerClasses}>
@@ -376,7 +400,7 @@ export default function AdminPage() {
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <div className="relative flex-1 md:w-64">
                 <Search className={`absolute left-2.5 top-2.5 h-4 w-4 ${mutedTextLight} ${mutedTextDark}`} />
-                <Input placeholder="Search courses..." className={`pl-8 ${inputClasses}`} value={courseSearch} onChange={(e) => setCourseSearch(e.target.value)} />
+                <Input placeholder="Search courses..." className={`pl-8 ${inputClasses}`} value={courseSearch} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCourseSearch(e.target.value)} />
               </div>
                 <Select value={courseStatusFilter} onValueChange={setCourseStatusFilter}>
                 <SelectTrigger className={selectTriggerClasses}>
@@ -450,7 +474,7 @@ export default function AdminPage() {
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <div className="relative flex-1 md:w-64">
                 <Search className={`absolute left-2.5 top-2.5 h-4 w-4 ${mutedTextLight} ${mutedTextDark}`} />
-                <Input placeholder="Search quizzes..." className={`pl-8 ${inputClasses}`} value={quizSearch} onChange={(e) => setQuizSearch(e.target.value)} />
+                <Input placeholder="Search quizzes..." className={`pl-8 ${inputClasses}`} value={quizSearch} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuizSearch(e.target.value)} />
               </div>
                 <Select value={quizCourseFilter} onValueChange={setQuizCourseFilter}>
                 <SelectTrigger className={selectTriggerClasses}>
@@ -466,7 +490,6 @@ export default function AdminPage() {
                 </SelectContent>
               </Select>
             </div>
-             {/* Updated Link */}
              <Link to="/admin/quizzes">
                  <Button className={primaryButtonClasses}>
                     <HelpCircle className="mr-2 h-4 w-4" />
@@ -481,7 +504,6 @@ export default function AdminPage() {
                   <table className="w-full caption-bottom text-sm">
                   <thead className={`${tableHeaderBgLight} ${tableHeaderBgDark}`}>
                     <tr>
-                      {/* Updated Headers */}
                       <th className={tableHeaderClasses}>Quiz Title</th>
                       <th className={tableHeaderClasses}>Course</th>
                       <th className={tableHeaderClasses}>Due Date</th>
@@ -500,15 +522,13 @@ export default function AdminPage() {
                         </td>
                         <td className={`${tableCellClasses} text-right`}>
                           <div className="flex items-center justify-end gap-1">
-                              {/* Updated Link */}
                               <Link to={`/admin/quizzes/${quiz.id}/submissions`}>
                                  <Button variant="ghost" size="icon" className={`${ghostButtonClasses} h-8 w-8`}>
                                   <span className="sr-only">View Submissions</span>
                                   <Eye className="h-4 w-4" />
                                 </Button>
                               </Link>
-                              {/* Optional: Link to edit quiz directly */}
-                               <Link to={`/admin/quizzes/${quiz.id}/edit`}> {/* Example edit route */}
+                               <Link to={`/admin/quizzes/${quiz.id}/edit`}>
                                   <Button variant="ghost" size="icon" className={`${ghostButtonClasses} h-8 w-8`}>
                                       <span className="sr-only">Edit Quiz</span>
                                     <Edit className="h-4 w-4" />
