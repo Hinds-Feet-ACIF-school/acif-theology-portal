@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button } from "../ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
-import { Label } from "../ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Button } from "../ui/button.js";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card.js";
+import { Input } from "../ui/input.js";
+import { Textarea } from "../ui/textarea.js";
+import { Label } from "../ui/label.js";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.js";
 import { X, Save, Loader2, AlertCircle, UploadCloud, File, Video, BookOpen } from 'lucide-react';
-import { Material } from '../../pages/admin/CourseManagementPage';
+import { Material } from '../../pages/admin/CourseManagementPage.js';
 
 
 const lightBg = 'bg-[#FFF8F0]';
@@ -183,7 +183,8 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
             <Input
               id="material-title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              // *** FIX LINE 186 ***
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
               placeholder="e.g., Week 1 Reading: The Trinity"
               className={inputClasses}
               disabled={isSaving}
@@ -252,7 +253,8 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
                     <Input
                         id="material-url"
                         value={contentUrl}
-                        onChange={(e) => setContentUrl(e.target.value)}
+                        // *** FIX LINE 255 ***
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContentUrl(e.target.value)}
                         placeholder="Paste URL here (e.g., YouTube, Vimeo, external site)"
                         className={inputClasses}
                         disabled={isSaving}
@@ -265,7 +267,8 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
             <Input
               id="material-details"
               value={details}
-              onChange={(e) => setDetails(e.target.value)}
+              // *** FIX LINE 268 ***
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDetails(e.target.value)}
               placeholder="e.g., Est. Reading Time: 45 mins, Video Duration: 15:30"
               className={inputClasses}
               disabled={isSaving}

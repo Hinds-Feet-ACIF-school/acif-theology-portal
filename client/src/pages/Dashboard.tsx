@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "../components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Progress } from "../components/ui/progress";
+import { Button } from "../components/ui/button.js";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs.js";
+import { Progress } from "../components/ui/progress.js";
 import { Calendar, Clock, FileText, CheckCircle2, AlertCircle, PlayCircle, BarChart, Lock, Loader2, HelpCircle } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-import * as apiService from "../services/api";
+import { useAuth } from "../context/AuthContext.js";
+import * as apiService from "../services/api.js";
 
 
 export interface AccessibleMaterial {

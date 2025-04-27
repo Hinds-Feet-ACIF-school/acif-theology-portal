@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { Input } from "../../components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { Textarea } from "../../components/ui/textarea";
-import { Label } from "../../components/ui/label";
+import { Button } from "../../components/ui/button.js";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs.js";
+import { Input } from "../../components/ui/input.js";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select.js";
+import { Textarea } from "../../components/ui/textarea.js";
+import { Label } from "../../components/ui/label.js";
 import { BookOpen, PlusCircle, Edit, Trash2, ArrowLeft, FileText, Video, Upload, Save, ChevronLeft, ChevronRight, Loader2, AlertCircle, HelpCircle } from 'lucide-react';
-import * as apiService from "../../services/api";
-import CreateEditCourseModal from "../../components/modals/CreateEditCourseModal";
-import CreateEditWeekModal from "../../components/modals/CreateEditWeekModal";
-import CreateEditMaterialModal from "../../components/modals/CreateEditMaterialModal";
-import CreateEditQuizModal from "../../components/modals/CreateEditQuizModal";
+import * as apiService from "../../services/api.js";
+import CreateEditCourseModal from "../../components/modals/CreateEditCourseModal.js";
+import CreateEditWeekModal from "../../components/modals/CreateEditWeekModal.js";
+import CreateEditMaterialModal from "../../components/modals/CreateEditMaterialModal.js";
+import CreateEditQuizModal from "../../components/modals/CreateEditQuizModal.js";
 
 
 export interface Course {

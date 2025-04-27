@@ -1,9 +1,9 @@
 import { useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { Button } from "./ui/button" 
+import { Button } from "./ui/button.js" 
 import { Menu, X, LogOut } from "lucide-react"
 import logo from "../assets/logo.jpg" 
-import { useAuth } from "../context/AuthContext" 
+import { useAuth } from "../context/AuthContext.js" 
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)

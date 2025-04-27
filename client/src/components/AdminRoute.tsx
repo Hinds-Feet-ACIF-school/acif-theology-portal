@@ -1,7 +1,7 @@
 // src/components/AdminRoute.tsx
-import React from 'react';
+import { jsx as _jsx } from "react/jsx-runtime";
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext.js';
 
 const AdminRoute: React.FC = () => {
   const { isAuthenticated, isAdmin, loading } = useAuth(); 

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "../components/ui/button";
+import { Button } from "../components/ui/button.js";
 import { Clock, Lock, PlayCircle, CheckCircle2, LayoutDashboard, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 import logo from "../assets/logo.jpg";
-import { useAuth } from "../context/AuthContext";
-import * as apiService from "../services/api";
+import { useAuth } from "../context/AuthContext.js";
+import * as apiService from "../services/api.js";
 
 
 interface PublicCourseInfo {

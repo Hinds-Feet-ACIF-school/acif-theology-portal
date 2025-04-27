@@ -1,4 +1,4 @@
-import API from "./api";
+import {API} from "./api.js";
 
 export interface LoginCredentials {
   email: string;

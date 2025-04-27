@@ -1,4 +1,4 @@
-import {API} from "./api"
+import {API} from "./api.js"
 
 const DiscussionService = {
   async getAllDiscussions(params?: { category?: string; courseId?: string }): Promise<any[]> {

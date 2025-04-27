@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from "../ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
-import { Label } from "../ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Button } from "../ui/button.js";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card.js";
+import { Input } from "../ui/input.js";
+import { Textarea } from "../ui/textarea.js";
+import { Label } from "../ui/label.js";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.js";
 import { X, Save, Loader2, AlertCircle } from 'lucide-react';
-import { Week } from '../../pages/admin/CourseManagementPage';
+import { Week } from '../../pages/admin/CourseManagementPage.js';
 
 
 const lightBg = 'bg-[#FFF8F0]';
@@ -155,7 +155,8 @@ const CreateEditWeekModal: React.FC<CreateEditWeekModalProps> = ({
             <Label htmlFor="week-number" className={deepBrown}>Week Number (1-4)</Label>
              <Select
                 value={String(weekNumber)}
-                onValueChange={(value) => setWeekNumber(value)}
+                // *** FIX LINE 158 ***
+                onValueChange={(value: string) => setWeekNumber(value)}
                 disabled={isSaving}
              >
                 <SelectTrigger id="week-number" className={selectTriggerClasses}>
@@ -174,7 +175,8 @@ const CreateEditWeekModal: React.FC<CreateEditWeekModalProps> = ({
             <Input
               id="week-title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              // *** FIX LINE 177 ***
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
               placeholder="e.g., The Nature & Attributes of God"
               className={inputClasses}
               disabled={isSaving}
@@ -186,7 +188,8 @@ const CreateEditWeekModal: React.FC<CreateEditWeekModalProps> = ({
             <Textarea
               id="week-description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              // *** FIX LINE 189 ***
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
               placeholder="Briefly describe the topics covered this week..."
               rows={3}
               className={inputClasses}

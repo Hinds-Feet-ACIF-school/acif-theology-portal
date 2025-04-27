@@ -1,36 +1,36 @@
 import { Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "./components/theme-provider";
+import { ThemeProvider } from "./components/theme-provider.js";
 
 
-import UserLayout from "./components/UserLayout";
-import AdminLayout from "./components/admin/AdminLayout";
+import UserLayout from "./components/UserLayout.js";
+import AdminLayout from "./components/admin/AdminLayout.js";
 
 
-import HomePage from "./pages/Home";
-import ProgramOverviewPage from "./pages/ProgramOverView";
-import CoursesPage from "./pages/CoursesPage";
-import CourseDetailPage from "./pages/CourseDetailPage";
-import RegisterPage from "./pages/RegisterPage";
-import LoginPage from "./pages/LoginPage";
-import DashboardPage from "./pages/Dashboard";
-import CourseIntroductionPage from "./pages/CourseIntroductionPage";
-import DiscussionForumPage from "./pages/DiscussionForumPage";
+import HomePage from "./pages/Home.js";
+import ProgramOverviewPage from "./pages/ProgramOverView.js";
+import CoursesPage from "./pages/CoursesPage.js";
+import CourseDetailPage from "./pages/CourseDetailPage.js";
+import RegisterPage from "./pages/RegisterPage.js";
+import LoginPage from "./pages/LoginPage.js";
+import DashboardPage from "./pages/Dashboard.js";
+import CourseIntroductionPage from "./pages/CourseIntroductionPage.js";
+import DiscussionForumPage from "./pages/DiscussionForumPage.js";
 
 
-import AdminPage from "./pages/AdminPage";
-import AdminCourseManagementPage from "./pages/admin/CourseManagementPage";
-import AdminStudentManagementPage from "./pages/admin/StudentManagementPage";
+import AdminPage from "./pages/AdminPage.js";
+import AdminCourseManagementPage from "./pages/admin/CourseManagementPage.js";
+import AdminStudentManagementPage from "./pages/admin/StudentManagementPage.js";
 
-import AdminQuizManagementPage from "./pages/admin/QuizManagementPage";
+import AdminQuizManagementPage from "./pages/admin/QuizManagementPage.js";
 
-import AdminReportsPage from "./pages/admin/ReportsPage";
-import AdminSettingsPage from "./pages/admin/SettingsPage";
-
-
+import AdminReportsPage from "./pages/admin/ReportsPage.js";
+import AdminSettingsPage from "./pages/admin/SettingsPage.js";
 
 
 
-import ProtectedRoute from "./components/ProtectedRoute";
+
+
+import ProtectedRoute from "./components/ProtectedRoute.js";
 
 import "./App.css";
 

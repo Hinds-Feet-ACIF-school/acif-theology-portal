@@ -1,11 +1,11 @@
 // src/components/modals/CreateEditCourseModal.tsx
 import React, { useState, useEffect } from 'react';
-import { Button } from "../ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
-import { Label } from "../ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Button } from "../ui/button.js"; 
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card.js"; 
+import { Input } from "../ui/input.js";    
+import { Textarea } from "../ui/textarea.js"; 
+import { Label } from "../ui/label.js";    
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.js"; 
 import { X, Save, Loader2, AlertCircle } from 'lucide-react';
 
 interface Course {
@@ -18,6 +18,7 @@ interface Course {
   ects?: number;
 }
 
+// --- Theme Constants (keep as is) ---
 const lightBg = 'bg-[#FFF8F0]';
 const darkBg = 'dark:bg-gray-950';
 const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';
@@ -36,6 +37,7 @@ const outlineButtonClasses = `${goldBorder} ${goldAccent} hover:bg-[#C5A467]/10 
 const inputClasses = `h-9 rounded-md px-3 text-sm ${lightCardBg} ${darkCardBg} ${inputBorder} ${deepBrown} ${focusRing} placeholder:text-gray-400 dark:placeholder:text-gray-500`;
 const selectTriggerClasses = `h-9 rounded-md px-3 text-sm w-full ${lightCardBg} ${darkCardBg} ${inputBorder} ${deepBrown} ${focusRing}`;
 const selectContentClasses = `border ${inputBorder} ${lightCardBg} ${darkCardBg} ${deepBrown}`;
+// --- End Theme Constants ---
 
 interface CreateEditCourseModalProps {
   isOpen: boolean;
@@ -97,11 +99,13 @@ const CreateEditCourseModal: React.FC<CreateEditCourseModalProps> = ({
       if (isEditing && course) {
         await onSave({ ...courseData, id: course.id });
       } else {
-        await onSave(courseData);
+        await onSave(courseData as Omit<Course, 'id'>); // Assert type for creation
       }
+      // No onClose here, parent handles success
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
       console.error("Error saving course in modal:", err);
+      // Don't close on error, let user see message
     } finally {
       setIsSaving(false);
     }
@@ -132,7 +136,8 @@ const CreateEditCourseModal: React.FC<CreateEditCourseModalProps> = ({
             <Input
               id="course-title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              // *** FIX TS7006 HERE ***
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
               placeholder="e.g., Foundations of the Christian Faith"
               className={inputClasses}
               disabled={isSaving}
@@ -142,8 +147,9 @@ const CreateEditCourseModal: React.FC<CreateEditCourseModalProps> = ({
             <Label htmlFor="course-month" className={deepBrown}>Month Order (1-6)</Label>
              <Select
                 value={String(monthOrder)}
-                onValueChange={(value) => setMonthOrder(value)}
-                disabled={isEditing || isSaving}
+                // *** FIX TS7006 HERE ***
+                onValueChange={(value: string) => setMonthOrder(value)} // Assuming value is string from Select
+                disabled={isEditing || isSaving} // Consider if editing month should be allowed
              >
                 <SelectTrigger id="course-month" className={selectTriggerClasses}>
                     <SelectValue placeholder="Select month..." />
@@ -160,7 +166,8 @@ const CreateEditCourseModal: React.FC<CreateEditCourseModalProps> = ({
             <Textarea
               id="course-description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              // *** FIX TS7006 HERE ***
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
               placeholder="A brief overview of the course content..."
               rows={4}
               className={inputClasses}

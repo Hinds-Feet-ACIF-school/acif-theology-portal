@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Checkbox } from "../components/ui/checkbox";
-import { useAuth } from "../context/AuthContext";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react"; 
+import { Button } from "../components/ui/button.js";
+import { Input } from "../components/ui/input.js";
+import { Label } from "../components/ui/label.js";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card.js";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select.js";
+import { Checkbox } from "../components/ui/checkbox.js";
+import { useAuth } from "../context/AuthContext.js";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 
-// --- Color Constants ---
+
 const accentColor = "#C5A467";
 const accentHoverColor = "#B08F55";
 const primaryTextLight = "text-[#2A0F0F]";
@@ -40,14 +40,14 @@ export default function RegisterPage() {
     confirmPassword: "",
     country: "",
     church: "",
-    intake: "", 
+    intake: "",
     agreeTerms: false,
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { register, loading } = useAuth();
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -68,7 +68,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setFormError(null);
 
-    if (step !== 3) return; 
+    if (step !== 3) return;
     if (formData.password !== formData.confirmPassword) {
       setFormError("Passwords do not match");
       return;
@@ -91,7 +91,7 @@ export default function RegisterPage() {
         church: formData.church,
       };
       await register(registrationData);
-      navigate("/dashboard", { replace: true }); 
+      navigate("/dashboard", { replace: true });
     } catch (error: any) {
       const message = error.response?.data?.message || error.message || "Registration failed. Please check your details.";
       setFormError(message);
@@ -131,7 +131,7 @@ export default function RegisterPage() {
         <div className="w-full mb-6 flex justify-start">
           <button
             type="button"
-            onClick={() => navigate(-1)} 
+            onClick={() => navigate(-1)}
             className={`group flex items-center gap-1 ${secondaryTextLight} ${secondaryTextDark} hover:text-[${accentColor}] dark:hover:text-[${accentColor}] transition-colors duration-200 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[${accentColor}] p-1 rounded-md -ml-1`}
             aria-label="Go back"
           >
@@ -281,7 +281,7 @@ export default function RegisterPage() {
                     {formError && <p className="text-red-600 dark:text-red-400 text-xs font-medium mb-4">{formError}</p>}
                     <div className="space-y-1.5">
                       <Label htmlFor="country" className={`${primaryTextLight} ${primaryTextDark} text-sm font-medium`}>Country</Label>
-                      <Select value={formData.country} onValueChange={(value) => handleSelectChange("country", value)} required>
+                      <Select value={formData.country} onValueChange={(value: string) => handleSelectChange("country", value)} required>
                         <SelectTrigger id="country" className={selectTriggerClasses} aria-required="true">
                           <SelectValue placeholder="Select your country" />
                         </SelectTrigger>
@@ -334,7 +334,7 @@ export default function RegisterPage() {
                         id="agreeTerms"
                         name="agreeTerms"
                         checked={formData.agreeTerms}
-                        onCheckedChange={(checked) => handleSelectChange("agreeTerms", !!checked)}
+                        onCheckedChange={(checked: boolean) => handleSelectChange("agreeTerms", !!checked)}
                         required
                         aria-required="true"
                         className={`border-[#C5A467]/50 data-[state=checked]:bg-[${accentColor}] data-[state=checked]:text-[#2A0F0F] focus-visible:ring-[${accentColor}] mt-0.5`}
@@ -359,7 +359,7 @@ export default function RegisterPage() {
                     <Button
                       type="submit"
                       className={buttonPrimaryClasses}
-                      disabled={loading || !formData.agreeTerms} 
+                      disabled={loading || !formData.agreeTerms}
                     >
                       {loading ? (
                          <span className="flex items-center">

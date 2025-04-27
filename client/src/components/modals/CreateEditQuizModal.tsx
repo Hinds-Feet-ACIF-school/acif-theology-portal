@@ -1,13 +1,14 @@
 // src/components/modals/CreateEditQuizModal.tsx
 import React, { useState, useEffect } from 'react';
-import { Button } from "../ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
-import { Label } from "../ui/label";
+import { Button } from "../ui/button.js";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card.js";
+import { Input } from "../ui/input.js";
+import { Textarea } from "../ui/textarea.js";
+import { Label } from "../ui/label.js";
 import { X, Save, Loader2, AlertCircle, Link as LinkIcon } from 'lucide-react';
-import { Quiz } from '../../pages/admin/CourseManagementPage'; // Adjust path or import from types
+import { Quiz } from '../../pages/admin/CourseManagementPage.js';
 
+// --- Theme Constants (keep as is) ---
 const lightBg = 'bg-[#FFF8F0]';
 const darkBg = 'dark:bg-gray-950';
 const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';
@@ -24,6 +25,7 @@ const focusRing = 'focus:ring-1 focus:ring-offset-0 focus:ring-[#C5A467]';
 const primaryButtonClasses = `${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold`;
 const outlineButtonClasses = `${goldBorder} ${goldAccent} hover:bg-[#C5A467]/10 dark:hover:bg-[#C5A467]/15 hover:text-[#A07F44] dark:hover:text-[#E0D6C3]`;
 const inputClasses = `h-9 rounded-md px-3 text-sm ${lightCardBg} ${darkCardBg} ${inputBorder} ${deepBrown} ${focusRing} placeholder:text-gray-400 dark:placeholder:text-gray-500`;
+// --- End Theme Constants ---
 
 interface CreateEditQuizModalProps {
   isOpen: boolean;
@@ -109,6 +111,7 @@ const CreateEditQuizModal: React.FC<CreateEditQuizModalProps> = ({
 
      if (quizUrl && !quizUrl.startsWith('http://') && !quizUrl.startsWith('https://')) {
         // Optional: Add URL validation or allow relative paths
+        // Consider adding a check/warning if needed
      }
 
     setIsSaving(true);
@@ -126,10 +129,9 @@ const CreateEditQuizModal: React.FC<CreateEditQuizModalProps> = ({
       if (isEditing && quiz) {
         await onSave({ ...quizData, id: quiz.id });
       } else {
-        // Ensure the object structure matches Omit<Quiz, 'id'> if necessary
-        // Since 'id' is the only difference, this cast is generally safe if quizData has all other required fields
         await onSave(quizData as Omit<Quiz, 'id'>);
       }
+      // Don't close here, let parent handle on success
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred while saving the quiz.");
       console.error("Error saving quiz in modal:", err);
@@ -165,7 +167,8 @@ const CreateEditQuizModal: React.FC<CreateEditQuizModalProps> = ({
             <Input
               id="quiz-title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              // *** FIX LINE 168 ***
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
               placeholder="e.g., Week 1 Comprehension Quiz"
               className={inputClasses}
               disabled={isSaving}
@@ -177,7 +180,8 @@ const CreateEditQuizModal: React.FC<CreateEditQuizModalProps> = ({
             <Input
               id="quiz-url"
               value={quizUrl}
-              onChange={(e) => setQuizUrl(e.target.value)}
+              // *** FIX LINE 180 ***
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuizUrl(e.target.value)}
               placeholder="e.g., https://forms.google.com/..."
               className={inputClasses}
               disabled={isSaving}
@@ -189,7 +193,8 @@ const CreateEditQuizModal: React.FC<CreateEditQuizModalProps> = ({
             <Textarea
               id="quiz-description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              // *** FIX LINE 192 ***
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
               placeholder="Briefly describe the quiz purpose..."
               rows={2}
               className={inputClasses}
@@ -202,7 +207,8 @@ const CreateEditQuizModal: React.FC<CreateEditQuizModalProps> = ({
             <Textarea
               id="quiz-instructions"
               value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
+              // *** FIX LINE 205 ***
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInstructions(e.target.value)}
               placeholder="Instructions for taking the quiz..."
               rows={3}
               className={inputClasses}
@@ -218,7 +224,8 @@ const CreateEditQuizModal: React.FC<CreateEditQuizModalProps> = ({
                 type="number"
                 min="0"
                 value={points}
-                onChange={(e) => setPoints(e.target.value)}
+                // *** FIX LINE 221 ***
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPoints(e.target.value)}
                 placeholder="e.g., 100"
                 className={inputClasses}
                 disabled={isSaving}
@@ -231,7 +238,8 @@ const CreateEditQuizModal: React.FC<CreateEditQuizModalProps> = ({
                 type="number"
                 min="0"
                 value={dueDateOffsetDays ?? ''}
-                onChange={(e) => setDueDateOffsetDays(e.target.value === '' ? null : e.target.value)}
+                // *** FIX LINE 234 ***
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDueDateOffsetDays(e.target.value === '' ? null : e.target.value)}
                 placeholder="Days after week start (e.g., 7)"
                 className={inputClasses}
                 disabled={isSaving}
