@@ -12,15 +12,38 @@ console.log("NODE_ENV:", process.env.NODE_ENV);
 console.log("FIREBASE_PROJECT_ID:", process.env.FIREBASE_PROJECT_ID ? "Set" : "MISSING!");
 console.log("FIREBASE_CLIENT_EMAIL:", process.env.FIREBASE_CLIENT_EMAIL ? "Set" : "MISSING!");
 console.log("FIREBASE_PRIVATE_KEY:", process.env.FIREBASE_PRIVATE_KEY ? `Set (Length: ${process.env.FIREBASE_PRIVATE_KEY.length})` : "MISSING!");
-console.log("FIREBASE_STORAGE_BUCKET:", process.env.FIREBASE_STORAGE_BUCKET ? "Set" : "MISSING!");
-console.log("JWT_SECRET:", process.env.JWT_SECRET ? "Set" : "MISSING!");
-console.log("REFRESH_TOKEN_SECRET:", process.env.REFRESH_TOKEN_SECRET ? "Set" : "MISSING!");
+
+const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+let processedPrivateKey = rawPrivateKey;
+
+if (rawPrivateKey) {
+    processedPrivateKey = rawPrivateKey.replace(/\\n/g, "\n");
+ 
+    if (processedPrivateKey && typeof processedPrivateKey === 'string') {
+       const keyLines = processedPrivateKey.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+       if (keyLines.length > 2 && keyLines[0] === '-----BEGIN PRIVATE KEY-----' && keyLines[keyLines.length - 1] === '-----END PRIVATE KEY-----') {
+            processedPrivateKey = keyLines.join('\n');
+            console.log("Private key processed (split/trimmed/rejoined).");
+       } else {
+            console.warn("Processed private key does not seem to match expected PEM structure after splitting.");
+            processedPrivateKey = rawPrivateKey.replace(/\\n/g, "\n");
+       }
+    }
+} else {
+    console.error("FIREBASE_PRIVATE_KEY is missing from environment variables!");
+    processedPrivateKey = undefined;
+}
+
+console.log("----- Service Account Object for cert() -----");
+console.log("Private Key (Final type before cert):", typeof processedPrivateKey);
+console.log("Private Key (Snippet after ALL processing):", processedPrivateKey ? `${processedPrivateKey.substring(0, 30)}...${processedPrivateKey.substring(processedPrivateKey.length - 30)}` : "MISSING or Undefined!");
+console.log("------------------------------------------");
 
 const serviceAccount = {
-  type: process.env.FIREBASE_TYPE || "service_account", 
+  type: process.env.FIREBASE_TYPE || "service_account",
   project_id: process.env.FIREBASE_PROJECT_ID,
   private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-  private_key: process.env.FIREBASE_PRIVATE_KEY,
+  private_key: processedPrivateKey, 
   client_email: process.env.FIREBASE_CLIENT_EMAIL,
   client_id: process.env.FIREBASE_CLIENT_ID,
   auth_uri: process.env.FIREBASE_AUTH_URI,
@@ -29,42 +52,27 @@ const serviceAccount = {
   client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
 };
 
-console.log("----- Service Account Object for cert() -----");
-
-console.log("Type:", serviceAccount.type);
-console.log("Project ID:", serviceAccount.project_id);
-console.log("Client Email:", serviceAccount.client_email);
-console.log("Private Key ID:", serviceAccount.private_key_id);
-console.log("Private Key (Snippet):", serviceAccount.private_key ? `${serviceAccount.private_key.substring(0, 30)}...${serviceAccount.private_key.substring(serviceAccount.private_key.length - 30)}` : "MISSING or Undefined!");
-console.log("------------------------------------------");
 
 let db, auth, storage;
-
 try {
   if (!serviceAccount.project_id || !serviceAccount.client_email || !serviceAccount.private_key) {
     throw new Error("FATAL ERROR: Missing required Firebase Admin SDK credentials (project_id, client_email, or private_key) before calling cert()!");
   }
-
   console.log("Attempting Firebase Admin SDK initialization...");
   initializeApp({
     credential: cert(serviceAccount),
     storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
   });
-
   console.log("Firebase Admin SDK initialized successfully.");
-
   db = getFirestore();
   auth = getAuth();
   storage = getStorage();
-
 } catch (initError) {
   console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
   console.error("!!! FIREBASE ADMIN SDK INITIALIZATION FAILED !!!");
   console.error("Error during initializeApp or cert():", initError);
   console.error("Review the service account details logged above.");
-  console.error("Ensure the FIREBASE_PRIVATE_KEY environment variable on Render contains the correct, complete key including BEGIN/END markers and newlines.");
   console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-  
   process.exit(1);
 }
 
