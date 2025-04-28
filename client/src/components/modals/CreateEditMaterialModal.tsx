@@ -2,15 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "../ui/button.js";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card.js";
 import { Input } from "../ui/input.js";
-import { Textarea } from "../ui/textarea.js";
 import { Label } from "../ui/label.js";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.js";
-import { X, Save, Loader2, AlertCircle, UploadCloud, File, Video, BookOpen } from 'lucide-react';
+import { X, Save, Loader2, AlertCircle, UploadCloud } from 'lucide-react';
 import { Material } from '../../pages/admin/CourseManagementPage.js';
 
-
-const lightBg = 'bg-[#FFF8F0]';
-const darkBg = 'dark:bg-gray-950';
 const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';
 const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]';
 const goldAccent = 'text-[#C5A467]';
@@ -25,10 +21,8 @@ const focusRing = 'focus:ring-1 focus:ring-offset-0 focus:ring-[#C5A467]';
 const primaryButtonClasses = `${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold`;
 const outlineButtonClasses = `${goldBorder} ${goldAccent} hover:bg-[#C5A467]/10 dark:hover:bg-[#C5A467]/15 hover:text-[#A07F44] dark:hover:text-[#E0D6C3]`;
 const inputClasses = `h-9 rounded-md px-3 text-sm ${lightCardBg} ${darkCardBg} ${inputBorder} ${deepBrown} ${focusRing} placeholder:text-gray-400 dark:placeholder:text-gray-500`;
-const fileInputClasses = `file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-100 dark:file:bg-gray-700 file:text-gray-700 dark:file:text-gray-300 hover:file:bg-gray-200 dark:hover:file:bg-gray-600 ${inputClasses}`;
 const selectTriggerClasses = `h-9 rounded-md px-3 text-sm w-full ${lightCardBg} ${darkCardBg} ${inputBorder} ${deepBrown} ${focusRing}`;
 const selectContentClasses = `border ${inputBorder} ${lightCardBg} ${darkCardBg} ${deepBrown}`;
-
 
 interface CreateEditMaterialModalProps {
   isOpen: boolean;
@@ -46,7 +40,7 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
   onSave,
 }) => {
   const [title, setTitle] = useState('');
-  const [type, setType] = useState<'video' | 'reading' | 'resource' | 'quiz'>('reading');
+  const [type, setType] = useState<'video' | 'reading' | 'resource'>('reading');
   const [details, setDetails] = useState('');
   const [contentUrl, setContentUrl] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -65,7 +59,7 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
       }
       if (isEditing && material) {
         setTitle(material.title || '');
-        setType(material.type || 'reading');
+        setType(material.type === 'video' || material.type === 'reading' || material.type === 'resource' ? material.type : 'reading');
         setDetails(material.details || '');
         setContentUrl(material.contentUrl || '');
       } else {
@@ -103,12 +97,13 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
         setError("A PDF file is required for 'Reading' type when creating.");
         return;
     }
-     if (type !== 'reading' && !contentUrl) {
-         setError("A URL is required for Video, Resource, or Quiz types.");
+     if ((type === 'video' || type === 'resource') && !contentUrl) {
+         setError(`A URL is required for ${type === 'video' ? 'Video' : 'Resource'} types.`);
          return;
      }
     if (!weekId && !isEditing) {
         setError("Internal Error: Week ID is missing. Cannot create material.");
+        console.error("Attempted to save material without weekId");
         return;
     }
 
@@ -123,9 +118,7 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
         dataToSend.append('type', type);
         dataToSend.append('details', details);
         dataToSend.append('file', file);
-        if (isEditing && material){
-
-        } else if (weekId) {
+        if (weekId) {
              dataToSend.append('weekId', weekId);
         }
     } else {
@@ -133,25 +126,26 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
             title,
             type,
             details,
-            contentUrl: type !== 'reading' ? contentUrl : (isEditing ? material?.contentUrl : ''),
+            contentUrl: (type === 'video' || type === 'resource') ? contentUrl : (isEditing && type === 'reading' ? material?.contentUrl : undefined),
             weekId: isEditing && material ? material.weekId : weekId!,
         };
+        if (isEditing && type === 'reading' && !file) {
+            (dataToSend as Material | Omit<Material, 'id'>).contentUrl = material?.contentUrl;
+        } else if (type === 'reading') {
+             delete (dataToSend as Material | Omit<Material, 'id'>).contentUrl;
+        }
     }
 
-
     try {
+        console.log("Data being sent to onSave:", dataToSend);
         if (isEditing && material) {
-
-
             await onSave(useFormData ? dataToSend as FormData : { ...(dataToSend as Omit<Material, 'id'>), id: material.id });
         } else {
-
             await onSave(dataToSend as FormData | Omit<Material, 'id'>);
         }
-
     } catch (err: any) {
+      console.error("Error during onSave call:", err);
       setError(err.message || "An unexpected error occurred while saving the material.");
-
     } finally {
       setIsSaving(false);
     }
@@ -176,18 +170,19 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
           </Button>
         </CardHeader>
         <CardContent className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-          {error && <div className="mb-4 p-3 bg-red-100 text-red-700 border border-red-300 rounded text-xs flex items-center gap-2"><AlertCircle className="h-4 w-4"/> {error}</div>}
+          {error && <div role="alert" className="mb-4 p-3 bg-red-100 text-red-700 border border-red-300 rounded text-sm flex items-center gap-2"><AlertCircle className="h-4 w-4"/> {error}</div>}
 
           <div className="space-y-2">
             <Label htmlFor="material-title" className={deepBrown}>Material Title</Label>
             <Input
               id="material-title"
               value={title}
-              // *** FIX LINE 186 ***
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
               placeholder="e.g., Week 1 Reading: The Trinity"
               className={inputClasses}
               disabled={isSaving}
+              required
+              aria-required="true"
             />
           </div>
 
@@ -195,12 +190,13 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
             <Label htmlFor="material-type" className={deepBrown}>Material Type</Label>
              <Select
                 value={type}
-                onValueChange={(value: 'video' | 'reading' | 'resource' | 'quiz') => {
+                onValueChange={(value: 'video' | 'reading' | 'resource') => {
                     setType(value);
-
                     if(value === 'reading') setContentUrl(''); else setFile(null);
                 }}
                 disabled={isSaving}
+                required
+                aria-required="true"
              >
                 <SelectTrigger id="material-type" className={selectTriggerClasses}>
                     <SelectValue placeholder="Select type..." />
@@ -209,17 +205,16 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
                      <SelectItem value="reading">Reading (PDF)</SelectItem>
                      <SelectItem value="video">Video (Link)</SelectItem>
                      <SelectItem value="resource">Resource (Link)</SelectItem>
-                     <SelectItem value="quiz">Quiz (Link/External)</SelectItem>
                 </SelectContent>
              </Select>
           </div>
 
            {type === 'reading' && (
                 <div className="space-y-2">
-                    <Label htmlFor="material-file" className={deepBrown}>PDF File</Label>
+                    <Label htmlFor="material-file" className={deepBrown}>PDF File {isEditing ? '(Optional: Upload new to replace)' : '(Required)'}</Label>
                     <div className={`flex items-center p-2 border rounded-md ${inputBorder}`}>
                         <span className={`flex-1 mr-2 text-sm truncate ${file ? deepBrown : mutedText}`}>
-                            {file ? file.name : (isEditing && material?.contentUrl ? 'Current file stored (upload new to replace)' : 'No file selected')}
+                            {file ? file.name : (isEditing && material?.contentUrl ? 'Current file stored' : 'No file selected')}
                         </span>
                         <Input
                         id="material-file"
@@ -241,23 +236,22 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
                             <UploadCloud className="mr-2 h-4 w-4"/> Choose PDF
                         </Button>
                      </div>
-                     {isEditing && material?.contentUrl && !file && (
-                         <p className={`text-xs ${mutedText}`}>Leave empty to keep the current file.</p>
-                     )}
                 </div>
             )}
 
-           {(type === 'video' || type === 'resource' || type === 'quiz') && (
+           {(type === 'video' || type === 'resource') && (
                 <div className="space-y-2">
-                    <Label htmlFor="material-url" className={deepBrown}>{type === 'video' ? 'Video URL' : type === 'quiz' ? 'Quiz URL' : 'Resource URL'}</Label>
+                    <Label htmlFor="material-url" className={deepBrown}>{type === 'video' ? 'Video URL' : 'Resource URL'} (Required)</Label>
                     <Input
                         id="material-url"
                         value={contentUrl}
-                        // *** FIX LINE 255 ***
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContentUrl(e.target.value)}
-                        placeholder="Paste URL here (e.g., YouTube, Vimeo, external site)"
+                        placeholder="Paste URL here (e.g., YouTube, external site)"
                         className={inputClasses}
                         disabled={isSaving}
+                        required
+                        aria-required="true"
+                        type="url"
                     />
                 </div>
            )}
@@ -267,7 +261,6 @@ const CreateEditMaterialModal: React.FC<CreateEditMaterialModalProps> = ({
             <Input
               id="material-details"
               value={details}
-              // *** FIX LINE 268 ***
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDetails(e.target.value)}
               placeholder="e.g., Est. Reading Time: 45 mins, Video Duration: 15:30"
               className={inputClasses}

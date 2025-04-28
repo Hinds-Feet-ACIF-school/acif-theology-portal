@@ -1,9 +1,11 @@
-import React from 'react';
+import React from 'react'; // Keep React import for FC and potentially hooks if needed elsewhere
 import { Link } from "react-router-dom";
-import { Button } from "../components/ui/button.js";
-import { ChevronRight, BookOpen, Calendar, Award, Users, Cross } from "lucide-react";
+import { Button } from "../components/ui/button.js"; // Assuming button.tsx or button/index.tsx
+import { ChevronRight, BookOpen, Calendar, Award, Users, LayoutDashboard } from "lucide-react"; // Removed unused Cross
 import logo from "../assets/logo.jpg";
+import { useAuth } from '../context/AuthContext.js'; // <--- IMPORT useAuth hook
 
+// --- Type Definitions (Unchanged) ---
 interface Course {
   title: string;
   description: string;
@@ -11,7 +13,13 @@ interface Course {
   ects: number;
 }
 
-export default function HomePage() {
+// --- Component Definition ---
+const HomePage: React.FC = () => {
+
+  // --- Get Authentication State from Context ---
+  const { isAuthenticated } = useAuth(); // <--- USE the hook to get the real status
+
+  // --- Data (Unchanged) ---
   const courses: Course[] = [
     {
       title: "Foundations of the Christian Faith",
@@ -51,6 +59,7 @@ export default function HomePage() {
     },
   ];
 
+  // --- Color Constants (Unchanged) ---
   const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';
   const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]';
   const goldAccent = 'text-[#C5A467]';
@@ -59,15 +68,18 @@ export default function HomePage() {
   const goldBorder = 'border-[#C5A467]';
   const lightBg = 'bg-[#FFF8F0]';
   const darkBg = 'dark:bg-gray-950';
-  const lightCardBg = 'bg-[#FFF8F0]';
-  const darkCardBg = 'dark:bg-gray-900';
-  const lightSectionBg = 'bg-[#F4EDE4]';
-  const darkSectionBg = 'dark:bg-gray-800';
+  // const lightCardBg = 'bg-[#FFF8F0]'; // Defined but not used
+  // const darkCardBg = 'dark:bg-gray-900'; // Defined but not used
+  // const lightSectionBg = 'bg-[#F4EDE4]'; // Defined but not used
+  // const darkSectionBg = 'dark:bg-gray-800'; // Defined but not used
+
+  // --- No longer need the placeholder isLoggedIn constant ---
+  // const isLoggedIn = false; // <-- REMOVED
 
   return (
     <div className={`flex flex-col min-h-screen ${lightBg} ${darkBg}`}>
 
-
+      {/* --- Hero Section --- */}
       <section className="w-full py-16 md:py-28 lg:py-36 bg-gradient-to-br from-[#2A0F0F] to-[#4A1F1F] dark:from-gray-900 dark:to-gray-800 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/path-to-subtle-cross-pattern.svg')] bg-repeat opacity-10 dark:opacity-5"></div>
         <div className="container relative px-4 md:px-6 z-10">
@@ -82,6 +94,7 @@ export default function HomePage() {
               </p>
             </div>
             <div className="space-x-4 pt-4 animate-[fadeInUp_1.5s_ease-out]">
+              {/* Explore Program Button (Always Visible) */}
               <Link to="/program-overview">
                 <Button
                   size="lg"
@@ -91,23 +104,40 @@ export default function HomePage() {
                   <ChevronRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
                 </Button>
               </Link>
-              <Link to="/register">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className={`text-[#FFF8F0] ${goldBorder} hover:bg-[#C5A467]/20 dark:text-[#C5A467] dark:border-[#C5A467] dark:hover:bg-[#C5A467]/10 dark:hover:text-[#E0D6C3] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-md font-medium`}
-                >
-                  Enroll Now
-                </Button>
-              </Link>
+
+              {/* Conditional Button: Use isAuthenticated from context */}
+              {isAuthenticated ? ( // <--- USE isAuthenticated
+                <Link to="/dashboard">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className={`text-[#FFF8F0] ${goldBorder} hover:bg-[#C5A467]/20 dark:text-[#C5A467] dark:border-[#C5A467] dark:hover:bg-[#C5A467]/10 dark:hover:text-[#E0D6C3] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-md font-medium group`}
+                  >
+                    <LayoutDashboard className="mr-2 h-5 w-5" />
+                    Go to Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/register">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className={`text-[#FFF8F0] ${goldBorder} hover:bg-[#C5A467]/20 dark:text-[#C5A467] dark:border-[#C5A467] dark:hover:bg-[#C5A467]/10 dark:hover:text-[#E0D6C3] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-md font-medium`}
+                  >
+                    Enroll Now
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
       </section>
 
+      {/* --- Program Highlights / Learning Outcomes Section (Unchanged) --- */}
       <section className={`w-full py-16 md:py-24 lg:py-32 ${lightBg} ${darkBg}`}>
         <div className="container px-4 md:px-6">
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20">
+            {/* Program Highlights */}
             <div className="space-y-5 px-4 animate-[fadeInRight_1s_ease-out]">
               <div className="flex items-center gap-3 mb-4">
                 <div className={`h-1 w-12 ${goldBg}`}></div>
@@ -132,7 +162,7 @@ export default function HomePage() {
                 ))}
               </ul>
             </div>
-
+             {/* Learning Outcomes */}
             <div className="space-y-5 animate-[fadeInLeft_1s_ease-out]">
               <div className="flex items-center gap-3 mb-4">
                 <div className={`h-1 w-12 ${goldBg}`}></div>
@@ -166,8 +196,7 @@ export default function HomePage() {
       </section>
 
 
-
-
+      {/* --- Bottom CTA Section --- */}
       <section className="w-full py-16 md:py-24 lg:py-28 bg-[#2A0F0F] dark:bg-black relative text-[#FFF8F0]">
         <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-b from-[#C5A467]/30 to-transparent"></div>
         <div className="absolute inset-x-0 bottom-0 h-2 bg-gradient-to-t from-[#C5A467]/30 to-transparent"></div>
@@ -175,34 +204,55 @@ export default function HomePage() {
         <div className="container relative px-4 md:px-6 z-10">
           <div className="flex flex-col items-center space-y-6 text-center animate-[fadeInUp_1s_ease-out]">
           <img src={logo} alt="Apostolic & Evangelical Theology Logo" className="h-16 w-16 md:h-20 md:w-20 mx-auto rounded-full object-cover mb-4 shadow-md border-2 border-[#C5A467]/50" />
+            {/* Conditional Heading: Use isAuthenticated from context */}
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl font-serif">
-              Begin Your Theological Journey
+              {isAuthenticated ? "Manage Your Studies" : "Begin Your Theological Journey"}
             </h2>
+            {/* Conditional Subtext: Use isAuthenticated from context */}
             <p className="mx-auto max-w-[700px] text-[#E0D6C3] md:text-xl lg:text-lg">
-              Join our community of seekers and scholars. Enroll today and deepen your understanding of God's Word.
+              {isAuthenticated
+                ? "Access your courses, progress, and community resources through your dashboard."
+                : "Join our community of seekers and scholars. Enroll today and deepen your understanding of God's Word."}
             </p>
-            <div className="space-x-4 pt-4">
-              <Link to="/register">
-                <Button
-                  size="lg"
-                  className={`${goldBg} ${goldBgHover} text-[#2A0F0F] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg font-semibold`}
-                >
-                  Start Application
-                </Button>
-              </Link>
-              <Link to="/contact">
-                <Button
-                  size="lg"
-                  variant="outline"
-                   className={`border-[#C5A467] text-[#C5A467] hover:bg-[#C5A467]/10 hover:text-[#FFF8F0] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-md font-medium`}
-                >
-                  Request Info
-                </Button>
-              </Link>
+            {/* Conditional Buttons: Use isAuthenticated from context */}
+            <div className="pt-4">
+              {isAuthenticated ? ( // <--- USE isAuthenticated
+                 <Link to="/dashboard">
+                   <Button
+                     size="lg"
+                     className={`${goldBg} ${goldBgHover} text-[#2A0F0F] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg font-semibold group`}
+                   >
+                     <LayoutDashboard className="mr-2 h-5 w-5" />
+                     Go to My Dashboard
+                   </Button>
+                 </Link>
+              ) : (
+                <div className="space-x-4"> {/* Keep space-x-4 for logged-out view */}
+                   <Link to="/register">
+                    <Button
+                      size="lg"
+                      className={`${goldBg} ${goldBgHover} text-[#2A0F0F] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg font-semibold`}
+                    >
+                      Start Application
+                    </Button>
+                  </Link>
+                  <Link to="/contact">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className={`border-[#C5A467] text-[#C5A467] hover:bg-[#C5A467]/10 hover:text-[#FFF8F0] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-md font-medium`}
+                    >
+                      Request Info
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </section>
     </div>
   );
-}
+}; // End of HomePage component
+
+export default HomePage;
