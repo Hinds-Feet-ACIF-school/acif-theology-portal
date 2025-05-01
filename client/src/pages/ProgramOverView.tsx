@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Button } from "../components/ui/button.js"; // Ensure this path points to a .ts or .tsx file
+import { Button } from "../components/ui/button.js"; 
 import {
   BookOpen,
   Calendar,
@@ -8,12 +8,11 @@ import {
   Award,
   CheckCircle2,
   FileText,
-  Users, // Note: Users icon is imported but not used.
   GraduationCap,
-  LucideIcon, // Type for Lucide icons
+  LucideIcon, 
 } from "lucide-react";
+import { useAuth } from '../context/AuthContext.js'; 
 
-// --- Type Definitions ---
 interface Course {
   id: string;
   title: string;
@@ -29,7 +28,6 @@ interface ProgramStructureItem {
   desc: string;
 }
 
-// --- Color Constants ---
 const accentColor = "#C5A467";
 const accentHoverColor = "#B08F55";
 const primaryTextLight = "text-[#2A0F0F]";
@@ -38,14 +36,8 @@ const primaryTextDark = "dark:text-[#FFF8F0]";
 const secondaryTextDark = "dark:text-[#E0D6C3]/90";
 const mutedTextLight = "text-gray-500";
 const mutedTextDark = "dark:text-gray-400";
-const inputBgLight = "bg-[#FFF8F0]";
-const inputBgDark = "dark:bg-gray-800";
 const contentBgLight = "bg-white";
 const contentBgDark = "dark:bg-gray-900";
-const inputBorderLight = "border-[#E0D6C3]";
-const inputBorderDark = "dark:border-gray-700";
-const focusRingAccent = `focus:ring-[${accentColor}]`;
-const focusBorderAccent = `focus:border-[${accentColor}] dark:focus:border-[${accentColor}]`;
 const cardBgLight = "bg-white";
 const cardBgDark = "dark:bg-gray-900";
 const cardBorder = `border border-[#C5A467]/20 dark:border-[#C5A467]/30`;
@@ -61,11 +53,9 @@ const ctaBgLight = "bg-[#2A0F0F]";
 const ctaBgDark = "dark:bg-black";
 const ctaText = "text-[#FFF8F0]";
 const ctaSubText = "text-[#E0D6C3]";
-// --- End Color Constants ---
 
-// Define the component as a React Functional Component (React.FC)
 const ProgramOverviewPage: React.FC = () => {
-  // --- Typed Course Data ---
+  const { isAuthenticated } = useAuth(); 
   const courses: Course[] = [
         {
       id: "foundations",
@@ -152,9 +142,7 @@ const ProgramOverviewPage: React.FC = () => {
       ects: 6.5,
     },
   ];
-  // --- End Course Data ---
 
-  // --- Typed Other Data Arrays ---
   const programStructureItems: ProgramStructureItem[] = [
     { icon: Calendar, title: "Duration", desc: "6 months total (6 courses, 4 weeks each)" },
     { icon: Clock, title: "Study Time", desc: "Approx. 10-12 hours per week" },
@@ -181,20 +169,18 @@ const ProgramOverviewPage: React.FC = () => {
     "Recognition of completion from the Apostolic Church International",
     "Solid foundation for ministry roles or further theological studies",
   ];
-  // --- End Other Data Arrays ---
 
   return (
     <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark}`}>
-      {/* Hero Section */}
       <section className="w-full py-16 md:py-28 lg:py-36 bg-gradient-to-br from-[#2A0F0F] to-[#4A1F1F] dark:from-gray-900 dark:to-gray-800 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/path-to-subtle-cross-pattern.svg')] bg-repeat opacity-10 dark:opacity-5"></div>
         <div className="container relative px-4 md:px-6 z-10">
           <div className="flex flex-col items-center space-y-4 text-center">
             <div className="space-y-3">
-              <h1 className="text-4xl text-[#FFF8F0] font-bold font-serif tracking-tight sm:text-5xl md:text-6xl lg:text-7xl/none">
+              <h1 className={`text-4xl ${headerTextLight} ${headerTextDark} font-bold font-serif tracking-tight sm:text-5xl md:text-6xl lg:text-7xl/none`}>
                 Program Overview
               </h1>
-              <p className="mx-auto max-w-[750px] text-[#E0D6C3] md:text-xl lg:text-lg">
+              <p className={`mx-auto max-w-[750px] ${ctaSubText} md:text-xl lg:text-lg`}>
                 A comprehensive guide to our Certificate in Apostolic & Evangelical Theology.
               </p>
             </div>
@@ -202,11 +188,9 @@ const ProgramOverviewPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Program Structure & Learning Approach */}
       <section className={`w-full py-16 md:py-24 lg:py-32 ${sectionBgLight} ${sectionBgDark}`}>
         <div className="container px-4 md:px-6">
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20">
-            {/* Program Structure */}
             <div className="space-y-6 pl-4">
               <h2 className={`text-3xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Program Structure</h2>
               <p className={`${secondaryTextLight} ${secondaryTextDark} text-lg`}>
@@ -225,7 +209,6 @@ const ProgramOverviewPage: React.FC = () => {
                 ))}
               </div>
             </div>
-            {/* Learning Approach */}
             <div className="space-y-6 pr-4">
               <h2 className={`text-3xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Learning Approach</h2>
               <p className={`${secondaryTextLight} ${secondaryTextDark} text-lg`}>
@@ -255,10 +238,8 @@ const ProgramOverviewPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Course Curriculum Section */}
       <section className={`w-full py-16 md:py-24 lg:py-32 ${altSectionBgLight} ${altSectionBgDark}`}>
         <div className="container px-4 md:px-6">
-           {/* Section Header */}
            <div className="flex flex-col items-center space-y-4 text-center mb-12">
             <div className="space-y-2">
               <h2 className={`text-3xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Course Curriculum</h2>
@@ -268,15 +249,12 @@ const ProgramOverviewPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Course Details Container */}
           <div className="space-y-12">
             {courses.map((course) => (
-              // Course Card Div
               <div
                 key={course.id}
                 className={`${cardBgLight} ${cardBgDark} ${cardBorder} rounded-lg overflow-hidden shadow-lg`}
               >
-                {/* Course Header */}
                 <div className={`${headerBgLight} ${headerBgDark} ${headerTextLight} ${headerTextDark} p-6`}>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <h3 className="text-2xl font-semibold font-serif flex-1">{course.title}</h3>
@@ -287,13 +265,10 @@ const ProgramOverviewPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Course Body */}
                 <div className="p-6">
-                  {/* Full Description */}
                   <p className={`${secondaryTextLight} ${secondaryTextDark} mb-6 text-base`}>{course.description}</p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                    {/* Full Weekly Breakdown */}
                     <div>
                       <h4 className={`text-lg font-semibold mb-3 flex items-center gap-2 ${primaryTextLight} ${primaryTextDark}`}>
                         <Calendar className={`h-5 w-5 text-[${accentColor}]`} />
@@ -308,7 +283,6 @@ const ProgramOverviewPage: React.FC = () => {
                         ))}
                       </ul>
                     </div>
-                    {/* Full Assessments List */}
                     <div>
                       <h4 className={`text-lg font-semibold mb-3 flex items-center gap-2 ${primaryTextLight} ${primaryTextDark}`}>
                         <FileText className={`h-5 w-5 text-[${accentColor}]`} />
@@ -325,13 +299,12 @@ const ProgramOverviewPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </div> // End of course div
+              </div> 
             ))}
           </div>
         </div>
       </section>
 
-      {/* Certification Section */}
       <section className={`w-full py-16 md:py-24 lg:py-32 ${sectionBgLight} ${sectionBgDark}`}>
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center space-y-4 text-center mb-12">
@@ -373,33 +346,35 @@ const ProgramOverviewPage: React.FC = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-       <section className={`w-full py-16 md:py-24 lg:py-28 ${ctaBgLight} ${ctaBgDark} relative ${ctaText}`}>
-        <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-b from-[#C5A467]/30 to-transparent"></div>
-        <div className="absolute inset-x-0 bottom-0 h-2 bg-gradient-to-t from-[#C5A467]/30 to-transparent"></div>
+     
+      {!isAuthenticated && ( 
+        <section className={`w-full py-16 md:py-24 lg:py-28 ${ctaBgLight} ${ctaBgDark} relative ${ctaText}`}>
+          <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-b from-[#C5A467]/30 to-transparent"></div>
+          <div className="absolute inset-x-0 bottom-0 h-2 bg-gradient-to-t from-[#C5A467]/30 to-transparent"></div>
 
-        <div className="container relative px-4 md:px-6 z-10">
-          <div className="flex flex-col items-center space-y-6 text-center">
-            <GraduationCap className={`h-10 w-10 text-[${accentColor}] mb-2`} />
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl font-serif">
-              Ready to Begin Your Theological Journey?
-            </h2>
-            <p className={`mx-auto max-w-[700px] ${ctaSubText} md:text-xl lg:text-lg`}>
-              Join our next cohort and deepen your understanding of Apostolic and Evangelical theology.
-            </p>
-            <div className="space-x-4 pt-4">
-              <Link to="/register">
-                <Button
-                  size="lg"
-                  className={`bg-[${accentColor}] hover:bg-[${accentHoverColor}] text-[#2A0F0F] font-semibold transition-colors`}
-                >
-                  Apply Now
-                </Button>
-              </Link>
+          <div className="container relative px-4 md:px-6 z-10">
+            <div className="flex flex-col items-center space-y-6 text-center">
+              <GraduationCap className={`h-10 w-10 text-[${accentColor}] mb-2`} />
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl font-serif">
+                Ready to Begin Your Theological Journey?
+              </h2>
+              <p className={`mx-auto max-w-[700px] ${ctaSubText} md:text-xl lg:text-lg`}>
+                Join our next cohort and deepen your understanding of Apostolic and Evangelical theology.
+              </p>
+              <div className="space-x-4 pt-4">
+                <Link to="/register">
+                  <Button
+                    size="lg"
+                    className={`bg-[${accentColor}] hover:bg-[${accentHoverColor}] text-[#2A0F0F] font-semibold transition-colors`}
+                  >
+                    Apply Now
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )} 
     </div>
   );
 };
