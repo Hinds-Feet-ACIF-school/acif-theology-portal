@@ -65,42 +65,77 @@ export const createUser = async (req, res) => {
   try {
     const { email, password, firstName, lastName, role = 'student', church, country } = req.body;
 
-
     if (!email || !password || !firstName || !lastName || !role ) {
         return res.status(400).json({ message: "Missing required fields (email, password, firstName, lastName, role)." });
     }
-
 
     const userRecord = await auth.createUser({
       email,
       password,
       displayName: `${firstName} ${lastName}`,
     });
-     console.log(`User created in Firebase Auth: ${userRecord.uid}`);
-
-
+    console.log(`User created in Firebase Auth: ${userRecord.uid}`);
 
     await auth.setCustomUserClaims(userRecord.uid, { role });
     console.log(`Custom claims set for ${userRecord.uid}: { role: ${role} }`);
 
+    // Get current month to determine cohort
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1; // 1-12
+    const currentYear = currentDate.getFullYear();
+    
+    // Determine if this is a January or July cohort
+    const isJanuaryCohort = currentMonth <= 6; // January-June registrations go to January cohort
+    const cohortStartDate = isJanuaryCohort 
+        ? new Date(currentYear, 0, 1) // January 1st
+        : new Date(currentYear, 6, 1); // July 1st
 
+    // Find or create the appropriate cohort
+    let cohort;
+    try {
+        // Try to find an existing cohort for this period
+        const allCohorts = await CohortModel.getAllCohorts();
+        cohort = allCohorts.find(c => {
+            const cohortDate = c.startDate.toDate ? c.startDate.toDate() : new Date(c.startDate);
+            return cohortDate.getTime() === cohortStartDate.getTime();
+        });
 
-    await UserModel.createUser({
-      uid: userRecord.uid,
-      email,
-      firstName,
-      lastName,
-      churchAffiliation: church,
-      country,
-      role,
-      enrollment: null,
-    });
-     console.log(`User document created in Firestore for ${userRecord.uid}`);
+        if (!cohort) {
+            // Create a new cohort if none exists
+            const cohortName = `${isJanuaryCohort ? 'January' : 'July'} ${currentYear} Cohort`;
+            cohort = await CohortModel.createCohort({
+                name: cohortName,
+                startDate: cohortStartDate
+            });
+            console.log(`Created new cohort: ${cohortName}`);
+        }
+    } catch (error) {
+        console.error("Error handling cohort assignment:", error);
+        // Continue without cohort assignment if there's an error
+    }
 
+    // Create user with enrollment if cohort was found/created
+    const userData = {
+        uid: userRecord.uid,
+        email,
+        firstName,
+        lastName,
+        churchAffiliation: church,
+        country,
+        role,
+        enrollment: cohort ? {
+            cohortId: cohort.id,
+            enrollmentDate: currentDate
+        } : null
+    };
+
+    await UserModel.createUser(userData);
+    console.log(`User document created in Firestore for ${userRecord.uid}`);
 
     res.status(201).json({
-      message: "User created successfully",
-      userId: userRecord.uid,
+        message: "User created successfully",
+        userId: userRecord.uid,
+        cohortId: cohort?.id
     });
   } catch (error) {
     console.error("Error creating user:", error);
