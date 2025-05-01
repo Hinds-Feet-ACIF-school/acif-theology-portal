@@ -1,6 +1,5 @@
 import axios, { type InternalAxiosRequestConfig, type AxiosError, type AxiosResponse } from 'axios';
 
-
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
   headers: {
@@ -8,7 +7,6 @@ const API = axios.create({
   },
   withCredentials: true,
 });
-
 
 export const getToken = (): string | null => {
     try {
@@ -42,7 +40,6 @@ export const removeToken = (): void => {
     }
 };
 
-
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: (value?: any) => void; reject: (reason?: any) => void }> = [];
 
@@ -60,7 +57,6 @@ const processQueue = (error: any, token: string | null = null) => {
 API.interceptors.request.use(
   (config) => {
     const token = getToken();
-
     if (token && config.url !== '/courses/public/overview' && config.url !== '/auth/login' && config.url !== '/auth/register') {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -75,11 +71,8 @@ API.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
-
     if (error.response?.status === 401 && originalRequest.url !== '/auth/login' && originalRequest.url !== '/auth/refresh-token' && !originalRequest._retry) {
       originalRequest._retry = true;
-
       if (!isRefreshing) {
          isRefreshing = true;
          try {
@@ -113,12 +106,9 @@ API.interceptors.response.use(
          });
       }
     }
-
     return Promise.reject(error);
   }
 );
-
-
 
 export const getPublicCourseOverview = async () => {
   const response = await API.get('/courses/public/overview');
@@ -145,7 +135,6 @@ export const getAccessibleContent = async () => {
    return response.data;
 };
 
-
 export const getWeeksByCourse = async (courseId: string) => {
     const response = await API.get(`/weeks/by-course/${courseId}`);
     return response.data;
@@ -162,7 +151,6 @@ export const deleteWeek = async (weekId: string) => {
     const response = await API.delete(`/weeks/${weekId}`);
     return response.data;
 };
-
 
 export const getMaterialsByWeek = async (weekId: string) => {
     const response = await API.get(`/materials/by-week/${weekId}`);
@@ -183,7 +171,6 @@ export const deleteMaterial = async (materialId: string) => {
     return response.data;
 };
 
-
 export const getQuizzesByWeek = async (weekId: string) => {
     const response = await API.get(`/quizzes/by-week/${weekId}`);
     return response.data;
@@ -201,29 +188,23 @@ export const deleteQuiz = async (quizId: string) => {
     return response.data;
 };
 
-
 export const submitQuizAttempt = async (quizId: string, submissionData: any) => {
     const config = submissionData instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
-
     const response = await API.post(`/quizzes/${quizId}/submit`, submissionData, config);
     return response.data;
 };
 export const gradeQuizSubmission = async (submissionId: string, gradeData: any) => {
-
     const response = await API.post(`/quizzes/submissions/${submissionId}/grade`, gradeData);
     return response.data;
 };
 export const getSubmissionsByQuiz = async (quizId: string) => {
-
     const response = await API.get(`/quizzes/${quizId}/submissions`);
     return response.data;
 };
 export const getMySubmissionForQuiz = async (quizId: string) => {
-
     const response = await API.get(`/quizzes/${quizId}/my-submission`);
     return response.data;
 };
-
 
 export const createCohort = async (cohortData: any) => {
     const response = await API.post('/admin/cohorts', cohortData);
@@ -237,7 +218,6 @@ export const enrollUserInCohort = async (cohortId: string, userId: string) => {
     const response = await API.post(`/admin/cohorts/${cohortId}/enroll`, { userId });
     return response.data;
 };
-
 
 export const getUserProfile = async () => {
     const response = await API.get('/auth/me');
@@ -274,7 +254,6 @@ export const logoutUser = async () => {
     }
 }
 
-
 export const getAllUsersForAdmin = async () => {
     const response = await API.get('/admin/users');
     return response.data;
@@ -291,6 +270,5 @@ export const deleteUserAdmin = async (userId: string) => {
     const response = await API.delete(`/admin/users/${userId}`);
     return response.data;
 }
-
 
 export { API };

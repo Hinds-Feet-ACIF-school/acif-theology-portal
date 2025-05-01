@@ -376,7 +376,7 @@ const AdminCourseManagementPage: React.FC = () => {
                  <Card className={`${lightCardBg} ${darkCardBg} border ${inputBorder}`}>
                       <CardHeader>
                          <CardTitle className={deepBrown}>6-Month Program Overview</CardTitle>
-                         <CardDescription className={midBrown}>Define the 6 core courses for the program, ordered by month.</CardDescription>
+                        
                       </CardHeader>
                       <CardContent className="p-0">
                         {isLoadingCourses ? ( <div className="p-6 text-center"><Loader2 className={`h-6 w-6 animate-spin inline-block ${goldAccent}`}/></div>)

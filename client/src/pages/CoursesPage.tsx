@@ -6,37 +6,30 @@ import logo from "../assets/logo.jpg";
 import { useAuth } from "../context/AuthContext.js";
 import * as apiService from "../services/api.js";
 
-
 interface PublicCourseInfo {
     id: string;
     title: string;
     description?: string;
     monthOrder: number;
-
 }
 
 interface AccessibleWeekInfo {
     absoluteWeekNumber: number;
     isCompleted?: boolean;
-
 }
 interface AccessibleCourseData {
     id: string;
     title: string;
     monthOrder: number;
     weeks?: AccessibleWeekInfo[];
-
 }
 
 interface CourseOverview extends PublicCourseInfo {
     status: 'locked' | 'active' | 'completed';
 }
 
-
 const accentColor = "#C5A467";
 const accentHoverColor = "#B08F55";
-
-
 const primaryTextLight = "text-[#2A0F0F]";
 const secondaryTextLight = "text-[#4A1F1F]";
 const primaryTextDark = "dark:text-[#FFF8F0]";
@@ -53,8 +46,6 @@ const headerTextLight = "text-[#FFF8F0]";
 const headerBgDark = "dark:bg-gray-800";
 const headerTextDark = "dark:text-[#FFF8F0]";
 
-
-
 const lockedColor = `text-gray-400 dark:text-gray-500`;
 const lockedBg = `bg-gray-100 dark:bg-gray-800`;
 const activeColor = `text-[${accentColor}]`;
@@ -62,12 +53,12 @@ const activeBg = `bg-[${accentColor}]/10 dark:bg-[${accentColor}]/20`;
 const completedColor = `text-green-600 dark:text-green-400`;
 const completedBg = `bg-green-100 dark:bg-green-900/30`;
 
-
 export default function CoursesPage() {
     const { user, loading: authLoading } = useAuth();
     const [coursesOverview, setCoursesOverview] = useState<CourseOverview[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [enrollmentMessage, setEnrollmentMessage] = useState<string | null>(null);
 
     useEffect(() => {
         if (authLoading) {
@@ -78,64 +69,89 @@ export default function CoursesPage() {
         const fetchCourseData = async () => {
             setIsLoading(true);
             setError(null);
+            setEnrollmentMessage(null);
             let publicCourses: PublicCourseInfo[] = [];
             let accessibleData: AccessibleCourseData[] | null = null;
-            let latestAccessibleWeekNum: number = 0;
+            let enrollmentMonth: number | null = null; // 1-12
+            const currentCalendarMonth = new Date().getMonth() + 1; // 1-12
 
             try {
-
                 publicCourses = await apiService.getPublicCourseOverview();
-
+                publicCourses.sort((a, b) => a.monthOrder - b.monthOrder);
 
                 if (user) {
-                    try {
-                        accessibleData = await apiService.getAccessibleContent();
-
-
-                        if (accessibleData && Array.isArray(accessibleData)) {
-
-                           latestAccessibleWeekNum = accessibleData.reduce((maxWeek, course) => {
-                               const courseMaxWeek = course.weeks?.reduce((maxW, week) => Math.max(maxW, week.absoluteWeekNumber), 0) || 0;
-                               return Math.max(maxWeek, courseMaxWeek);
-                           }, 0);
+                    // Use Firebase createdAt timestamp to determine enrollment month
+                    if (user.createdAt) {
+                        const createdAtDate = new Date(user.createdAt);
+                        if (isNaN(createdAtDate.getTime())) {
+                            console.error("Invalid createdAt date received:", user.createdAt);
+                            setEnrollmentMessage("Could not determine your enrollment date. Please contact support.");
+                        } else {
+                            // Get the calendar month (1-12) of enrollment
+                            const rawEnrollmentMonth = createdAtDate.getMonth() + 1;
+                            
+                            // Determine if user is in January or July cohort
+                            // If enrolled in months 1-6, they're in January cohort
+                            // If enrolled in months 7-12, they're in July cohort
+                            enrollmentMonth = rawEnrollmentMonth <= 6 ? rawEnrollmentMonth : rawEnrollmentMonth - 6;
+                            
+                            console.log(`User enrolled in month: ${rawEnrollmentMonth} (adjusted to: ${enrollmentMonth}), Current calendar month: ${currentCalendarMonth}`);
                         }
-                        console.log("Latest accessible week:", latestAccessibleWeekNum);
-                    } catch (accessibleError: any) {
+                    } else {
+                        console.warn("User is logged in but has no createdAt timestamp.");
+                        setEnrollmentMessage("Could not determine your enrollment date. Please contact support.");
+                    }
 
-                        console.warn("Could not fetch accessible content (user might not be enrolled or other issue):", accessibleError.message);
-                        accessibleData = null;
+                    // Fetch completion data only if enrolled and date is valid
+                    if (enrollmentMonth !== null) {
+                        try {
+                            accessibleData = await apiService.getAccessibleContent();
+                        } catch (accessibleError: any) {
+                            console.warn("Could not fetch accessible content (may affect completion status):", accessibleError.message);
+                            accessibleData = null; // Continue without completion data if it fails
+                        }
                     }
                 }
-
 
                 const overview = publicCourses.map((course): CourseOverview => {
                     let status: 'locked' | 'active' | 'completed' = 'locked';
 
+                    // Only determine status if user is logged in and enrollment month is known
+                    if (user && enrollmentMonth !== null) {
+                        // *** NEW LOGIC START ***
+                        // Calculate the number of months since enrollment
+                        const monthsSinceEnrollment = currentCalendarMonth - enrollmentMonth + 1;
+                        
+                        // A course is accessible if:
+                        // 1. It's the enrollment month (first month)
+                        // 2. It's within the number of months since enrollment
+                        const isAccessibleBasedOnDate = 
+                            course.monthOrder >= enrollmentMonth && 
+                            course.monthOrder <= (enrollmentMonth + monthsSinceEnrollment - 1);
+                        // *** NEW LOGIC END ***
 
-                    if (user && accessibleData) {
-                        const accessibleCourse = accessibleData.find((ac) => ac.id === course.id);
+                        if (isAccessibleBasedOnDate) {
+                            // Default to 'active' if accessible by date
+                            status = 'active';
 
-                        if (accessibleCourse) {
+                            // Check completion status if accessible data exists
+                            const accessibleCourse = accessibleData?.find((ac) => ac.id === course.id);
+                            if (accessibleCourse) {
+                                // Assuming 4 weeks per course month for completion check
+                                const totalWeeksInCourse = 4;
+                                const completedWeeksCount = accessibleCourse.weeks?.filter(w => w.isCompleted).length || 0;
+                                const hasCompletedAllWeeks = completedWeeksCount >= totalWeeksInCourse;
 
-                            const totalWeeksInCourse = 4;
-                            const accessibleWeeksCount = accessibleCourse.weeks?.length || 0;
-                            const completedWeeksCount = accessibleCourse.weeks?.filter(w => w.isCompleted).length || 0;
-
-                            const isCourseComplete = (accessibleWeeksCount === totalWeeksInCourse) && (completedWeeksCount === totalWeeksInCourse);
-
-                            status = isCourseComplete ? 'completed' : 'active';
-
-                        } else {
-
-                            const courseEndWeek = course.monthOrder * 4;
-                            if (latestAccessibleWeekNum > 0 && courseEndWeek < latestAccessibleWeekNum) {
-                                status = 'locked';
-                            } else {
-                                status = 'locked';
+                                if (hasCompletedAllWeeks) {
+                                    status = 'completed';
+                                }
                             }
+                        } else {
+                            status = 'locked';
                         }
-                    } else if (user && !accessibleData) {
-                         status = 'locked';
+                    } else {
+                        // If user is not logged in or enrollment is invalid, all are locked
+                        status = 'locked';
                     }
 
                     return {
@@ -168,9 +184,7 @@ export default function CoursesPage() {
 
 
     return (
-
         <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark}`}>
-
          <section className="w-full py-16 md:py-28 lg:py-36 bg-gradient-to-br from-[#2A0F0F] to-[#4A1F1F] dark:from-gray-900 dark:to-gray-800 relative overflow-hidden">
              <img src={logo} alt="Apostolic & Evangelical Theology Logo" className="h-16 w-16 md:h-20 md:w-20 mx-auto rounded-full object-cover mb-4 shadow-md border-2 border-[#C5A467]/50" />
              <div className="container relative px-4 md:px-6 z-10">
@@ -187,8 +201,7 @@ export default function CoursesPage() {
              </div>
            </section>
 
-
-           {user && (
+           {user && !enrollmentMessage && (
              <section className={`w-full py-12 md:py-16 lg:py-20 bg-[#4A1F1F] dark:bg-gray-800 text-[#FFF8F0]`}>
                 <div className="container px-4 md:px-6">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
@@ -210,23 +223,37 @@ export default function CoursesPage() {
              </section>
             )}
 
-
+            {enrollmentMessage && (
+                <section className={`w-full py-12 md:py-16 lg:py-20 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200`}>
+                    <div className="container px-4 md:px-6 text-center">
+                        <AlertCircle className="inline-block h-6 w-6 mr-2" />
+                        <p className="inline align-middle">{enrollmentMessage}</p>
+                    </div>
+                </section>
+            )}
 
           <section className={`w-full py-16 md:py-24 lg:py-32 ${sectionBgLight} ${sectionBgDark}`}>
             <div className="container px-4 md:px-6">
               <div className="space-y-12">
                 {coursesOverview.map((course) => {
                    const isDisabled = course.status === 'locked';
+                   let linkHref = '#';
+                   if (user && !isDisabled) {
+                       linkHref = `/dashboard?courseId=${course.id}`;
+                   } else if (!user) {
+                        linkHref = '/program-overview';
+                   }
+
                    return (
                       <Link
                         key={course.id}
-                        to={isDisabled ? '#' : `/courses/${course.id}`}
+                        to={linkHref}
                         className={`block ${cardBgLight} ${cardBgDark} ${cardBorder} rounded-lg overflow-hidden shadow-lg
                                    transition-all duration-300 ease-in-out group relative
                                    ${isDisabled ? 'opacity-70 cursor-not-allowed' : `hover:shadow-xl hover:-translate-y-1 hover:border-[${accentColor}]/40 dark:hover:border-[${accentColor}]/50`}
                                    focus:outline-none focus:ring-2 focus:ring-[${accentColor}] focus:ring-offset-2 dark:focus:ring-offset-gray-950`}
                         aria-disabled={isDisabled}
-                        onClick={(e) => { if (isDisabled) e.preventDefault(); }}
+                        onClick={(e) => { if (isDisabled && user) e.preventDefault(); }}
                         tabIndex={isDisabled ? -1 : 0}
                       >
 
@@ -245,12 +272,12 @@ export default function CoursesPage() {
                         </div>
 
                         <div className="p-6">
-
                           <p className={`${secondaryTextLight} ${secondaryTextDark} mb-6 text-sm sm:text-base line-clamp-3 min-h-[3rem]`}>{course.description}</p>
                           <div className="text-right mt-4">
                                 <span className={`inline-flex items-center text-xs font-medium ${isDisabled ? lockedColor : activeColor} group-hover:underline`}>
-                                    {isDisabled ? 'Content Locked' : 'View Course Details'}
+                                    {isDisabled ? (user ? 'Content Locked' : 'View Program Info') : 'View Course Content'}
                                     {!isDisabled && <ChevronRight className="ml-1 h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />}
+                                    {isDisabled && !user && <ChevronRight className="ml-1 h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />}
                                 </span>
                            </div>
                         </div>

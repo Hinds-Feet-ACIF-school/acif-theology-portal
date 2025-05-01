@@ -21,7 +21,7 @@ const primaryButtonClasses = `${goldBg} ${goldBgHover} text-[#2A0F0F] font-semib
 const outlineButtonClasses = `${goldBorder} ${goldAccent} hover:bg-[#C5A467]/10 dark:hover:bg-[#C5A467]/15 hover:text-[#A07F44] dark:hover:text-[#E0D6C3]`;
 const inputClasses = `h-9 rounded-md px-3 text-sm ${lightCardBg} ${darkCardBg} ${inputBorder} ${deepBrown} ${focusRing} placeholder:text-gray-400 dark:placeholder:text-gray-500`;
 const selectTriggerClasses = `h-9 rounded-md px-3 text-sm w-full ${lightCardBg} ${darkCardBg} ${inputBorder} ${deepBrown} ${focusRing}`;
-const selectContentClasses = `border ${inputBorder} ${lightCardBg} ${darkCardBg} ${deepBrown}`;
+const selectContentClasses = `border ${inputBorder} ${lightCardBg} ${darkCardBg} ${deepBrown} z-[60]`;
 const CreateEditCourseModal = ({ isOpen, onClose, course, onSave, existingMonthOrders, }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');

@@ -6,7 +6,7 @@ import * as apiService from "../services/api.js";
 import { getToken } from "../services/api.js";
 import { Loader2 } from "lucide-react";
 
-interface AppUser {
+export interface AppUser {
     uid: string;
     email?: string | null;
     displayName?: string | null;
@@ -15,14 +15,17 @@ interface AppUser {
     role?: 'student' | 'instructor' | 'admin';
     country?: string | null;
     church?: string | null;
-    enrollment?: { cohortId: string; enrollmentDate: Date } | null;
+    enrollment?: {
+        cohortId: string;
+        enrollmentDate: Date; // Or string if you receive it as string
+        cohortStartDate: string; // <-- ADD THIS (Assuming ISO string from backend)
+    } | null;
     profileComplete?: boolean;
     profilePicture?: string | null;
     bio?: string | null;
     createdAt?: Date | null;
     updatedAt?: Date | null;
 }
-
 interface AuthContextType {
     user: AppUser | null;
     currentUser: AppUser | null;
