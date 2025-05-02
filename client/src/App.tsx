@@ -70,7 +70,7 @@ function App() {
             <Route path="/admin/courses" element={<AdminCourseManagementPage />} />
             <Route path="/admin/students" element={<AdminStudentManagementPage />} />
 
-            <Route path="/admin/quizzes" element={<AdminQuizManagementPage />} />
+            {/* <Route path="/admin/quizzes" element={<AdminQuizManagementPage />} /> */}
 
 
 
