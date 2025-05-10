@@ -1,3 +1,4 @@
+// src/services/api.ts
 import axios from 'axios';
 const API = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
@@ -6,6 +7,9 @@ const API = axios.create({
     },
     withCredentials: true,
 });
+// ... (rest of your api.ts file: getToken, setToken, interceptors, API functions) ...
+// Ensure your API functions (createContent, updateContent) use the correct ContentData for payload
+// and expect ContentItem as response.
 export const getToken = () => {
     try {
         if (typeof window !== 'undefined' && window.localStorage) {
@@ -53,7 +57,13 @@ const processQueue = (error, token = null) => {
 };
 API.interceptors.request.use((config) => {
     const token = getToken();
-    if (token && config.url !== '/courses/public/overview' && config.url !== '/auth/login' && config.url !== '/auth/register') {
+    const publicPaths = [
+        '/courses/public/overview',
+        '/auth/login',
+        '/auth/register',
+        '/auth/refresh-token',
+    ];
+    if (token && config.url && !publicPaths.some(p => config.url.startsWith(p))) { // Check if URL starts with any public path
         config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -71,7 +81,9 @@ API.interceptors.response.use((response) => response, async (error) => {
                 const { token } = response.data;
                 setToken(token);
                 API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-                originalRequest.headers['Authorization'] = `Bearer ${token}`;
+                if (originalRequest.headers) {
+                    originalRequest.headers['Authorization'] = `Bearer ${token}`;
+                }
                 processQueue(null, token);
                 return API(originalRequest);
             }
@@ -81,7 +93,9 @@ API.interceptors.response.use((response) => response, async (error) => {
                 removeToken();
                 delete API.defaults.headers.common['Authorization'];
                 if (typeof window !== 'undefined') {
-                    window.location.href = '/login?sessionExpired=true';
+                    if (window.location.pathname !== '/login') {
+                        window.location.href = '/login?sessionExpired=true';
+                    }
                 }
                 return Promise.reject(refreshError);
             }
@@ -93,7 +107,9 @@ API.interceptors.response.use((response) => response, async (error) => {
             return new Promise((resolve, reject) => {
                 failedQueue.push({ resolve, reject });
             }).then(token => {
-                originalRequest.headers['Authorization'] = `Bearer ${token}`;
+                if (originalRequest.headers) {
+                    originalRequest.headers['Authorization'] = `Bearer ${token}`;
+                }
                 return API(originalRequest);
             }).catch(err => {
                 return Promise.reject(err);
@@ -102,6 +118,7 @@ API.interceptors.response.use((response) => response, async (error) => {
     }
     return Promise.reject(error);
 });
+// --- Existing API Functions ---
 export const getPublicCourseOverview = async () => {
     const response = await API.get('/courses/public/overview');
     return response.data;
@@ -119,8 +136,7 @@ export const updateCourse = async (courseId, courseData) => {
     return response.data;
 };
 export const deleteCourse = async (courseId) => {
-    const response = await API.delete(`/courses/${courseId}`);
-    return response.data;
+    await API.delete(`/courses/${courseId}`);
 };
 export const getAccessibleContent = async () => {
     const response = await API.get('/courses/content/my-program');
@@ -139,9 +155,17 @@ export const updateWeek = async (weekId, weekData) => {
     return response.data;
 };
 export const deleteWeek = async (weekId) => {
-    const response = await API.delete(`/weeks/${weekId}`);
-    return response.data;
+    await API.delete(`/weeks/${weekId}`);
 };
+export async function getWeekWithDetails(weekId) {
+    try {
+        const response = await API.get(`/weeks/${weekId}/details`);
+        return response.data;
+    }
+    catch (error) {
+        throw error;
+    }
+}
 export const getMaterialsByWeek = async (weekId) => {
     const response = await API.get(`/materials/by-week/${weekId}`);
     return response.data;
@@ -157,8 +181,7 @@ export const updateMaterial = async (materialId, materialData) => {
     return response.data;
 };
 export const deleteMaterial = async (materialId) => {
-    const response = await API.delete(`/materials/${materialId}`);
-    return response.data;
+    await API.delete(`/materials/${materialId}`);
 };
 export const getQuizzesByWeek = async (weekId) => {
     const response = await API.get(`/quizzes/by-week/${weekId}`);
@@ -173,8 +196,7 @@ export const updateQuiz = async (quizId, quizData) => {
     return response.data;
 };
 export const deleteQuiz = async (quizId) => {
-    const response = await API.delete(`/quizzes/${quizId}`);
-    return response.data;
+    await API.delete(`/quizzes/${quizId}`);
 };
 export const submitQuizAttempt = async (quizId, submissionData) => {
     const config = submissionData instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
@@ -193,6 +215,7 @@ export const getMySubmissionForQuiz = async (quizId) => {
     const response = await API.get(`/quizzes/${quizId}/my-submission`);
     return response.data;
 };
+// --- Cohorts ---
 export const createCohort = async (cohortData) => {
     const response = await API.post('/admin/cohorts', cohortData);
     return response.data;
@@ -205,6 +228,7 @@ export const enrollUserInCohort = async (cohortId, userId) => {
     const response = await API.post(`/admin/cohorts/${cohortId}/enroll`, { userId });
     return response.data;
 };
+// --- User Profile & Auth ---
 export const getUserProfile = async () => {
     const response = await API.get('/auth/me');
     return response.data;
@@ -241,6 +265,7 @@ export const logoutUser = async () => {
         delete API.defaults.headers.common['Authorization'];
     }
 };
+// --- Admin User Management ---
 export const getAllUsersForAdmin = async () => {
     const response = await API.get('/admin/users');
     return response.data;
@@ -257,4 +282,43 @@ export const deleteUserAdmin = async (userId) => {
     const response = await API.delete(`/admin/users/${userId}`);
     return response.data;
 };
+// --- NEW FUNCTIONS FOR SECTIONS AND CONTENT (as per CourseManagementPage.tsx errors) ---
+export const getSectionsByWeek = async (weekId) => {
+    const response = await API.get(`/sections/by-week/${weekId}`);
+    return response.data;
+};
+export const createSection = async (sectionData) => {
+    const response = await API.post('/sections', sectionData);
+    return response.data;
+};
+export const updateSection = async (sectionId, sectionData) => {
+    const response = await API.put(`/sections/${sectionId}`, sectionData);
+    return response.data;
+};
+export const deleteSection = async (sectionId) => {
+    await API.delete(`/sections/${sectionId}`);
+};
+export const addContentToSection = async (sectionId, contentData) => {
+    const response = await API.post(`/sections/${sectionId}/content`, contentData);
+    return response.data;
+};
+export const updateContent = async (sectionId, contentId, contentData) => {
+    const response = await API.put(`/sections/${sectionId}/content/${contentId}`, contentData);
+    return response.data;
+};
+export const deleteContent = async (sectionId, contentId) => {
+    await API.delete(`/sections/${sectionId}/content/${contentId}`);
+};
+export async function getCourseById(courseId) {
+    try {
+        const response = await API.get(`/courses/${courseId}`);
+        return response.data;
+    }
+    catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+            return null;
+        }
+        throw error;
+    }
+}
 export { API };

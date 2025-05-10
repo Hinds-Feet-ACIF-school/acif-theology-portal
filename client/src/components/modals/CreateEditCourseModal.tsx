@@ -5,7 +5,7 @@ import { Input } from "../ui/input.js";
 import { Label } from "../ui/label.js";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.js";
 import { X, Save, Loader2, AlertCircle } from 'lucide-react';
-import { Course } from '../../pages/admin/CourseManagementPage.js';
+import { Course } from '../../services/api.js';
 
 const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';
 const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]';

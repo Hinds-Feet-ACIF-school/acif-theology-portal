@@ -143,71 +143,6 @@ export const getAccessibleContent = async (req, res) => {
         createdAt: user.createdAt
     });
 
-    // Use enrollment date if available, otherwise use createdAt
-    let enrollmentDate;
-    let cohortStartDate;
-    let cohortId;
-
-    if (user.enrollment && user.enrollment.cohortId) {
-        const { cohortId: userCohortId, enrollmentDate: enrollmentTimestamp } = user.enrollment;
-        cohortId = userCohortId;
-
-        const cohort = await CohortModel.getCohortById(cohortId);
-        if (!cohort || !cohort.startDate) {
-            console.error(`Cohort details not found or invalid for cohortId: ${cohortId}`);
-            return res.status(404).json({ message: "Associated cohort details not found or invalid." });
-        }
-
-        cohortStartDate = cohort.startDate.toDate ? cohort.startDate.toDate() : new Date(cohort.startDate);
-        enrollmentDate = enrollmentTimestamp?.toDate ? enrollmentTimestamp.toDate() : (enrollmentTimestamp ? new Date(enrollmentTimestamp) : cohortStartDate);
-    } else {
-        // Use createdAt as fallback
-        console.log(`No enrollment found, using createdAt as fallback: ${user.createdAt}`);
-        enrollmentDate = user.createdAt.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
-        
-        // Determine cohort start date based on registration month
-        const registrationMonth = enrollmentDate.getMonth() + 1;
-        const registrationYear = enrollmentDate.getFullYear();
-        const isJanuaryCohort = registrationMonth <= 6;
-        cohortStartDate = isJanuaryCohort 
-            ? new Date(registrationYear, 0, 1) // January 1st
-            : new Date(registrationYear, 6, 1); // July 1st
-    }
-
-    console.log(`Date calculations:`, {
-        cohortStartDate: cohortStartDate.toISOString(),
-        enrollmentDate: enrollmentDate.toISOString(),
-        currentDate: new Date().toISOString(),
-        cohortStartDateValid: !isNaN(cohortStartDate.getTime()),
-        enrollmentDateValid: !isNaN(enrollmentDate.getTime())
-    });
-
-    if (isNaN(cohortStartDate.getTime()) || isNaN(enrollmentDate.getTime())) {
-        console.error(`Invalid date format detected for user ${uid}.`, {
-            cohortStartDate,
-            enrollmentDate
-        });
-        return res.status(500).json({ message: "Internal error processing dates." });
-    }
-
-    // Calculate enrollment month (1-12)
-    const enrollmentMonth = enrollmentDate.getMonth() + 1;
-    // Adjust for January/July cohorts
-    const adjustedEnrollmentMonth = enrollmentMonth <= 6 ? enrollmentMonth : enrollmentMonth - 6;
-    
-    // Calculate current calendar month (1-12)
-    const currentCalendarMonth = new Date().getMonth() + 1;
-    // Calculate months since enrollment
-    const monthsSinceEnrollment = currentCalendarMonth - enrollmentMonth + 1;
-
-    console.log(`Month calculations:`, {
-        enrollmentMonth,
-        adjustedEnrollmentMonth,
-        currentCalendarMonth,
-        monthsSinceEnrollment,
-        timeSinceEnrollment: Math.floor((new Date() - enrollmentDate) / (1000 * 60 * 60 * 24 * 30))
-    });
-
     const allCourses = await CourseModel.getAllCourseOverviews();
     console.log(`Found ${allCourses.length} total courses`);
 
@@ -215,75 +150,49 @@ export const getAccessibleContent = async (req, res) => {
     const processedMonthOrders = new Set();
 
     for (const course of allCourses) {
-        // Check if course is accessible based on month
-        const isAccessibleBasedOnDate = 
-            (enrollmentMonth <= 6 && course.monthOrder >= enrollmentMonth && course.monthOrder <= (enrollmentMonth + monthsSinceEnrollment - 1)) || // Jan cohort logic
-            (enrollmentMonth > 6 && course.monthOrder >= (enrollmentMonth - 6) && course.monthOrder <= (enrollmentMonth - 6 + monthsSinceEnrollment - 1)); // July cohort logic
-
-        console.log(`Course accessibility check:`, {
-            courseId: course.id,
-            title: course.title,
-            monthOrder: course.monthOrder,
-            isAccessibleBasedOnDate,
-            enrollmentMonth,
-            monthsSinceEnrollment
-        });
-
         // Skip if we've already processed this month order
         if (processedMonthOrders.has(course.monthOrder)) {
             console.log(`Skipping duplicate month order ${course.monthOrder} for course ${course.id}`);
             continue;
         }
 
-        if (isAccessibleBasedOnDate) {
-            const courseWeeks = await WeekModel.getWeeksByCourseId(course.id);
-            console.log(`Found ${courseWeeks.length} weeks for course ${course.id}`);
+        const courseWeeks = await WeekModel.getWeeksByCourseId(course.id);
+        console.log(`Found ${courseWeeks.length} weeks for course ${course.id}`);
 
-            const accessibleWeeksInCourse = [];
+        const accessibleWeeksInCourse = [];
 
-            for (const week of courseWeeks) {
-                const materials = await MaterialModel.getMaterialsByWeekId(week.id);
-                const quizzes = await QuizModel.getQuizzesByWeekId(week.id);
+        for (const week of courseWeeks) {
+            const materials = await MaterialModel.getMaterialsByWeekId(week.id);
+            const quizzes = await QuizModel.getQuizzesByWeekId(week.id);
 
-                const calculatedQuizzes = quizzes.map(q => {
-                    let dueDate = null;
-                    if (q.dueDateOffsetDays !== null && q.dueDateOffsetDays >= 0) {
-                        const weekStartDate = new Date(cohortStartDate);
-                        weekStartDate.setDate(weekStartDate.getDate() + ((course.monthOrder - 1) * 4 + week.weekNumber - 1) * 7);
-                        dueDate = new Date(weekStartDate);
-                        dueDate.setDate(dueDate.getDate() + q.dueDateOffsetDays);
-                    }
-                    return { ...q, calculatedDueDate: dueDate?.toISOString() || null };
-                });
-
-                accessibleWeeksInCourse.push({
-                    ...week,
-                    absoluteWeekNumber: (course.monthOrder - 1) * 4 + week.weekNumber,
-                    materials,
-                    quizzes: calculatedQuizzes,
-                });
-            }
-
-            // Include the course even if it has no weeks yet
-            accessibleContent.push({
-                ...course,
-                weeks: accessibleWeeksInCourse,
+            const calculatedQuizzes = quizzes.map(q => {
+                let dueDate = null;
+                if (q.dueDateOffsetDays !== null && q.dueDateOffsetDays >= 0) {
+                    dueDate = new Date();
+                    dueDate.setDate(dueDate.getDate() + q.dueDateOffsetDays);
+                }
+                return { ...q, calculatedDueDate: dueDate?.toISOString() || null };
             });
-            processedMonthOrders.add(course.monthOrder);
+
+            accessibleWeeksInCourse.push({
+                ...week,
+                absoluteWeekNumber: (course.monthOrder - 1) * 4 + week.weekNumber,
+                materials,
+                quizzes: calculatedQuizzes,
+            });
         }
+
+        // Include the course even if it has no weeks yet
+        accessibleContent.push({
+            ...course,
+            weeks: accessibleWeeksInCourse,
+        });
+        processedMonthOrders.add(course.monthOrder);
     }
 
-    console.log(`Final accessible content:`, {
-        totalCourses: allCourses.length,
-        accessibleCourses: accessibleContent.length,
-        accessibleWeeks: accessibleContent.reduce((sum, course) => sum + course.weeks.length, 0),
-        accessibleCourseIds: accessibleContent.map(c => c.id)
-    });
-
-    res.status(200).json(accessibleContent);
-
+    res.json(accessibleContent);
   } catch (error) {
-    console.error("Error getting accessible content:", error);
-    res.status(500).json({ message: "Failed to retrieve accessible content." });
+    console.error("Error in getAccessibleContent:", error);
+    res.status(500).json({ message: error.message });
   }
 };

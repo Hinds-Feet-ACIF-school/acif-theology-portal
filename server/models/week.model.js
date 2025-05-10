@@ -1,22 +1,25 @@
+// server/models/week.model.js
 import { db } from "../config/firebase.config.js";
 import { FieldValue } from 'firebase-admin/firestore';
 
 const weeksCollection = db.collection("weeks");
 const materialsCollection = db.collection("materials");
 const quizzesCollection = db.collection("quizzes");
+const sectionsCollection = db.collection("sections");
 
 export const createWeek = async (weekData) => {
   try {
     if (!weekData.courseId || !weekData.weekNumber || !weekData.title) {
       throw new Error("courseId, weekNumber, and title are required to create a week.");
     }
-    if (weekData.weekNumber < 1 || weekData.weekNumber > 4) {
-        throw new Error("weekNumber must be between 1 and 4.");
-    }
+    // Example: weekNumber validation, adjust as needed
+    // if (parseInt(String(weekData.weekNumber), 10) < 1 || parseInt(String(weekData.weekNumber), 10) > 52) {
+    //     throw new Error("weekNumber is out of typical range.");
+    // }
 
     const existingCheck = await weeksCollection
         .where('courseId', '==', weekData.courseId)
-        .where('weekNumber', '==', weekData.weekNumber)
+        .where('weekNumber', '==', parseInt(String(weekData.weekNumber), 10)) // Ensure comparison is with number
         .limit(1)
         .get();
 
@@ -26,7 +29,7 @@ export const createWeek = async (weekData) => {
 
     const dataToWrite = {
       courseId: weekData.courseId,
-      weekNumber: weekData.weekNumber,
+      weekNumber: parseInt(String(weekData.weekNumber), 10),
       title: weekData.title,
       description: weekData.description || "",
       createdAt: FieldValue.serverTimestamp(),
@@ -34,31 +37,39 @@ export const createWeek = async (weekData) => {
     };
 
     const weekRef = await weeksCollection.add(dataToWrite);
-    return { id: weekRef.id, ...dataToWrite };
+    const newWeekDoc = await weekRef.get();
+    const newWeekData = newWeekDoc.data() || {}; // Ensure newWeekData is an object
+    if (newWeekData.createdAt && typeof newWeekData.createdAt.toDate === 'function') newWeekData.createdAt = newWeekData.createdAt.toDate();
+    if (newWeekData.updatedAt && typeof newWeekData.updatedAt.toDate === 'function') newWeekData.updatedAt = newWeekData.updatedAt.toDate();
+
+    return { id: weekRef.id, ...newWeekData };
 
   } catch (error) {
     console.error("Error creating week:", error);
-    throw new Error(`Error creating week: ${error.message}`);
+    const message = (error && typeof error === 'object' && error.message) ? error.message : "Unknown error";
+    throw new Error(`Error creating week: ${message}`);
   }
 };
 
 export const getWeekById = async (weekId) => {
   try {
+    if (!weekId) throw new Error("weekId is required.");
     const weekDoc = await weeksCollection.doc(weekId).get();
     if (!weekDoc.exists) {
       return null;
     }
-     const weekData = weekDoc.data();
-     if (weekData.createdAt && weekData.createdAt.toDate) {
+     const weekData = weekDoc.data() || {};
+     if (weekData.createdAt && typeof weekData.createdAt.toDate === 'function') {
         weekData.createdAt = weekData.createdAt.toDate();
      }
-     if (weekData.updatedAt && weekData.updatedAt.toDate) {
+     if (weekData.updatedAt && typeof weekData.updatedAt.toDate === 'function') {
         weekData.updatedAt = weekData.updatedAt.toDate();
      }
     return { id: weekDoc.id, ...weekData };
   } catch (error) {
     console.error(`Error getting week by ID (${weekId}):`, error);
-    throw new Error(`Database error getting week ${weekId}: ${error.message}`);
+    const message = (error && typeof error === 'object' && error.message) ? error.message : "Unknown error";
+    throw new Error(`Database error getting week ${weekId}: ${message}`);
   }
 };
 
@@ -73,11 +84,11 @@ export const getWeeksByCourseId = async (courseId) => {
 
     const weeks = [];
     weeksSnapshot.forEach((doc) => {
-       const weekData = doc.data();
-        if (weekData.createdAt && weekData.createdAt.toDate) {
+       const weekData = doc.data() || {};
+        if (weekData.createdAt && typeof weekData.createdAt.toDate === 'function') {
             weekData.createdAt = weekData.createdAt.toDate();
         }
-        if (weekData.updatedAt && weekData.updatedAt.toDate) {
+        if (weekData.updatedAt && typeof weekData.updatedAt.toDate === 'function') {
             weekData.updatedAt = weekData.updatedAt.toDate();
         }
        weeks.push({ id: doc.id, ...weekData });
@@ -86,37 +97,49 @@ export const getWeeksByCourseId = async (courseId) => {
     return weeks;
   } catch (error) {
     console.error(`Error getting weeks for course (${courseId}):`, error);
-
-    throw new Error(`Database error getting weeks by course: ${error.message}`);
+    const message = (error && typeof error === 'object' && error.message) ? error.message : "Unknown error";
+    throw new Error(`Database error getting weeks by course: ${message}`);
   }
 };
 
-export const updateWeek = async (weekId, weekData) => {
+export const updateWeek = async (weekId, weekDataToUpdate) => {
   try {
     if (!weekId) throw new Error("weekId is required for update.");
-    if (weekData.weekNumber && (weekData.weekNumber < 1 || weekData.weekNumber > 4)) {
-        throw new Error("weekNumber must be between 1 and 4.");
-    }
+    // Example: weekNumber validation
+    // if (weekDataToUpdate.weekNumber && (parseInt(String(weekDataToUpdate.weekNumber), 10) < 1 || parseInt(String(weekDataToUpdate.weekNumber), 10) > 52)) {
+    //     throw new Error("weekNumber is out of typical range.");
+    // }
 
-    delete weekData.id;
-    delete weekData.courseId;
-    delete weekData.createdAt;
+    const { id, courseId, createdAt, ...updatePayload } = weekDataToUpdate;
 
-    const updateData = {
-      ...weekData,
+    const dataForUpdate = {
+      ...updatePayload,
       updatedAt: FieldValue.serverTimestamp(),
     };
+    if (dataForUpdate.weekNumber !== undefined) {
+        dataForUpdate.weekNumber = parseInt(String(dataForUpdate.weekNumber), 10);
+    }
 
-    await weeksCollection.doc(weekId).update(updateData);
+    const weekRef = weeksCollection.doc(weekId);
+    // Check if document exists before update to provide clearer error
+    const docSnapshot = await weekRef.get();
+    if (!docSnapshot.exists) {
+        throw new Error(`Cannot update week: Week with ID ${weekId} not found.`);
+    }
+
+    await weekRef.update(dataForUpdate);
     const updatedDocData = await getWeekById(weekId);
     return updatedDocData;
 
   } catch (error) {
     console.error(`Error updating week (${weekId}):`, error);
-     if (error.code === 5) {
+    const message = (error && typeof error === 'object' && error.message) ? error.message : "Unknown error";
+    // Firestore error code for NOT_FOUND is typically 'not-found' or 5 if from a client library error object
+    const errorCode = (error && typeof error === 'object' && error.code) ? error.code : null;
+     if (errorCode === 5 || errorCode === 'not-found' || message.includes("not found")) {
         throw new Error(`Cannot update week: Week with ID ${weekId} not found.`);
     }
-    throw new Error(`Database error updating week ${weekId}: ${error.message}`);
+    throw new Error(`Database error updating week ${weekId}: ${message}`);
   }
 };
 
@@ -124,29 +147,26 @@ export const deleteWeek = async (weekId) => {
   try {
     if (!weekId) throw new Error("weekId is required for deletion.");
 
+    const weekDocRef = weeksCollection.doc(weekId);
+    const weekDoc = await weekDocRef.get();
+    if (!weekDoc.exists) {
+        return { success: false, message: `Week with ID ${weekId} not found, cannot delete.` };
+    }
 
     const batch = db.batch();
+    batch.delete(weekDocRef);
 
-
-    const weekRef = weeksCollection.doc(weekId);
-    batch.delete(weekRef);
-
+    const sectionsSnapshot = await sectionsCollection.where('weekId', '==', weekId).get();
+    sectionsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    console.log(`Marked ${sectionsSnapshot.size} sections for deletion with week ${weekId}.`);
 
     const materialsSnapshot = await materialsCollection.where('weekId', '==', weekId).get();
-    materialsSnapshot.docs.forEach(doc => {
-
-        batch.delete(doc.ref);
-    });
+    materialsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
     console.log(`Marked ${materialsSnapshot.size} materials for deletion.`);
 
-
     const quizzesSnapshot = await quizzesCollection.where('weekId', '==', weekId).get();
-    quizzesSnapshot.docs.forEach(doc => {
-
-        batch.delete(doc.ref);
-    });
-     console.log(`Marked ${quizzesSnapshot.size} quizzes for deletion.`);
-
+    quizzesSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    console.log(`Marked ${quizzesSnapshot.size} quizzes for deletion.`);
 
     await batch.commit();
 
@@ -155,9 +175,42 @@ export const deleteWeek = async (weekId) => {
 
   } catch (error) {
     console.error(`Error deleting week (${weekId}) and its content:`, error);
-    if (error.code === 5) {
-        return { success: false, message: `Week with ID ${weekId} not found.` };
+    const message = (error && typeof error === 'object' && error.message) ? error.message : "Unknown error";
+    const errorCode = (error && typeof error === 'object' && error.code) ? error.code : null;
+    if (errorCode === 5 || errorCode === 'not-found') { // Firestore NOT_FOUND
+        return { success: false, message: `Error during deletion process: Week with ID ${weekId} may not have been found or an issue occurred with related content.` };
     }
-    throw new Error(`Database error deleting week ${weekId}: ${error.message}`);
+    throw new Error(`Database error deleting week ${weekId}: ${message}`);
   }
+};
+
+export const getSectionsByWeekId = async (weekId) => {
+    try {
+        if (!weekId) throw new Error("weekId is required.");
+
+        const sectionsSnapshot = await sectionsCollection
+            .where("weekId", "==", weekId)
+            .orderBy("order", "asc")
+            .get();
+
+        const sections = [];
+        sectionsSnapshot.forEach((doc) => {
+            const sectionData = doc.data() || {};
+            if (sectionData.createdAt && typeof sectionData.createdAt.toDate === 'function') {
+                sectionData.createdAt = sectionData.createdAt.toDate();
+            }
+            if (sectionData.updatedAt && typeof sectionData.updatedAt.toDate === 'function') {
+                sectionData.updatedAt = sectionData.updatedAt.toDate();
+            }
+            // This returns sections with their 'content' array as stored in Firestore.
+            // The controller (getWeekWithDetails) will further process this 'content' array.
+            sections.push({ id: doc.id, ...sectionData });
+        });
+
+        return sections;
+    } catch (error) {
+        console.error(`Error getting sections for week (${weekId}):`, error);
+        const message = (error && typeof error === 'object' && error.message) ? error.message : "Unknown error";
+        throw new Error(`Database error getting sections by week: ${message}`);
+    }
 };

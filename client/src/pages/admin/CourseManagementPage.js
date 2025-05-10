@@ -4,12 +4,16 @@ import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/button.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs.js";
-import { BookOpen, PlusCircle, Edit, Trash2, ArrowLeft, FileText, Video, Loader2, AlertCircle, HelpCircle, X } from 'lucide-react';
+import { BookOpen, PlusCircle, Edit, Trash2, ArrowLeft, FileText, Video, Loader2, AlertCircle, HelpCircle, X, GripVertical, Eye as EyeIcon // Consolidated EyeIcon import
+ } from 'lucide-react';
 import * as apiService from "../../services/api.js";
 import CreateEditCourseModal from "../../components/modals/CreateEditCourseModal.js";
 import CreateEditWeekModal from "../../components/modals/CreateEditWeekModal.js";
 import CreateEditMaterialModal from "../../components/modals/CreateEditMaterialModal.js";
 import CreateEditQuizModal from "../../components/modals/CreateEditQuizModal.js";
+import CreateEditSectionModal from "../../components/modals/CreateEditSectionModal.js";
+import CreateEditContentModal from "../../components/modals/CreateEditContentModal.js";
+import SectionPreviewModal from "../../components/modals/SectionPreviewModal.js"; // For section preview
 import ConfirmationModal from "../../components/modals/ConfirmationModal.js";
 const lightBg = 'bg-[#FFF8F0]';
 const darkBg = 'dark:bg-gray-950';
@@ -32,8 +36,9 @@ const outlineButtonClasses = `${goldBorder} ${goldAccent} hover:bg-[#C5A467]/10 
 const ghostButtonClasses = `${midBrown} hover:bg-gray-100 dark:hover:bg-gray-800/50`;
 const linkClasses = `${goldAccent} hover:underline`;
 const tabsListBg = 'bg-gray-100/50 dark:bg-gray-800/50';
-const tabsTriggerClasses = `px-4 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 ease-in-out ${midBrown} hover:bg-gray-200/60 dark:hover:bg-gray-700/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#C5A467] dark:focus-visible:ring-offset-gray-950 data-[state=active]:${goldBg} data-[state=active]:text-[#bb4343] data-[state=active]:font-semibold data-[state=active]:shadow-md data-[state=active]:hover:${goldBgHover} disabled:opacity-50 disabled:pointer-events-none`;
-const AdminCourseManagementPage = () => {
+const tabsTriggerClasses = `px-4 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 ease-in-out ${midBrown} hover:bg-gray-200/60 dark:hover:bg-gray-700/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#C5A467] dark:focus-visible:ring-offset-gray-950 data-[state=active]:${goldBg} data-[state=active]:text-[#2A0F0F] data-[state=active]:font-semibold data-[state=active]:shadow-md data-[state=active]:hover:${goldBgHover} disabled:opacity-50 disabled:pointer-events-none`;
+// Removed the text-red-600 dark:text-red-400 from tabsTriggerClasses as it seemed unintentional for all triggers
+export default function AdminCourseManagementPage() {
     const [activeTab, setActiveTab] = useState("courses");
     const [courses, setCourses] = useState([]);
     const [selectedCourseForContent, setSelectedCourseForContent] = useState(null);
@@ -54,18 +59,46 @@ const AdminCourseManagementPage = () => {
     const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [showSectionModal, setShowSectionModal] = useState(false);
+    const [editingSection, setEditingSection] = useState(null);
+    const [editingContent, setEditingContent] = useState(null); // Uses imported ContentItem
+    const [currentSectionIdForModal, setCurrentSectionIdForModal] = useState(undefined);
+    const [showContentModal, setShowContentModal] = useState(false);
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
+    // const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null); // Not used yet
+    // State for Section Preview Modal
+    const [showSectionPreviewModal, setShowSectionPreviewModal] = useState(false);
+    const [sectionToPreview, setSectionToPreview] = useState(null);
+    const openSectionPreview = (section) => {
+        setSectionToPreview(section);
+        setShowSectionPreviewModal(true);
+    };
+    // sectionTemplates definition... (Ensure types used within match api.js if they become actual ContentItems)
+    // For now, assuming they are just template structures.
+    const sectionTemplates = {
+        'basic': {
+            title: 'Basic Learning Section',
+            description: 'A simple section with notes and required reading',
+            metadata: { estimatedTime: '30 minutes', difficulty: 'Beginner', tags: ['reading', 'notes'] },
+            content: [
+                { type: 'text', title: 'Introduction', textContent: '<p>Welcome to this section...</p>', order: 1, isRequired: true }, // Example using textContent for simple text
+                { type: 'text', title: 'Key Concepts', textContent: '<p>The main concepts covered...</p>', order: 2, isRequired: true }
+            ]
+        },
+        // ... other templates
+    };
+    const existingMonthOrders = courses
+        .filter(c => editingCourse ? c.id !== editingCourse.id : true)
+        .map(c => c.monthOrder);
     useEffect(() => { fetchCourses(); }, []);
     const fetchCourses = async () => {
-        console.log("Fetching courses...");
         setIsLoadingCourses(true);
         setError(null);
         try {
             const fetchedCourses = await apiService.getCoursesForAdmin();
             setCourses(fetchedCourses.sort((a, b) => a.monthOrder - b.monthOrder));
-            console.log("Courses fetched successfully:", fetchedCourses.length);
         }
         catch (err) {
-            console.error("Error fetching courses:", err);
             setError(err.message || "Failed to fetch courses");
         }
         finally {
@@ -75,43 +108,30 @@ const AdminCourseManagementPage = () => {
     const fetchWeekDetails = useCallback(async (weekId, forceRefresh = false) => {
         if (!weekId)
             return;
-        if (!forceRefresh && contentDetails[weekId] && !contentDetails[weekId].error && !contentDetails[weekId].loading && (contentDetails[weekId].materials?.length > 0 || contentDetails[weekId].quizzes?.length > 0)) {
+        if (!forceRefresh && contentDetails[weekId] && !contentDetails[weekId].error && !contentDetails[weekId].loading)
             return;
-        }
-        console.log(`Fetching details for week ${weekId} ${forceRefresh ? '(forcing refresh)' : ''}`);
-        if (forceRefresh) {
-            setContentDetails(prev => ({
-                ...prev,
-                [weekId]: { materials: [], quizzes: [], loading: true, error: null }
-            }));
-        }
-        else {
-            setContentDetails(prev => ({
-                ...prev,
-                [weekId]: { materials: prev[weekId]?.materials || [], quizzes: prev[weekId]?.quizzes || [], loading: true, error: null }
-            }));
-        }
+        setContentDetails(prev => ({ ...prev, [weekId]: { sections: prev[weekId]?.sections || [], loading: true, error: null } }));
         try {
-            const [materials, quizzes] = await Promise.all([
-                apiService.getMaterialsByWeek(weekId),
-                apiService.getQuizzesByWeek(weekId)
-            ]);
-            console.log(`Fetched details for week ${weekId}: ${materials.length} materials, ${quizzes.length} quizzes`);
-            setContentDetails(prev => ({
-                ...prev,
-                [weekId]: { materials, quizzes, loading: false, error: null }
+            const sectionsFromApi = await apiService.getSectionsByWeek(weekId);
+            const sortedSections = sectionsFromApi.sort((a, b) => (a.order || 0) - (b.order || 0));
+            const sectionsWithSortedContent = sortedSections.map(section => ({
+                ...section,
+                content: (section.content || []).sort((a, b) => (a.order || 0) - (b.order || 0))
             }));
+            setContentDetails(prev => ({ ...prev, [weekId]: { sections: sectionsWithSortedContent, loading: false, error: null } }));
         }
         catch (err) {
-            console.error(`Error fetching details for week ${weekId}:`, err);
-            setContentDetails(prev => ({
-                ...prev,
-                [weekId]: { ...(prev[weekId] || { materials: [], quizzes: [] }), loading: false, error: err.message || 'Failed to load details' }
-            }));
+            const errorMessage = err.response?.data?.message || err.message;
+            if (errorMessage.includes("index is currently building")) {
+                setContentDetails(prev => ({ ...prev, [weekId]: { sections: prev[weekId]?.sections || [], loading: false, error: "The database is currently being updated. Please try again in a few moments." } }));
+                setTimeout(() => fetchWeekDetails(weekId, true), 5000);
+            }
+            else {
+                setContentDetails(prev => ({ ...prev, [weekId]: { sections: prev[weekId]?.sections || [], loading: false, error: errorMessage || 'Failed to load details' } }));
+            }
         }
     }, [contentDetails]);
     const fetchWeeksAndDetailsForCourse = useCallback(async (courseId) => {
-        console.log(`Fetching weeks for course ${courseId}`);
         setIsLoadingWeeks(true);
         setCourseWeeks([]);
         setContentDetails({});
@@ -119,34 +139,29 @@ const AdminCourseManagementPage = () => {
         try {
             const weeks = await apiService.getWeeksByCourse(courseId);
             const sortedWeeks = weeks.sort((a, b) => a.weekNumber - b.weekNumber);
-            console.log("Fetched weeks:", sortedWeeks.length);
             setCourseWeeks(sortedWeeks);
-            setIsLoadingWeeks(false);
             if (sortedWeeks.length > 0) {
-                console.log("Fetching details for all fetched weeks...");
                 sortedWeeks.forEach((week) => fetchWeekDetails(week.id, false));
             }
         }
         catch (err) {
-            console.error(`Error fetching weeks for course ${courseId}:`, err);
-            setError(err.message || `Failed to fetch weeks for course`);
+            setError(err.message || `Failed to fetch weeks`);
+        }
+        finally {
             setIsLoadingWeeks(false);
         }
     }, [fetchWeekDetails]);
     const handleSelectCourseForContent = (course) => {
         if (!course || !course.id || course.id === selectedCourseForContent?.id)
             return;
-        console.log("Selecting course for content management:", course.title);
         setSelectedCourseForContent(course);
         setActiveTab("content");
         fetchWeeksAndDetailsForCourse(course.id);
     };
     const handleSaveCourse = async (courseData) => {
-        const isEditing = 'id' in courseData;
-        console.log(isEditing ? "Saving updated course:" : "Creating new course:", courseData);
         setError(null);
         try {
-            if (isEditing) {
+            if ('id' in courseData) {
                 await apiService.updateCourse(courseData.id, courseData);
             }
             else {
@@ -162,23 +177,20 @@ const AdminCourseManagementPage = () => {
         }
     };
     const handleSaveWeek = async (weekData) => {
-        const isEditing = 'id' in weekData;
         setError(null);
         try {
-            if (isEditing) {
+            if ('id' in weekData) {
                 await apiService.updateWeek(weekData.id, weekData);
             }
             else {
                 if (!selectedCourseForContent?.id)
-                    throw new Error("Cannot create week without a selected course.");
-                const dataToCreate = { ...weekData, courseId: selectedCourseForContent.id };
-                await apiService.createWeek(dataToCreate);
+                    throw new Error("No selected course.");
+                await apiService.createWeek({ ...weekData, courseId: selectedCourseForContent.id });
             }
             setShowWeekModal(false);
             setEditingWeek(null);
-            if (selectedCourseForContent?.id) {
+            if (selectedCourseForContent?.id)
                 await fetchWeeksAndDetailsForCourse(selectedCourseForContent.id);
-            }
         }
         catch (err) {
             console.error("Error saving week:", err);
@@ -188,13 +200,10 @@ const AdminCourseManagementPage = () => {
     const handleSaveMaterial = async (materialData) => {
         setError(null);
         const isFormData = materialData instanceof FormData;
-        const isEditing = !isFormData && 'id' in materialData;
-        const idToUpdate = isEditing ? materialData.id : undefined;
-        const weekIdForRefresh = isFormData
-            ? materialData.get('weekId')
-            : materialData.weekId;
+        const idToUpdate = !isFormData && 'id' in materialData ? materialData.id : undefined;
+        const weekIdForRefresh = isFormData ? materialData.get('weekId') : materialData.weekId;
         try {
-            if (isEditing && idToUpdate) {
+            if (idToUpdate) {
                 await apiService.updateMaterial(idToUpdate, materialData);
             }
             else {
@@ -204,8 +213,8 @@ const AdminCourseManagementPage = () => {
             setEditingMaterial(null);
             if (weekIdForRefresh) {
                 await fetchWeekDetails(weekIdForRefresh, true);
+                setCurrentWeekIdForModal(undefined);
             }
-            setCurrentWeekIdForModal(undefined);
         }
         catch (err) {
             console.error("Error saving material:", err);
@@ -214,23 +223,20 @@ const AdminCourseManagementPage = () => {
     };
     const handleSaveQuiz = async (quizData) => {
         setError(null);
-        const isEditing = 'id' in quizData;
-        const weekIdForRefresh = isEditing ? quizData.weekId : currentWeekIdForModal;
+        const weekIdForRefresh = 'id' in quizData ? quizData.weekId : currentWeekIdForModal;
         try {
-            if (isEditing) {
+            if ('id' in quizData) {
                 await apiService.updateQuiz(quizData.id, quizData);
             }
             else {
                 if (!weekIdForRefresh)
                     throw new Error("Missing weekId for new quiz");
-                const dataToCreate = { ...quizData, weekId: weekIdForRefresh };
-                await apiService.createQuiz(dataToCreate);
+                await apiService.createQuiz({ ...quizData, weekId: weekIdForRefresh });
             }
             setShowQuizModal(false);
             setEditingQuiz(null);
-            if (weekIdForRefresh) {
+            if (weekIdForRefresh)
                 await fetchWeekDetails(weekIdForRefresh, true);
-            }
             setCurrentWeekIdForModal(undefined);
         }
         catch (err) {
@@ -238,9 +244,56 @@ const AdminCourseManagementPage = () => {
             throw err;
         }
     };
-    const requestDeleteConfirmation = (id, title, type, weekId) => {
-        console.log(`Requesting delete confirmation for ${type}: ${title} (${id})${weekId ? ` in week ${weekId}` : ''}`);
-        setItemToDelete({ id, title, type, weekId });
+    const handleSaveSection = async (sectionData) => {
+        setError(null);
+        const weekIdForRefresh = 'id' in sectionData ? sectionData.weekId : currentWeekIdForModal;
+        try {
+            if ('id' in sectionData) {
+                await apiService.updateSection(sectionData.id, sectionData);
+            }
+            else {
+                if (!weekIdForRefresh)
+                    throw new Error("Missing weekId for new section");
+                await apiService.createSection({ ...sectionData, weekId: weekIdForRefresh }); // Use SectionData for create
+            }
+            setShowSectionModal(false);
+            setEditingSection(null);
+            if (weekIdForRefresh)
+                await fetchWeekDetails(weekIdForRefresh, true);
+            setCurrentWeekIdForModal(undefined);
+        }
+        catch (err) {
+            console.error("Error saving section:", err);
+            throw err;
+        }
+    };
+    // handleSaveContent uses ContentItem from api.js
+    const handleSaveContent = async (contentData) => {
+        setError(null);
+        try {
+            if (!currentSectionIdForModal)
+                throw new Error("Section ID is required.");
+            const payload = { ...contentData, order: contentData.order || (editingContent?.order || 1) }; // Ensure order
+            if (editingContent?.id) {
+                await apiService.updateContent(currentSectionIdForModal, editingContent.id, payload);
+            }
+            else {
+                await apiService.addContentToSection(currentSectionIdForModal, payload);
+            }
+            const weekId = courseWeeks.find(w => contentDetails[w.id]?.sections.some(s => s.id === currentSectionIdForModal))?.id;
+            if (weekId)
+                await fetchWeekDetails(weekId, true);
+            setShowContentModal(false);
+            setEditingContent(null);
+            setCurrentSectionIdForModal(undefined);
+        }
+        catch (err) {
+            console.error("Error saving content:", err);
+            throw err;
+        }
+    };
+    const requestDeleteConfirmation = (id, title, type, weekId, sectionId) => {
+        setItemToDelete({ id, title, type, weekId, sectionId });
         setShowDeleteConfirmModal(true);
     };
     const executeDelete = async () => {
@@ -248,14 +301,13 @@ const AdminCourseManagementPage = () => {
             return;
         setIsDeleting(true);
         setError(null);
-        console.log(`Executing delete for ${itemToDelete.type}: ${itemToDelete.title} (${itemToDelete.id})`);
         try {
-            const weekIdToRefresh = itemToDelete.weekId;
-            switch (itemToDelete.type) {
+            const { type, id, weekId, sectionId } = itemToDelete;
+            switch (type) {
                 case 'course':
-                    await apiService.deleteCourse(itemToDelete.id);
+                    await apiService.deleteCourse(id);
                     await fetchCourses();
-                    if (selectedCourseForContent?.id === itemToDelete.id) {
+                    if (selectedCourseForContent?.id === id) {
                         setSelectedCourseForContent(null);
                         setCourseWeeks([]);
                         setContentDetails({});
@@ -263,68 +315,102 @@ const AdminCourseManagementPage = () => {
                     }
                     break;
                 case 'week':
-                    await apiService.deleteWeek(itemToDelete.id);
-                    if (selectedCourseForContent?.id) {
+                    await apiService.deleteWeek(id);
+                    if (selectedCourseForContent?.id)
                         await fetchWeeksAndDetailsForCourse(selectedCourseForContent.id);
-                    }
                     break;
                 case 'material':
-                    await apiService.deleteMaterial(itemToDelete.id);
-                    if (weekIdToRefresh)
-                        await fetchWeekDetails(weekIdToRefresh, true);
-                    else
-                        console.warn("Week ID missing for material delete refresh.");
+                    await apiService.deleteMaterial(id);
+                    if (weekId)
+                        await fetchWeekDetails(weekId, true);
                     break;
                 case 'quiz':
-                    await apiService.deleteQuiz(itemToDelete.id);
-                    if (weekIdToRefresh)
-                        await fetchWeekDetails(weekIdToRefresh, true);
-                    else
-                        console.warn("Week ID missing for quiz delete refresh.");
+                    await apiService.deleteQuiz(id);
+                    if (weekId)
+                        await fetchWeekDetails(weekId, true);
+                    break;
+                case 'section':
+                    if (!weekId)
+                        throw new Error("Week ID required");
+                    await apiService.deleteSection(id);
+                    await fetchWeekDetails(weekId, true);
+                    break;
+                case 'content':
+                    if (!sectionId || !weekId)
+                        throw new Error("Section/Week ID required");
+                    await apiService.deleteContent(sectionId, id);
+                    await fetchWeekDetails(weekId, true);
                     break;
             }
-            console.log(`${itemToDelete.type} deleted successfully`);
             setShowDeleteConfirmModal(false);
             setItemToDelete(null);
         }
         catch (err) {
-            console.error(`Error deleting ${itemToDelete.type}:`, err);
-            throw err;
+            setError(err.message || `Failed to delete ${itemToDelete.type}`);
         }
         finally {
             setIsDeleting(false);
         }
     };
-    const handleDeleteCourse = (courseId, courseTitle) => {
-        requestDeleteConfirmation(courseId, courseTitle, 'course');
+    const handleDeleteCourse = (courseId, courseTitle) => requestDeleteConfirmation(courseId, courseTitle, 'course');
+    const handleDeleteWeek = (weekId, weekTitle) => requestDeleteConfirmation(weekId, weekTitle, 'week');
+    const handleDeleteMaterial = (materialId, weekId, materialTitle) => requestDeleteConfirmation(materialId, materialTitle, 'material', weekId);
+    const handleDeleteQuiz = (quizId, weekId, quizTitle) => requestDeleteConfirmation(quizId, quizTitle, 'quiz', weekId);
+    const handleDeleteSection = (sectionId, weekId, sectionTitle) => requestDeleteConfirmation(sectionId, sectionTitle, 'section', weekId);
+    const handleDeleteContent = (contentId, contentTitle, sectionId) => {
+        const weekId = courseWeeks.find(w => contentDetails[w.id]?.sections.some(s => s.id === sectionId))?.id;
+        if (!weekId) {
+            console.error("Could not find week ID for section:", sectionId);
+            return;
+        }
+        requestDeleteConfirmation(contentId, contentTitle, 'content', weekId, sectionId);
     };
-    const handleDeleteWeek = (weekId, weekTitle) => {
-        requestDeleteConfirmation(weekId, weekTitle || `Week (ID: ${weekId})`, 'week');
+    const openMaterialModal = (material, weekId) => { setEditingMaterial(material); setCurrentWeekIdForModal(weekId); setShowMaterialModal(true); };
+    const openQuizModal = (quiz, weekId) => { setEditingQuiz(quiz); setCurrentWeekIdForModal(weekId); setShowQuizModal(true); };
+    const openSectionModal = (section, weekId) => { setEditingSection(section); setCurrentWeekIdForModal(weekId); setShowSectionModal(true); };
+    const openContentModal = (contentItem, sectionId) => { setEditingContent(contentItem); setCurrentSectionIdForModal(sectionId); setShowContentModal(true); };
+    const renderAddSectionButtons = (weekId) => (_jsx("div", { className: "flex gap-2", children: _jsxs(Button, { variant: "outline", size: "sm", className: outlineButtonClasses, onClick: () => openSectionModal(null, weekId), children: [_jsx(PlusCircle, { className: "mr-1.5 h-4 w-4" }), " Add Section"] }) }));
+    const renderTemplateModal = () => {
+        if (!showTemplateModal)
+            return null;
+        return (_jsx("div", { className: "fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4", children: _jsxs("div", { className: `${lightCardBg} ${darkCardBg} p-6 rounded-lg shadow-xl w-full max-w-md`, children: [_jsx("h3", { className: `text-lg font-semibold mb-4 ${deepBrown}`, children: "Select Section Template" }), _jsx("p", { className: midBrown, children: "Template modal placeholder." }), _jsxs("div", { className: "mt-6 flex justify-end gap-2", children: [_jsx(Button, { variant: "outline", onClick: () => setShowTemplateModal(false), className: outlineButtonClasses, children: "Cancel" }), _jsx(Button, { className: primaryButtonClasses, onClick: () => setShowTemplateModal(false), children: "Apply" })] })] }) }));
     };
-    const handleDeleteMaterial = (materialId, weekId, materialTitle) => {
-        requestDeleteConfirmation(materialId, materialTitle, 'material', weekId);
+    const getIconForContentType = (type) => {
+        switch (type) {
+            case 'text': return _jsx(FileText, { className: "h-3.5 w-3.5 mr-1.5" });
+            case 'video': return _jsx(Video, { className: "h-3.5 w-3.5 mr-1.5" });
+            case 'quiz_link': return _jsx(HelpCircle, { className: "h-3.5 w-3.5 mr-1.5" });
+            default:
+                const exhaustiveCheck = type; // Ensures all cases are handled if type is a strict union
+                return _jsx(FileText, { className: "h-3.5 w-3.5 mr-1.5" });
+        }
     };
-    const handleDeleteQuiz = (quizId, weekId, quizTitle) => {
-        requestDeleteConfirmation(quizId, quizTitle, 'quiz', weekId);
+    // Helper for truncating HTML content for preview
+    const truncateHTML = (htmlString, maxLength = 100) => {
+        const doc = new DOMParser().parseFromString(htmlString, 'text/html');
+        const textContent = doc.body.textContent || "";
+        return textContent.length > maxLength ? textContent.substring(0, maxLength) + "..." : textContent;
     };
-    const openMaterialModal = (material, weekId) => {
-        setEditingMaterial(material);
-        setCurrentWeekIdForModal(weekId);
-        setShowMaterialModal(true);
-    };
-    const openQuizModal = (quiz, weekId) => {
-        setEditingQuiz(quiz);
-        setCurrentWeekIdForModal(weekId);
-        setShowQuizModal(true);
-    };
-    const existingMonthOrders = courses.map(c => c.monthOrder);
-    return (_jsxs("div", { className: `flex flex-col min-h-screen ${lightBg} ${darkBg}`, children: [_jsxs("div", { className: "container px-4 py-8 md:px-6 lg:py-12", children: [_jsxs("div", { className: "flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4", children: [_jsxs("div", { children: [_jsxs(Link, { to: "/admin", className: `flex items-center ${linkClasses} text-sm mb-2`, children: [_jsx(ArrowLeft, { className: "mr-1.5 h-4 w-4" }), "Back to Admin Dashboard"] }), _jsx("h1", { className: `text-3xl font-bold tracking-tight ${deepBrown}`, children: "Course Management" }), _jsx("p", { className: `${midBrown} mt-1`, children: "Manage the 6-month program structure and content." })] }), _jsxs(Button, { className: primaryButtonClasses, onClick: () => { setEditingCourse(null); setShowCourseModal(true); }, disabled: courses.length >= 6, title: courses.length >= 6 ? "All 6 months have assigned courses" : "Add a new course", children: [_jsx(PlusCircle, { className: "mr-2 h-4 w-4" }), "Add New Course"] })] }), error && (_jsxs("div", { className: "mb-4 p-3 bg-red-100 text-red-700 border border-red-300 rounded flex items-center justify-between gap-2 text-sm", children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx(AlertCircle, { className: "h-5 w-5" }), _jsx("span", { children: error })] }), _jsxs(Button, { variant: "ghost", size: "icon", className: "h-6 w-6 text-red-700 hover:bg-red-200", onClick: () => setError(null), children: [_jsx("span", { className: "sr-only", children: "Close error message" }), _jsx(X, { className: "h-4 w-4" })] })] })), _jsxs(Tabs, { value: activeTab, onValueChange: setActiveTab, className: "space-y-8", children: [_jsxs(TabsList, { className: `rounded-lg p-1 ${tabsListBg} inline-flex`, children: [_jsx(TabsTrigger, { value: "courses", className: tabsTriggerClasses, children: "Program Structure (6 Courses)" }), _jsx(TabsTrigger, { value: "content", disabled: !selectedCourseForContent, className: tabsTriggerClasses, children: "Weekly Content" })] }), _jsx(TabsContent, { value: "courses", className: "space-y-6", children: _jsxs(Card, { className: `${lightCardBg} ${darkCardBg} border ${inputBorder}`, children: [_jsx(CardHeader, { children: _jsx(CardTitle, { className: deepBrown, children: "6-Month Program Overview" }) }), _jsx(CardContent, { className: "p-0", children: isLoadingCourses ? (_jsx("div", { className: "p-6 text-center", children: _jsx(Loader2, { className: `h-6 w-6 animate-spin inline-block ${goldAccent}` }) }))
-                                                : !courses || courses.length === 0 ? (_jsx("div", { className: "p-6 text-center text-gray-500", children: "No courses created yet." }))
-                                                    : (_jsx("div", { className: "relative w-full overflow-auto", children: _jsxs("table", { className: "w-full caption-bottom text-sm", children: [_jsx("thead", { className: tableHeaderBg, children: _jsxs("tr", { className: tableRowBorder, children: [_jsx("th", { className: tableHeaderClasses, children: "Month" }), _jsx("th", { className: tableHeaderClasses, children: "Course Title" }), _jsx("th", { className: tableHeaderClasses, children: "Instructor" }), _jsx("th", { className: `${tableHeaderClasses} text-right`, children: "Actions" })] }) }), _jsx("tbody", { children: courses.map((course) => (_jsxs("tr", { className: `${tableRowBorder} hover:bg-gray-50/50 dark:hover:bg-gray-800/30`, children: [_jsxs("td", { className: `p-4 align-middle font-semibold ${deepBrown}`, children: ["Month ", course.monthOrder] }), _jsx("td", { className: tableCellClasses, children: course.title }), _jsx("td", { className: tableCellClasses, children: course.instructorName || course.instructor || 'N/A' }), _jsx("td", { className: "p-4 align-middle text-right", children: _jsxs("div", { className: "flex items-center justify-end gap-1", children: [_jsxs(Button, { variant: "outline", size: "sm", className: outlineButtonClasses, onClick: () => handleSelectCourseForContent(course), children: [_jsx(BookOpen, { className: "mr-1 h-4 w-4" }), " Manage Content"] }), _jsx(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} h-8 w-8`, onClick: () => { setEditingCourse(course); setShowCourseModal(true); }, "aria-label": `Edit ${course.title}`, children: _jsx(Edit, { className: "h-4 w-4" }) }), _jsx(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} hover:text-red-600 h-8 w-8`, onClick: () => handleDeleteCourse(course.id, course.title), "aria-label": `Delete ${course.title}`, children: _jsx(Trash2, { className: "h-4 w-4" }) })] }) })] }, course.id))) })] }) })) })] }) }), _jsx(TabsContent, { value: "content", className: "space-y-6", children: !selectedCourseForContent ? (_jsx(Card, { className: `${lightCardBg} ${darkCardBg} border ${inputBorder}`, children: _jsxs(CardContent, { className: "p-6 text-center", children: [_jsx(BookOpen, { className: `mx-auto h-12 w-12 ${mutedText} mb-4` }), _jsx("p", { className: `${midBrown} font-semibold`, children: "Select a Course" }), _jsx("p", { className: mutedText, children: "Choose a course from the 'Program Structure' tab to manage its weekly content." })] }) })) : (_jsxs(_Fragment, { children: [_jsxs("div", { className: "flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 mb-6 border-gray-200 dark:border-gray-700", children: [_jsxs("div", { children: [_jsxs(Button, { variant: "ghost", size: "sm", onClick: () => { setSelectedCourseForContent(null); setActiveTab('courses'); }, className: `${ghostButtonClasses} mb-2 -ml-2`, children: [_jsx(ArrowLeft, { className: "mr-1 h-4 w-4" }), " Back to Courses"] }), _jsxs("h2", { className: `text-2xl font-semibold tracking-tight ${deepBrown}`, children: ["Manage Content for: ", selectedCourseForContent.title] }), _jsx("p", { className: mutedText, children: "Organize learning materials and quizzes week by week." })] }), _jsxs(Button, { className: primaryButtonClasses, onClick: () => { setEditingWeek(null); setShowWeekModal(true); }, children: [_jsx(PlusCircle, { className: "mr-2 h-4 w-4" }), " Add New Week"] })] }), isLoadingWeeks ? (_jsx("div", { className: "p-6 text-center", children: _jsx(Loader2, { className: `h-6 w-6 animate-spin inline-block ${goldAccent}` }) }))
-                                            : courseWeeks.length === 0 ? (_jsx(Card, { className: `${lightCardBg} ${darkCardBg} border ${inputBorder}`, children: _jsxs(CardContent, { className: "p-6 text-center", children: [_jsx(HelpCircle, { className: `mx-auto h-12 w-12 ${mutedText} mb-4` }), _jsx("p", { className: `${midBrown} font-semibold`, children: "No Weeks Yet" }), _jsx("p", { className: mutedText, children: "This course doesn't have any weekly content defined. Start by adding a week." })] }) }))
-                                                : (_jsx("div", { className: "space-y-6", children: courseWeeks.map((week) => {
-                                                        const details = contentDetails[week.id];
-                                                        return (_jsxs(Card, { className: `${lightCardBg} ${darkCardBg} border ${inputBorder} overflow-hidden`, children: [_jsxs(CardHeader, { className: `p-4 border-b ${inputBorder} flex flex-row items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-800/30`, children: [_jsxs("div", { children: [_jsxs(CardTitle, { className: `text-lg ${deepBrown}`, children: ["Week ", week.weekNumber, ": ", week.title] }), week.description && _jsx(CardDescription, { className: `mt-1 text-xs ${mutedText}`, children: week.description })] }), _jsxs("div", { className: "flex items-center gap-1 flex-shrink-0", children: [_jsx(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} h-8 w-8`, onClick: () => { setEditingWeek(week); setShowWeekModal(true); }, "aria-label": `Edit Week ${week.weekNumber}`, children: _jsx(Edit, { className: "h-4 w-4" }) }), _jsx(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} hover:text-red-600 h-8 w-8`, onClick: () => handleDeleteWeek(week.id, week.title || `Week ${week.weekNumber}`), "aria-label": `Delete Week ${week.weekNumber}`, children: _jsx(Trash2, { className: "h-4 w-4" }) })] })] }), _jsx(CardContent, { className: "p-4 md:p-6", children: !details ? (_jsx(Button, { variant: "outline", size: "sm", className: outlineButtonClasses, onClick: () => fetchWeekDetails(week.id, false), children: "Load Week Details" })) : details.loading ? (_jsxs("div", { className: "flex items-center gap-2 text-sm text-gray-500", children: [_jsx(Loader2, { className: `h-4 w-4 animate-spin ${goldAccent}` }), " Loading content..."] })) : details.error ? (_jsxs("div", { className: "text-red-600 text-sm flex items-center gap-2", children: [_jsx(AlertCircle, { className: "h-4 w-4" }), " Error: ", details.error, " ", _jsx(Button, { variant: "link", size: "sm", className: `p-0 h-auto ${linkClasses}`, onClick: () => fetchWeekDetails(week.id, true), children: "Retry" })] })) : (_jsxs("div", { className: `grid grid-cols-1 md:grid-cols-2 gap-6 pt-2`, children: [_jsxs("div", { children: [_jsx("h4", { className: `text-sm font-semibold mb-3 pb-2 border-b ${inputBorder} ${deepBrown}`, children: "Learning Materials" }), details.materials.length === 0 && _jsx("p", { className: `text-xs ${mutedText}`, children: "No materials added yet." }), details.materials.map((material, index) => (_jsxs("div", { className: `flex items-center justify-between py-1.5 group border-b border-transparent hover:border-gray-100 dark:hover:border-gray-800`, children: [_jsxs("div", { className: "flex items-center gap-2 overflow-hidden mr-2", children: [material.type === 'video' ? _jsx(Video, { className: `h-4 w-4 ${goldAccent} flex-shrink-0` }) : _jsx(FileText, { className: `h-4 w-4 ${goldAccent} flex-shrink-0` }), _jsx("span", { className: `text-sm ${midBrown} truncate`, title: material.title, children: material.title }), material.contentUrl && _jsx("a", { href: material.contentUrl, target: "_blank", rel: "noopener noreferrer", className: `text-xs ${linkClasses} ml-1 flex-shrink-0`, children: "(Link)" })] }), _jsxs("div", { className: "flex items-center gap-0 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity", children: [_jsx(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} h-7 w-7`, "aria-label": `Edit ${material.title}`, onClick: () => openMaterialModal(material, week.id), children: _jsx(Edit, { className: "h-3.5 w-3.5" }) }), _jsx(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} hover:text-red-600 h-7 w-7`, "aria-label": `Delete ${material.title}`, onClick: () => handleDeleteMaterial(material.id, week.id, material.title), children: _jsx(Trash2, { className: "h-3.5 w-3.5" }) })] })] }, `${material.id}-${index}`))), _jsxs(Button, { variant: "outline", size: "sm", className: `${outlineButtonClasses} mt-3 text-xs h-8`, onClick: () => openMaterialModal(null, week.id), children: [_jsx(PlusCircle, { className: "mr-1 h-3.5 w-3.5" }), " Add Material"] })] }), _jsxs("div", { children: [_jsx("h4", { className: `text-sm font-semibold mb-3 pb-2 border-b ${inputBorder} ${deepBrown}`, children: "Quizzes & Assignments" }), details.quizzes.length === 0 && _jsx("p", { className: `text-xs ${mutedText}`, children: "No quizzes added yet." }), details.quizzes.map((quiz, index) => (_jsxs("div", { className: `flex items-center justify-between py-1.5 group border-b border-transparent hover:border-gray-100 dark:hover:border-gray-800`, children: [_jsxs("div", { className: "flex items-center gap-2 overflow-hidden mr-2", children: [_jsx(HelpCircle, { className: `h-4 w-4 ${goldAccent} flex-shrink-0` }), _jsx("span", { className: `text-sm ${midBrown} truncate`, title: quiz.title, children: quiz.title }), quiz.quizUrl && _jsx("a", { href: quiz.quizUrl, target: "_blank", rel: "noopener noreferrer", className: `text-xs ${linkClasses} ml-1 flex-shrink-0`, children: "(Link)" })] }), _jsxs("div", { className: "flex items-center gap-0 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity", children: [_jsx(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} h-7 w-7`, "aria-label": `Edit ${quiz.title}`, onClick: () => openQuizModal(quiz, week.id), children: _jsx(Edit, { className: "h-3.5 w-3.5" }) }), _jsx(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} hover:text-red-600 h-7 w-7`, "aria-label": `Delete ${quiz.title}`, onClick: () => handleDeleteQuiz(quiz.id, week.id, quiz.title), children: _jsx(Trash2, { className: "h-3.5 w-3.5" }) })] })] }, `${quiz.id}-${index}`))), _jsxs(Button, { variant: "outline", size: "sm", className: `${outlineButtonClasses} mt-3 text-xs h-8`, onClick: () => openQuizModal(null, week.id), children: [_jsx(PlusCircle, { className: "mr-1 h-3.5 w-3.5" }), " Add Quiz"] })] })] })) })] }, week.id));
-                                                    }) }))] })) })] })] }), _jsx(CreateEditCourseModal, { isOpen: showCourseModal, onClose: () => { setShowCourseModal(false); setEditingCourse(null); }, course: editingCourse, onSave: handleSaveCourse, existingMonthOrders: existingMonthOrders }), _jsx(CreateEditWeekModal, { isOpen: showWeekModal, onClose: () => { setShowWeekModal(false); setEditingWeek(null); }, week: editingWeek, courseId: selectedCourseForContent?.id, onSave: handleSaveWeek, existingWeekNumbers: courseWeeks.filter(w => w.id !== editingWeek?.id).map(w => w.weekNumber) }), _jsx(CreateEditMaterialModal, { isOpen: showMaterialModal, onClose: () => { setShowMaterialModal(false); setEditingMaterial(null); setCurrentWeekIdForModal(undefined); }, material: editingMaterial, weekId: currentWeekIdForModal, onSave: handleSaveMaterial }), _jsx(CreateEditQuizModal, { isOpen: showQuizModal, onClose: () => { setShowQuizModal(false); setEditingQuiz(null); setCurrentWeekIdForModal(undefined); }, quiz: editingQuiz, weekId: currentWeekIdForModal, onSave: handleSaveQuiz }), _jsx(ConfirmationModal, { isOpen: showDeleteConfirmModal, onClose: () => { setShowDeleteConfirmModal(false); setItemToDelete(null); setIsDeleting(false); }, onConfirm: executeDelete, title: `Confirm ${itemToDelete?.type || ''} Deletion`, message: itemToDelete?.type === 'course' ? (_jsxs(_Fragment, { children: ["Are you sure you want to delete the course: ", _jsxs("strong", { className: deepBrown, children: ["\"", itemToDelete?.title, "\""] }), "?", _jsx("br", {}), " ", _jsx("br", {}), _jsx("span", { className: "font-semibold text-red-600 dark:text-red-400", children: "This action will permanently delete the course AND all its associated weeks, materials, and quizzes. This cannot be undone." })] })) : itemToDelete?.type === 'week' ? (_jsxs(_Fragment, { children: ["Are you sure you want to delete the week: ", _jsxs("strong", { className: deepBrown, children: ["\"", itemToDelete?.title, "\""] }), "?", _jsx("br", {}), " ", _jsx("br", {}), _jsx("span", { className: "font-semibold text-red-600 dark:text-red-400", children: "This action will permanently delete the week AND all its associated materials and quizzes. This cannot be undone." })] })) : (_jsxs(_Fragment, { children: ["Are you sure you want to delete the ", itemToDelete?.type, ": ", _jsxs("strong", { className: deepBrown, children: ["\"", itemToDelete?.title, "\""] }), "?"] })), confirmText: `Delete ${itemToDelete?.type || 'Item'}`, confirmVariant: "destructive", isConfirming: isDeleting })] }));
-};
-export default AdminCourseManagementPage;
+    return (_jsxs("div", { className: `p-4 md:p-6 lg:p-8 ${lightBg} ${darkBg} min-h-screen`, children: [_jsxs("div", { className: "flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4", children: [_jsxs("div", { children: [_jsxs(Link, { to: "/admin", className: `flex items-center ${linkClasses} text-sm mb-2`, children: [_jsx(ArrowLeft, { className: "mr-1.5 h-4 w-4" }), " Back to Admin Dashboard"] }), _jsx("h1", { className: `text-3xl font-bold tracking-tight ${deepBrown}`, children: "Course Management" }), _jsx("p", { className: `${midBrown} mt-1`, children: "Manage program courses and content." })] }), _jsxs(Button, { className: primaryButtonClasses, onClick: () => { setEditingCourse(null); setShowCourseModal(true); }, children: [_jsx(PlusCircle, { className: "mr-2 h-4 w-4" }), " Add Course"] })] }), error && (_jsxs("div", { className: "mb-4 p-3 bg-red-100 text-red-700 border border-red-300 rounded flex items-center justify-between gap-2 text-sm dark:bg-red-900/30 dark:text-red-300 dark:border-red-700", children: [_jsxs("div", { className: "flex items-center gap-2", children: [" ", _jsx(AlertCircle, { className: "h-5 w-5" }), " ", _jsx("span", { children: error }), " "] }), _jsxs(Button, { variant: "ghost", size: "icon", className: "h-6 w-6 text-red-700 hover:bg-red-200 dark:text-red-300 dark:hover:bg-red-700/50", onClick: () => setError(null), children: [" ", _jsx(X, { className: "h-4 w-4" }), " "] })] })), _jsxs(Tabs, { value: activeTab, onValueChange: setActiveTab, className: "space-y-8", children: [_jsxs(TabsList, { className: `rounded-lg p-1 ${tabsListBg} inline-flex`, children: [_jsxs(TabsTrigger, { value: "courses", className: tabsTriggerClasses, children: ["Program Structure (", courses.length, ")"] }), _jsx(TabsTrigger, { value: "content", disabled: !selectedCourseForContent, className: tabsTriggerClasses, children: "Weekly Content" })] }), _jsx(TabsContent, { value: "courses", className: "space-y-6", children: _jsxs(Card, { className: `${lightCardBg} ${darkCardBg} border ${inputBorder}`, children: [_jsxs(CardHeader, { children: [" ", _jsx(CardTitle, { className: deepBrown, children: "Program Overview" }), " "] }), _jsx(CardContent, { className: "p-0", children: isLoadingCourses ? _jsx("div", { className: "p-6 text-center", children: _jsx(Loader2, { className: `h-6 w-6 animate-spin inline-block ${goldAccent}` }) })
+                                        : !courses.length ? _jsx("div", { className: "p-6 text-center text-gray-500", children: "No courses created." })
+                                            : (_jsx("div", { className: "relative w-full overflow-auto", children: _jsxs("table", { className: "w-full caption-bottom text-sm", children: [_jsxs("thead", { className: tableHeaderBg, children: [" ", _jsxs("tr", { className: tableRowBorder, children: [_jsx("th", { className: tableHeaderClasses, children: "Month" }), " ", _jsx("th", { className: tableHeaderClasses, children: "Course Title" }), _jsx("th", { className: tableHeaderClasses, children: "Instructor" }), " ", _jsx("th", { className: `${tableHeaderClasses} text-right`, children: "Actions" })] })] }), _jsx("tbody", { children: courses.map(course => (_jsxs("tr", { className: `${tableRowBorder} hover:bg-gray-50/50 dark:hover:bg-gray-800/30`, children: [_jsxs("td", { className: `p-4 align-middle font-semibold ${deepBrown}`, children: ["M", course.monthOrder] }), _jsx("td", { className: tableCellClasses, children: course.title }), _jsx("td", { className: tableCellClasses, children: course.instructorName || course.instructor || 'N/A' }), _jsxs("td", { className: "p-4 align-middle text-right", children: [" ", _jsxs("div", { className: "flex items-center justify-end gap-1", children: [_jsxs(Button, { variant: "outline", size: "sm", className: outlineButtonClasses, onClick: () => handleSelectCourseForContent(course), children: [" ", _jsx(BookOpen, { className: "mr-1 h-4 w-4" }), " Manage "] }), _jsxs(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} h-8 w-8`, onClick: () => { setEditingCourse(course); setShowCourseModal(true); }, children: [" ", _jsx(Edit, { className: "h-4 w-4" }), " "] }), _jsxs(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} hover:text-red-600 dark:hover:text-red-500 h-8 w-8`, onClick: () => handleDeleteCourse(course.id, course.title), children: [" ", _jsx(Trash2, { className: "h-4 w-4" }), " "] })] })] })] }, course.id))) })] }) })) })] }) }), _jsx(TabsContent, { value: "content", className: "space-y-6", children: !selectedCourseForContent ? (_jsxs(Card, { className: `${lightCardBg} ${darkCardBg} border ${inputBorder}`, children: [" ", _jsxs(CardContent, { className: "p-6 text-center", children: [_jsx(BookOpen, { className: `mx-auto h-12 w-12 ${mutedText} mb-4` }), _jsx("p", { className: `${midBrown} font-semibold`, children: "Select a Course" }), " ", _jsx("p", { className: mutedText, children: "Choose a course to manage its content." })] })] })) : (_jsxs(_Fragment, { children: [_jsxs("div", { className: "flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 mb-6 ${inputBorder}", children: [_jsxs("div", { children: [_jsxs(Button, { variant: "ghost", size: "sm", onClick: () => { setSelectedCourseForContent(null); setActiveTab('courses'); }, className: `${ghostButtonClasses} mb-2 -ml-2`, children: [" ", _jsx(ArrowLeft, { className: "mr-1 h-4 w-4" }), " Courses "] }), _jsx("h2", { className: `text-2xl font-semibold tracking-tight ${deepBrown}`, children: selectedCourseForContent.title }), _jsx("p", { className: mutedText, children: "Organize weekly learning materials." })] }), _jsxs(Button, { className: primaryButtonClasses, onClick: () => { setEditingWeek(null); setShowWeekModal(true); }, children: [" ", _jsx(PlusCircle, { className: "mr-2 h-4 w-4" }), " Add Week "] })] }), isLoadingWeeks ? _jsx("div", { className: "p-6 text-center", children: _jsx(Loader2, { className: `h-6 w-6 animate-spin inline-block ${goldAccent}` }) })
+                                    : !courseWeeks.length ? (_jsxs(Card, { className: `${lightCardBg} ${darkCardBg} border ${inputBorder}`, children: [" ", _jsxs(CardContent, { className: "p-6 text-center", children: [_jsx(HelpCircle, { className: `mx-auto h-12 w-12 ${mutedText} mb-4` }), _jsx("p", { className: `${midBrown} font-semibold`, children: "No Weeks Yet" }), " ", _jsx("p", { className: mutedText, children: "Add a week to start organizing content." })] })] }))
+                                        : (_jsxs("div", { className: "space-y-6", children: [" ", courseWeeks.map(week => {
+                                                    const details = contentDetails[week.id];
+                                                    return (_jsxs(Card, { className: `${lightCardBg} ${darkCardBg} border ${inputBorder} overflow-hidden`, children: [_jsxs(CardHeader, { className: `p-4 border-b ${inputBorder} flex flex-row items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-800/30`, children: [_jsxs("div", { children: [" ", _jsxs(CardTitle, { className: `text-lg ${deepBrown}`, children: ["W", week.weekNumber, ": ", week.title] }), " ", week.description && _jsx(CardDescription, { className: `mt-1 text-xs ${mutedText}`, children: week.description }), " "] }), _jsxs("div", { className: "flex items-center gap-1 flex-shrink-0", children: [_jsxs(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} h-8 w-8`, onClick: () => { setEditingWeek(week); setShowWeekModal(true); }, children: [" ", _jsx(Edit, { className: "h-4 w-4" }), " "] }), _jsxs(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} hover:text-red-600 dark:hover:text-red-500 h-8 w-8`, onClick: () => handleDeleteWeek(week.id, week.title), children: [" ", _jsx(Trash2, { className: "h-4 w-4" }), " "] })] })] }), _jsx(CardContent, { className: "p-4 md:p-6", children: !details ? _jsx(Button, { variant: "outline", size: "sm", className: outlineButtonClasses, onClick: () => fetchWeekDetails(week.id, false), children: " Load Details " })
+                                                                    : details.loading ? _jsxs("div", { className: "flex items-center gap-2 text-sm text-gray-500", children: [" ", _jsx(Loader2, { className: `h-4 w-4 animate-spin ${goldAccent}` }), " Loading... "] })
+                                                                        : details.error ? _jsxs("div", { className: "text-red-600 dark:text-red-400 text-sm flex items-center gap-2", children: [" ", _jsx(AlertCircle, { className: "h-4 w-4" }), " Error: ", details.error, " ", _jsx(Button, { variant: "link", size: "sm", className: `p-0 h-auto ${linkClasses}`, onClick: () => fetchWeekDetails(week.id, true), children: " Retry " }), " "] })
+                                                                            : (_jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "flex justify-between items-center mb-4", children: [" ", _jsx("h4", { className: `text-sm font-semibold ${deepBrown}`, children: "Learning Sections" }), " ", renderAddSectionButtons(week.id), " "] }), !details.sections.length ? _jsx("p", { className: `text-xs ${mutedText}`, children: "No sections added." })
+                                                                                        : (_jsxs("div", { className: "space-y-4", children: [" ", details.sections.map(section => (_jsxs("div", { className: `border ${inputBorder} rounded-lg p-3 group`, children: [_jsxs("div", { className: "flex items-center justify-between mb-2", children: [_jsxs("h5", { className: `font-medium ${deepBrown} flex items-center`, children: [" ", _jsx(GripVertical, { className: "h-4 w-4 mr-2 text-gray-400 cursor-grab opacity-50 group-hover:opacity-100" }), " S", section.order, ": ", section.title, " "] }), _jsxs("div", { className: "flex items-center gap-0.5", children: [_jsxs(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} h-7 w-7`, onClick: () => openSectionPreview(section), title: "Preview Section", children: [" ", _jsx(EyeIcon, { className: "h-3.5 w-3.5" }), " "] }), _jsxs(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} h-7 w-7`, onClick: () => openSectionModal(section, week.id), children: [" ", _jsx(Edit, { className: "h-3.5 w-3.5" }), " "] }), _jsxs(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} hover:text-red-600 dark:hover:text-red-500 h-7 w-7`, onClick: () => handleDeleteSection(section.id, week.id, section.title), children: [" ", _jsx(Trash2, { className: "h-3.5 w-3.5" }), " "] })] })] }), section.description && _jsx("p", { className: `text-xs ${mutedText} mt-1 mb-3 pl-6`, children: section.description }), _jsxs("div", { className: "space-y-2 pl-6 border-l-2 border-gray-200 dark:border-gray-700 ml-2.5", children: [!section.content?.length ? _jsx("p", { className: `text-xs ${mutedText} py-1`, children: "No content items." })
+                                                                                                                    : section.content.map(item => (_jsxs("div", { className: `group/content-item flex items-center justify-between p-1.5 -ml-1.5 rounded hover:bg-gray-50/80 dark:hover:bg-gray-800/50`, children: [_jsxs("div", { className: "flex items-center text-sm", children: [getIconForContentType(item.type), _jsx("span", { className: midBrown, children: item.title || `Item ${item.order}` }), item.isRequired && _jsx("span", { className: "ml-1.5 text-xs text-red-500", children: "(R)" }), _jsx("span", { className: "text-xs text-gray-400 dark:text-gray-500 ml-2 truncate max-w-[200px] group-hover/content-item:hidden", children: item.type === 'text' && item.content ? truncateHTML(item.content, 50) : item.url ? item.url.substring(0, 50) + '...' : '' })] }), _jsxs("div", { className: "flex items-center gap-0.5 opacity-0 group-hover/content-item:opacity-100 transition-opacity", children: [_jsxs(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} h-6 w-6`, disabled: !item.id, onClick: () => { if (item.id)
+                                                                                                                                            openContentModal(item, section.id); }, children: [" ", _jsx(Edit, { className: "h-3 w-3" }), " "] }), _jsxs(Button, { variant: "ghost", size: "icon", className: `${ghostButtonClasses} hover:text-red-600 dark:hover:text-red-500 h-6 w-6`, disabled: !item.id, onClick: () => { if (item.id)
+                                                                                                                                            handleDeleteContent(item.id, item.title || '', section.id); }, children: [" ", _jsx(Trash2, { className: "h-3 w-3" }), " "] })] })] }, item.id))), _jsxs(Button, { variant: "outline", size: "sm", className: `${outlineButtonClasses} text-xs h-7 mt-2`, onClick: () => openContentModal(null, section.id), children: [" ", _jsx(PlusCircle, { className: "mr-1 h-3 w-3" }), " Add Content Item "] })] })] }, section.id)))] }))] })) })] }, week.id));
+                                                }), " "] }))] })) })] }), _jsx(CreateEditCourseModal, { isOpen: showCourseModal, onClose: () => { setShowCourseModal(false); setEditingCourse(null); }, course: editingCourse, onSave: handleSaveCourse, existingMonthOrders: existingMonthOrders }), _jsx(CreateEditWeekModal, { isOpen: showWeekModal, onClose: () => { setShowWeekModal(false); setEditingWeek(null); }, week: editingWeek, courseId: selectedCourseForContent?.id, onSave: handleSaveWeek, existingWeekNumbers: courseWeeks.filter(w => w.id !== editingWeek?.id).map(w => w.weekNumber) }), _jsx(CreateEditMaterialModal, { isOpen: showMaterialModal, onClose: () => { setShowMaterialModal(false); setEditingMaterial(null); setCurrentWeekIdForModal(undefined); }, material: editingMaterial, weekId: currentWeekIdForModal, onSave: handleSaveMaterial }), _jsx(CreateEditQuizModal, { isOpen: showQuizModal, onClose: () => { setShowQuizModal(false); setEditingQuiz(null); setCurrentWeekIdForModal(undefined); }, quiz: editingQuiz, weekId: currentWeekIdForModal, onSave: handleSaveQuiz }), _jsx(CreateEditSectionModal, { isOpen: showSectionModal && !!currentWeekIdForModal, onClose: () => { setShowSectionModal(false); setEditingSection(null); setCurrentWeekIdForModal(undefined); }, section: editingSection, weekId: currentWeekIdForModal || '', onSave: handleSaveSection, existingSectionOrders: currentWeekIdForModal ? contentDetails[currentWeekIdForModal]?.sections?.map(s => s.order || 0) || [] : [] })
+            // ... other modals ...
+            , "// ... other modals ...", _jsx(CreateEditContentModal, { isOpen: showContentModal, onClose: () => { }, content: editingContent, sectionId: currentSectionIdForModal || '', onSave: handleSaveContent }), showSectionPreviewModal && sectionToPreview && (_jsx(SectionPreviewModal // This component itself would be the one that includes ErrorBoundary logic internally if exported that way
+            , { isOpen: showSectionPreviewModal, onClose: () => {
+                    setShowSectionPreviewModal(false);
+                    setSectionToPreview(null);
+                }, section: sectionToPreview })), _jsx(ConfirmationModal, { isOpen: showDeleteConfirmModal, onClose: () => { setShowDeleteConfirmModal(false); setItemToDelete(null); setIsDeleting(false); }, onConfirm: executeDelete, title: `Confirm ${itemToDelete?.type || ''} Deletion`, message: `Are you sure you want to delete this ${itemToDelete?.type || 'item'}? This action cannot be undone.`, confirmText: `Delete ${itemToDelete?.type || 'Item'}`, confirmVariant: "destructive", isConfirming: isDeleting }), renderTemplateModal()] }));
+}
+;

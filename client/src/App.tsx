@@ -4,6 +4,7 @@ import { ThemeProvider } from "./components/theme-provider.js";
 
 import UserLayout from "./components/UserLayout.js";
 import AdminLayout from "./components/admin/AdminLayout.js";
+import WeekContentPage from './pages/WeekContentPage.js';
 
 
 import HomePage from "./pages/Home.js";
@@ -49,16 +50,18 @@ function App() {
           <Route path="/contact" element={<ContactUsPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/courses" element={<CoursesPage />} />
-
+          
+          
 
 
           <Route element={<ProtectedRoute requiredRole="student" />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/courses" element={<CoursesPage />} />
             <Route path="/courses/:id" element={<CourseDetailPage />} />
             <Route path="/course-introduction" element={<CourseIntroductionPage />} />
             <Route path="/discussions" element={<DiscussionForumPage />} />
             <Route path="/discussions/:courseId" element={<DiscussionForumPage />} />
+            <Route path="/courses/:courseId/week/:weekId" element={<WeekContentPage />} />
           </Route>
         </Route>
 

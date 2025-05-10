@@ -35,101 +35,56 @@ export default function CoursesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [enrollmentMessage, setEnrollmentMessage] = useState(null);
+    const [accessibleContent, setAccessibleContent] = useState([]);
     useEffect(() => {
         if (authLoading) {
-            setIsLoading(true);
             return;
         }
         const fetchCourseData = async () => {
             setIsLoading(true);
             setError(null);
-            setEnrollmentMessage(null);
-            let publicCourses = [];
-            let accessibleData = null;
-            let enrollmentMonth = null; // 1-12
-            const currentCalendarMonth = new Date().getMonth() + 1; // 1-12
+            setCoursesOverview([]);
+            setAccessibleContent([]);
             try {
+                let publicCourses = [];
+                let accessibleData = [];
                 publicCourses = await apiService.getPublicCourseOverview();
                 publicCourses.sort((a, b) => a.monthOrder - b.monthOrder);
                 if (user) {
-                    // Use Firebase createdAt timestamp to determine enrollment month
-                    if (user.createdAt) {
-                        const createdAtDate = new Date(user.createdAt);
-                        if (isNaN(createdAtDate.getTime())) {
-                            console.error("Invalid createdAt date received:", user.createdAt);
-                            setEnrollmentMessage("Could not determine your enrollment date. Please contact support.");
-                        }
-                        else {
-                            // Get the calendar month (1-12) of enrollment
-                            const rawEnrollmentMonth = createdAtDate.getMonth() + 1;
-                            // Determine if user is in January or July cohort
-                            // If enrolled in months 1-6, they're in January cohort
-                            // If enrolled in months 7-12, they're in July cohort
-                            enrollmentMonth = rawEnrollmentMonth <= 6 ? rawEnrollmentMonth : rawEnrollmentMonth - 6;
-                            console.log(`User enrolled in month: ${rawEnrollmentMonth} (adjusted to: ${enrollmentMonth}), Current calendar month: ${currentCalendarMonth}`);
-                        }
+                    try {
+                        accessibleData = await apiService.getAccessibleContent();
+                        accessibleData = accessibleData.map(course => ({
+                            ...course,
+                            weeks: course.weeks?.sort((a, b) => a.weekNumber - b.weekNumber) || []
+                        })).sort((a, b) => a.monthOrder - b.monthOrder);
                     }
-                    else {
-                        console.warn("User is logged in but has no createdAt timestamp.");
-                        setEnrollmentMessage("Could not determine your enrollment date. Please contact support.");
-                    }
-                    // Fetch completion data only if enrolled and date is valid
-                    if (enrollmentMonth !== null) {
-                        try {
-                            accessibleData = await apiService.getAccessibleContent();
-                        }
-                        catch (accessibleError) {
-                            console.warn("Could not fetch accessible content (may affect completion status):", accessibleError.message);
-                            accessibleData = null; // Continue without completion data if it fails
-                        }
+                    catch (error) {
+                        console.warn("Could not fetch accessible content:", error);
                     }
                 }
                 const overview = publicCourses.map((course) => {
-                    let status = 'locked';
-                    // Only determine status if user is logged in and enrollment month is known
-                    if (user && enrollmentMonth !== null) {
-                        // *** NEW LOGIC START ***
-                        // Calculate the number of months since enrollment
-                        const monthsSinceEnrollment = currentCalendarMonth - enrollmentMonth + 1;
-                        // A course is accessible if:
-                        // 1. It's the enrollment month (first month)
-                        // 2. It's within the number of months since enrollment
-                        const isAccessibleBasedOnDate = course.monthOrder >= enrollmentMonth &&
-                            course.monthOrder <= (enrollmentMonth + monthsSinceEnrollment - 1);
-                        // *** NEW LOGIC END ***
-                        if (isAccessibleBasedOnDate) {
-                            // Default to 'active' if accessible by date
-                            status = 'active';
-                            // Check completion status if accessible data exists
-                            const accessibleCourse = accessibleData?.find((ac) => ac.id === course.id);
-                            if (accessibleCourse) {
-                                // Assuming 4 weeks per course month for completion check
-                                const totalWeeksInCourse = 4;
-                                const completedWeeksCount = accessibleCourse.weeks?.filter(w => w.isCompleted).length || 0;
-                                const hasCompletedAllWeeks = completedWeeksCount >= totalWeeksInCourse;
-                                if (hasCompletedAllWeeks) {
-                                    status = 'completed';
-                                }
-                            }
+                    let status = 'active';
+                    const accessibleCourse = accessibleData?.find((ac) => ac.id === course.id);
+                    if (accessibleCourse) {
+                        const totalWeeksInCourse = 4;
+                        const completedWeeksCount = accessibleCourse.weeks?.filter(w => w.isCompleted).length || 0;
+                        const hasCompletedAllWeeks = completedWeeksCount >= totalWeeksInCourse;
+                        if (hasCompletedAllWeeks) {
+                            status = 'completed';
                         }
-                        else {
-                            status = 'locked';
-                        }
-                    }
-                    else {
-                        // If user is not logged in or enrollment is invalid, all are locked
-                        status = 'locked';
                     }
                     return {
                         ...course,
-                        status: status,
+                        status,
+                        progress: accessibleCourse?.progress
                     };
                 });
                 setCoursesOverview(overview);
+                setAccessibleContent(accessibleData);
             }
             catch (err) {
-                setError(err.message || "Failed to load course information.");
-                console.error("Courses page fetch error:", err);
+                setError(err.message || "Failed to load courses.");
+                console.error("Courses fetch error:", err);
             }
             finally {
                 setIsLoading(false);
