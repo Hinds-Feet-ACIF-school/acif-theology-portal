@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button.js';
 import { Checkbox } from '../components/ui/checkbox.js';
-import { Loader2, AlertCircle, ArrowLeft, CheckSquare, HelpCircle as HelpCircleIcon } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, CheckSquare, HelpCircle as HelpCircleIcon, ArrowRight } from 'lucide-react'; // Added ArrowRight
 import * as apiService from '../services/api.js';
 // --- Styling Constants ---
 const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';
@@ -43,18 +43,16 @@ const WeekContentPage = () => {
             try {
                 const fetchedWeek = await apiService.getWeekWithDetails(weekId);
                 console.log("WeekContentPage: Fetched Week Data RAW:", fetchedWeek);
-                console.log("WeekContentPage: Fetched Week Data Stringified:", JSON.stringify(fetchedWeek, (key, value) => {
-                    if (value instanceof File) {
-                        return { name: value.name, type: value.type, size: value.size, lastModified: value.lastModified };
-                    }
-                    return value;
-                }, 2));
+                // Removed detailed stringify for brevity in this diff, it's good for debugging
                 if (fetchedWeek && Array.isArray(fetchedWeek.sections)) {
                     setWeekData(fetchedWeek);
                     const sortedSections = [...fetchedWeek.sections].sort((a, b) => (a.order || 0) - (b.order || 0));
                     if (sortedSections.length > 0) {
-                        setCurrentSection(sortedSections[0]);
-                        console.log("WeekContentPage: Initial current section set:", sortedSections[0].title);
+                        // Try to restore current section from URL hash or sessionStorage, or default to first
+                        const hashSectionId = window.location.hash.substring(1);
+                        const restoredSection = sortedSections.find(s => s.id === hashSectionId);
+                        setCurrentSection(restoredSection || sortedSections[0]);
+                        console.log("WeekContentPage: Initial current section set:", (restoredSection || sortedSections[0]).title);
                     }
                     else {
                         setCurrentSection(null);
@@ -78,6 +76,12 @@ const WeekContentPage = () => {
         };
         fetchWeekDetails();
     }, [courseId, weekId]);
+    useEffect(() => {
+        // Update URL hash when currentSection changes
+        if (currentSection) {
+            navigate(`#${currentSection.id}`, { replace: true });
+        }
+    }, [currentSection, navigate]);
     const handleSectionSelect = (sectionId) => {
         const selected = weekData?.sections?.find(s => s.id === sectionId);
         if (selected) {
@@ -91,10 +95,23 @@ const WeekContentPage = () => {
             console.warn("WeekContentPage: Attempted to select non-existent section ID:", sectionId);
         }
     };
-    const handleMarkSectionComplete = async (sectionId, isCompleted) => { };
+    const handleMarkSectionComplete = async (sectionId, isCompleted) => {
+        console.log(`WeekContentPage: Marking section ${sectionId} as ${isCompleted ? 'complete' : 'incomplete'}`);
+        // Placeholder for API call to update progress
+        setUserProgress(prev => ({ ...prev, [sectionId]: isCompleted }));
+        // Example:
+        // try {
+        //   await apiService.updateSectionProgress(courseId!, weekId!, sectionId, isCompleted);
+        // } catch (error) {
+        //   console.error("Failed to update section progress:", error);
+        //   // Revert UI change on error
+        //   setUserProgress(prev => ({ ...prev, [sectionId]: !isCompleted }));
+        //   alert("Could not update progress. Please try again.");
+        // }
+    };
     const renderRichContentBlock = (block, blockIndex) => {
         // Logging can happen here before returning JSX
-        console.log(`WeekContentPage: Preparing to render RichContentBlock ${blockIndex} (ID: ${block.id}, Type: ${block.type}):`, JSON.stringify(block, (k, v) => v instanceof File ? { name: v.name, type: v.type } : v, 2));
+        // console.log(`WeekContentPage: Preparing to render RichContentBlock ${blockIndex} (ID: ${block.id}, Type: ${block.type}):`, JSON.stringify(block, (k, v) => v instanceof File ? {name:v.name, type:v.type} : v, 2));
         return (_jsxs("div", { className: `mt-4 pt-4 border-t first:mt-0 first:pt-0 first:border-t-0 ${themedInputBorder}`, children: [block.type === 'text' && block.content && (_jsx("div", { className: `prose prose-sm dark:prose-invert max-w-none ${defaultDarkTextColor}`, dangerouslySetInnerHTML: { __html: block.content } })), block.type === 'video' && block.videoContent && (_jsxs("div", { className: "not-prose my-2", children: [_jsx("h4", { className: `text-lg font-semibold mb-1.5 ${deepBrown}`, children: block.videoContent.title || 'Video' }), block.videoContent.description && _jsx("p", { className: `text-sm mb-2 ${midBrown}`, children: block.videoContent.description }), (() => {
                             let videoSourceUrl = undefined;
                             const vc = block.videoContent;
@@ -150,23 +167,33 @@ const WeekContentPage = () => {
     if (!weekData)
         return _jsxs("div", { className: "text-center p-8 text-gray-500", children: ["Week data not found. ", _jsx(Button, { onClick: () => navigate(-1), className: `${outlineButtonClasses} ml-4`, children: "Go Back" })] });
     const sortedSections = weekData.sections ? [...weekData.sections].sort((a, b) => (a.order || 0) - (b.order || 0)) : [];
+    // --- Logic for Next Section Button ---
+    let currentSectionIndex = -1;
+    let hasNextSection = false;
+    let nextSection = null;
+    if (currentSection && sortedSections.length > 0) {
+        currentSectionIndex = sortedSections.findIndex(s => s.id === currentSection.id);
+        if (currentSectionIndex !== -1 && currentSectionIndex < sortedSections.length - 1) {
+            hasNextSection = true;
+            nextSection = sortedSections[currentSectionIndex + 1];
+        }
+    }
+    // --- End Logic for Next Section Button ---
     return (_jsxs("div", { className: `flex flex-col md:flex-row min-h-screen ${lightBg}`, children: [_jsxs("aside", { className: `w-full md:w-72 lg:w-80 border-r ${themedInputBorder} ${sidebarBg} p-4 md:sticky md:top-0 md:h-screen overflow-y-auto shrink-0`, children: [_jsxs("div", { className: "mb-4", children: [courseId && (_jsxs(Button, { variant: "link", onClick: () => navigate(`/courses/${courseId}`), className: `p-0 mb-3 text-sm ${goldAccent} hover:underline flex items-center`, children: [_jsx(ArrowLeft, { className: "mr-1.5 h-4 w-4" }), " Back to Course"] })), _jsxs("h2", { className: `text-xl font-semibold ${deepBrown}`, children: ["Week ", weekData.weekNumber, ": ", weekData.title] }), weekData.description && _jsx("p", { className: `text-sm mt-1 ${midBrown}`, children: weekData.description })] }), _jsxs("nav", { className: "space-y-1.5", children: [sortedSections.length === 0 && _jsx("p", { className: `${mutedText} text-sm`, children: "No sections in this week." }), sortedSections.map(section => (_jsxs(Button, { variant: "ghost", onClick: () => handleSectionSelect(section.id), className: `w-full justify-start text-left h-auto py-2.5 px-3 rounded-md transition-colors duration-150
                                         ${currentSection?.id === section.id
                                     ? `bg-amber-100 dark:bg-amber-700/30 ${goldAccent} font-semibold`
                                     : `${midBrown} hover:bg-gray-200 dark:hover:bg-gray-700/60`}`, children: [_jsxs("span", { className: "truncate", children: [section.order, ". ", section.title] }), userProgress[section.id] && _jsx(CheckSquare, { className: "ml-auto h-4 w-4 text-green-500 shrink-0" })] }, section.id)))] })] }), _jsx("main", { id: "main-content-area", className: "flex-1 p-6 md:p-8 lg:p-10 overflow-y-auto", children: currentSection ? (_jsxs("article", { className: `prose prose-base lg:prose-lg dark:prose-invert max-w-none ${defaultDarkTextColor}`, children: [(() => {
-                            console.log("WeekContentPage: Rendering currentSection details:", JSON.stringify(currentSection, (k, v) => v instanceof File ? { name: v.name } : v, 2));
-                            return null; // This IIFE now returns null, which is a valid ReactNode
+                            // console.log("WeekContentPage: Rendering currentSection details:", JSON.stringify(currentSection, (k,v) => v instanceof File ? {name:v.name} : v, 2));
+                            return null;
                         })(), _jsx("h1", { className: `text-3xl lg:text-4xl font-bold mb-3 ${deepBrown}`, children: currentSection.title }), currentSection.description && _jsx("p", { className: `text-lg mb-6 ${midBrown}`, children: currentSection.description }), Array.isArray(currentSection.content) && currentSection.content.length > 0 ? (currentSection.content.sort((a, b) => (a.order || 0) - (b.order || 0)).map((contentItem, index) => {
-                            // Log each contentItem before returning its JSX
-                            console.log(`WeekContentPage: Preparing to render ContentItem ${index} (ID: ${contentItem.id}, Type: ${contentItem.type}):`, JSON.stringify(contentItem, (k, v) => v instanceof File ? { name: v.name } : v, 2));
+                            // console.log(`WeekContentPage: Preparing to render ContentItem ${index} (ID: ${contentItem.id}, Type: ${contentItem.type}):`, JSON.stringify(contentItem, (k,v) => v instanceof File ? {name:v.name} : v, 2));
                             return (_jsxs("div", { className: `py-6 my-6 ${index > 0 ? `border-t ${themedInputBorder}` : ''}`, children: [_jsx("h2", { className: `text-2xl lg:text-3xl font-semibold mt-2 mb-3 ${deepBrown}`, children: contentItem.title }), contentItem.isRequired && _jsx("span", { className: `text-sm font-medium text-red-600 dark:text-red-400 block mb-3`, children: "Required" }), Array.isArray(contentItem.richContent) && contentItem.richContent.length > 0 ? (_jsx("div", { className: "mt-3 space-y-4", children: contentItem.richContent.map((block, blockIdx) => {
                                             if (!block) {
-                                                // Log if a block is unexpectedly null/undefined
                                                 console.warn(`WeekContentPage: RichContentBlock at index ${blockIdx} is null or undefined for ContentItem ID ${contentItem.id}`);
                                                 return _jsx("div", { className: "text-sm text-red-500", children: "Empty or invalid rich content block found." }, `empty-block-${blockIdx}`);
                                             }
                                             return renderRichContentBlock(block, blockIdx);
                                         }) })) : contentItem.type === 'text' && contentItem.content ? (_jsx("div", { dangerouslySetInnerHTML: { __html: contentItem.content } })) : contentItem.type === 'video' && contentItem.url ? (_jsx("div", { className: "not-prose my-4", children: _jsx("video", { controls: true, src: contentItem.url, className: "w-full max-w-2xl mx-auto rounded-md aspect-video bg-black" }) })) : contentItem.type === 'quiz_link' && contentItem.url ? (_jsx("div", { className: "my-4", children: _jsx("a", { href: contentItem.url, target: "_blank", rel: "noopener noreferrer", children: _jsxs(Button, { className: `${primaryButtonClasses}`, children: [" Go to Quiz: ", contentItem.title, " "] }) }) })) : (_jsxs("p", { className: mutedText, children: ["Content item type '", contentItem.type, "' not fully renderable with available data."] }))] }, contentItem.id || `ci-${index}`));
-                        })) : (_jsx("p", { className: `${mutedText} py-4`, children: "This section has no learning content items yet." })), _jsxs("div", { className: `mt-10 pt-6 border-t ${themedInputBorder} flex items-center space-x-3`, children: [_jsx(Checkbox, { id: `complete-${currentSection.id}`, checked: !!userProgress[currentSection.id], onCheckedChange: (checked) => handleMarkSectionComplete(currentSection.id, !!checked), className: "h-5 w-5 rounded data-[state=checked]:bg-green-500 data-[state=checked]:text-white data-[state=checked]:border-green-600 border-gray-400 dark:border-gray-500" }), _jsx("label", { htmlFor: `complete-${currentSection.id}`, className: `text-base font-medium leading-none ${midBrown} cursor-pointer select-none`, children: "Mark as Completed" })] })] })) : (_jsxs("div", { className: "text-center py-10", children: [_jsx(HelpCircleIcon, { className: `mx-auto h-16 w-16 ${mutedText}` }), _jsx("p", { className: `mt-5 text-xl font-semibold ${deepBrown}`, children: sortedSections.length > 0 ? "Select a section to begin" : "No sections available in this week." }), sortedSections.length > 0 && _jsx("p", { className: `${mutedText} mt-1`, children: "Choose a section from the sidebar to view its content." })] })) })] }));
+                        })) : (_jsx("p", { className: `${mutedText} py-4`, children: "This section has no learning content items yet." })), _jsxs("div", { className: `mt-10 pt-6 border-t ${themedInputBorder} flex flex-col sm:flex-row items-center sm:justify-between gap-4`, children: [_jsxs("div", { className: "flex items-center space-x-3", children: [_jsx(Checkbox, { id: `complete-${currentSection.id}`, checked: !!userProgress[currentSection.id], onCheckedChange: (checked) => handleMarkSectionComplete(currentSection.id, !!checked), className: "h-5 w-5 rounded data-[state=checked]:bg-green-500 data-[state=checked]:text-white data-[state=checked]:border-green-600 border-gray-400 dark:border-gray-500" }), _jsx("label", { htmlFor: `complete-${currentSection.id}`, className: `text-base font-medium leading-none ${midBrown} cursor-pointer select-none`, children: "Mark as Completed" })] }), hasNextSection && nextSection && (_jsxs(Button, { onClick: () => handleSectionSelect(nextSection.id), className: `${primaryButtonClasses} flex items-center group`, children: [_jsxs("span", { children: ["Next: ", nextSection.title.substring(0, 20), nextSection.title.length > 20 ? '...' : ''] }), _jsx(ArrowRight, { className: "ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" })] }))] })] })) : (_jsxs("div", { className: "text-center py-10", children: [_jsx(HelpCircleIcon, { className: `mx-auto h-16 w-16 ${mutedText}` }), _jsx("p", { className: `mt-5 text-xl font-semibold ${deepBrown}`, children: sortedSections.length > 0 ? "Select a section to begin" : "No sections available in this week." }), sortedSections.length > 0 && _jsx("p", { className: `${mutedText} mt-1`, children: "Choose a section from the sidebar to view its content." })] })) })] }));
 };
 export default WeekContentPage;

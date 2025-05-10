@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button.js';
 import { Checkbox } from '../components/ui/checkbox.js';
-import { Loader2, AlertCircle, ArrowLeft, CheckSquare, HelpCircle as HelpCircleIcon } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, CheckSquare, HelpCircle as HelpCircleIcon, ArrowRight } from 'lucide-react'; // Added ArrowRight
 import * as apiService from '../services/api.js';
 import type { Week, Section, ContentItem, RichContentItemBlock, VideoBlockContent, QuizBlockContent, QuizQuestion as ApiQuizQuestion } from '../services/api.js';
 import { Input } from "../components/ui/input.js";
@@ -55,17 +55,17 @@ const WeekContentPage: React.FC = () => {
             try {
                 const fetchedWeek = await apiService.getWeekWithDetails(weekId);
                 console.log("WeekContentPage: Fetched Week Data RAW:", fetchedWeek);
-                console.log("WeekContentPage: Fetched Week Data Stringified:", JSON.stringify(fetchedWeek, (key, value) => {
-                    if (value instanceof File) { return { name: value.name, type: value.type, size: value.size, lastModified: value.lastModified }; }
-                    return value;
-                }, 2));
+                // Removed detailed stringify for brevity in this diff, it's good for debugging
 
                 if (fetchedWeek && Array.isArray(fetchedWeek.sections)) {
                     setWeekData(fetchedWeek);
                     const sortedSections = [...fetchedWeek.sections].sort((a, b) => (a.order || 0) - (b.order || 0));
                     if (sortedSections.length > 0) {
-                        setCurrentSection(sortedSections[0]);
-                        console.log("WeekContentPage: Initial current section set:", sortedSections[0].title);
+                        // Try to restore current section from URL hash or sessionStorage, or default to first
+                        const hashSectionId = window.location.hash.substring(1);
+                        const restoredSection = sortedSections.find(s => s.id === hashSectionId);
+                        setCurrentSection(restoredSection || sortedSections[0]);
+                        console.log("WeekContentPage: Initial current section set:", (restoredSection || sortedSections[0]).title);
                     } else {
                         setCurrentSection(null);
                         console.log("WeekContentPage: No sections found in the fetched week.");
@@ -86,6 +86,13 @@ const WeekContentPage: React.FC = () => {
         fetchWeekDetails();
     }, [courseId, weekId]);
 
+    useEffect(() => {
+        // Update URL hash when currentSection changes
+        if (currentSection) {
+            navigate(`#${currentSection.id}`, { replace: true });
+        }
+    }, [currentSection, navigate]);
+
     const handleSectionSelect = (sectionId: string) => {
         const selected = weekData?.sections?.find(s => s.id === sectionId);
         if (selected) {
@@ -98,11 +105,24 @@ const WeekContentPage: React.FC = () => {
         }
     };
 
-    const handleMarkSectionComplete = async (sectionId: string, isCompleted: boolean) => { /* ... */ };
+    const handleMarkSectionComplete = async (sectionId: string, isCompleted: boolean) => {
+        console.log(`WeekContentPage: Marking section ${sectionId} as ${isCompleted ? 'complete' : 'incomplete'}`);
+        // Placeholder for API call to update progress
+        setUserProgress(prev => ({ ...prev, [sectionId]: isCompleted }));
+        // Example:
+        // try {
+        //   await apiService.updateSectionProgress(courseId!, weekId!, sectionId, isCompleted);
+        // } catch (error) {
+        //   console.error("Failed to update section progress:", error);
+        //   // Revert UI change on error
+        //   setUserProgress(prev => ({ ...prev, [sectionId]: !isCompleted }));
+        //   alert("Could not update progress. Please try again.");
+        // }
+    };
 
     const renderRichContentBlock = (block: RichContentItemBlock, blockIndex: number) => {
         // Logging can happen here before returning JSX
-        console.log(`WeekContentPage: Preparing to render RichContentBlock ${blockIndex} (ID: ${block.id}, Type: ${block.type}):`, JSON.stringify(block, (k, v) => v instanceof File ? {name:v.name, type:v.type} : v, 2));
+        // console.log(`WeekContentPage: Preparing to render RichContentBlock ${blockIndex} (ID: ${block.id}, Type: ${block.type}):`, JSON.stringify(block, (k, v) => v instanceof File ? {name:v.name, type:v.type} : v, 2));
         
         return (
             <div key={block.id || `block-${blockIndex}`} className={`mt-4 pt-4 border-t first:mt-0 first:pt-0 first:border-t-0 ${themedInputBorder}`}>
@@ -168,11 +188,24 @@ const WeekContentPage: React.FC = () => {
     if (!weekData) return <div className="text-center p-8 text-gray-500">Week data not found. <Button onClick={() => navigate(-1)} className={`${outlineButtonClasses} ml-4`}>Go Back</Button></div>;
 
     const sortedSections = weekData.sections ? [...weekData.sections].sort((a, b) => (a.order || 0) - (b.order || 0)) : [];
+    
+    // --- Logic for Next Section Button ---
+    let currentSectionIndex = -1;
+    let hasNextSection = false;
+    let nextSection: Section | null = null;
+
+    if (currentSection && sortedSections.length > 0) {
+        currentSectionIndex = sortedSections.findIndex(s => s.id === currentSection.id);
+        if (currentSectionIndex !== -1 && currentSectionIndex < sortedSections.length - 1) {
+            hasNextSection = true;
+            nextSection = sortedSections[currentSectionIndex + 1];
+        }
+    }
+    // --- End Logic for Next Section Button ---
 
     return (
         <div className={`flex flex-col md:flex-row min-h-screen ${lightBg}`}>
             <aside className={`w-full md:w-72 lg:w-80 border-r ${themedInputBorder} ${sidebarBg} p-4 md:sticky md:top-0 md:h-screen overflow-y-auto shrink-0`}>
-                {/* ... Sidebar content ... */}
                 <div className="mb-4">
                     {courseId && (
                         <Button variant="link" onClick={() => navigate(`/courses/${courseId}`)} className={`p-0 mb-3 text-sm ${goldAccent} hover:underline flex items-center`}>
@@ -207,8 +240,8 @@ const WeekContentPage: React.FC = () => {
                     <article className={`prose prose-base lg:prose-lg dark:prose-invert max-w-none ${defaultDarkTextColor}`}>
                         {/* Log currentSection before rendering its details */}
                         {(() => { 
-                            console.log("WeekContentPage: Rendering currentSection details:", JSON.stringify(currentSection, (k,v) => v instanceof File ? {name:v.name} : v, 2));
-                            return null; // This IIFE now returns null, which is a valid ReactNode
+                            // console.log("WeekContentPage: Rendering currentSection details:", JSON.stringify(currentSection, (k,v) => v instanceof File ? {name:v.name} : v, 2));
+                            return null; 
                         })()}
                         
                         <h1 className={`text-3xl lg:text-4xl font-bold mb-3 ${deepBrown}`}>{currentSection.title}</h1>
@@ -216,8 +249,7 @@ const WeekContentPage: React.FC = () => {
 
                         {Array.isArray(currentSection.content) && currentSection.content.length > 0 ? (
                             currentSection.content.sort((a,b)=> (a.order || 0) - (b.order || 0)).map((contentItem, index) => {
-                                // Log each contentItem before returning its JSX
-                                console.log(`WeekContentPage: Preparing to render ContentItem ${index} (ID: ${contentItem.id}, Type: ${contentItem.type}):`, JSON.stringify(contentItem, (k,v) => v instanceof File ? {name:v.name} : v, 2));
+                                // console.log(`WeekContentPage: Preparing to render ContentItem ${index} (ID: ${contentItem.id}, Type: ${contentItem.type}):`, JSON.stringify(contentItem, (k,v) => v instanceof File ? {name:v.name} : v, 2));
                                 return (
                                     <div key={contentItem.id || `ci-${index}`} className={`py-6 my-6 ${index > 0 ? `border-t ${themedInputBorder}` : ''}`}>
                                         <h2 className={`text-2xl lg:text-3xl font-semibold mt-2 mb-3 ${deepBrown}`}>{contentItem.title}</h2>
@@ -227,7 +259,6 @@ const WeekContentPage: React.FC = () => {
                                             <div className="mt-3 space-y-4">
                                                 {contentItem.richContent.map((block, blockIdx) => {
                                                     if (!block) {
-                                                        // Log if a block is unexpectedly null/undefined
                                                         console.warn(`WeekContentPage: RichContentBlock at index ${blockIdx} is null or undefined for ContentItem ID ${contentItem.id}`);
                                                         return <div key={`empty-block-${blockIdx}`} className="text-sm text-red-500">Empty or invalid rich content block found.</div>;
                                                     }
@@ -256,15 +287,31 @@ const WeekContentPage: React.FC = () => {
                             <p className={`${mutedText} py-4`}>This section has no learning content items yet.</p>
                         )}
 
-                        <div className={`mt-10 pt-6 border-t ${themedInputBorder} flex items-center space-x-3`}>
-                            <Checkbox
-                                id={`complete-${currentSection.id}`}
-                                checked={!!userProgress[currentSection.id]}
-                                onCheckedChange={(checked) => handleMarkSectionComplete(currentSection.id, !!checked)}
-                                className="h-5 w-5 rounded data-[state=checked]:bg-green-500 data-[state=checked]:text-white data-[state=checked]:border-green-600 border-gray-400 dark:border-gray-500"
-                            />
-                            <label htmlFor={`complete-${currentSection.id}`} className={`text-base font-medium leading-none ${midBrown} cursor-pointer select-none`}>Mark as Completed</label>
+                        {/* --- Updated Actions Bar --- */}
+                        <div className={`mt-10 pt-6 border-t ${themedInputBorder} flex flex-col sm:flex-row items-center sm:justify-between gap-4`}>
+                            <div className="flex items-center space-x-3">
+                                <Checkbox
+                                    id={`complete-${currentSection.id}`}
+                                    checked={!!userProgress[currentSection.id]}
+                                    onCheckedChange={(checked) => handleMarkSectionComplete(currentSection.id, !!checked)}
+                                    className="h-5 w-5 rounded data-[state=checked]:bg-green-500 data-[state=checked]:text-white data-[state=checked]:border-green-600 border-gray-400 dark:border-gray-500"
+                                />
+                                <label htmlFor={`complete-${currentSection.id}`} className={`text-base font-medium leading-none ${midBrown} cursor-pointer select-none`}>
+                                    Mark as Completed
+                                </label>
+                            </div>
+                            
+                            {hasNextSection && nextSection && (
+                                <Button
+                                    onClick={() => handleSectionSelect(nextSection!.id)} // nextSection is guaranteed non-null here
+                                    className={`${primaryButtonClasses} flex items-center group`} // Added group for potential icon styling
+                                >
+                                    <span>Next: {nextSection.title.substring(0,20)}{nextSection.title.length > 20 ? '...' : ''}</span>
+                                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                                </Button>
+                            )}
                         </div>
+                         {/* --- End Updated Actions Bar --- */}
                     </article>
                 ) : (
                     <div className="text-center py-10">
