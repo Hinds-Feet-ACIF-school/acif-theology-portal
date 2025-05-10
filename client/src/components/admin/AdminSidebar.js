@@ -1,11 +1,11 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Users, FileText, Settings, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, Settings, BarChart3 } from 'lucide-react';
 const adminLinks = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Courses', href: '/admin/courses', icon: BookOpen },
     { name: 'Students', href: '/admin/students', icon: Users },
-    { name: 'Quizzes', href: '/admin/quizzes', icon: FileText },
+    // { name: 'Quizzes', href: '/admin/quizzes', icon: FileText },
     { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
