@@ -30,7 +30,7 @@ const activeBg = `bg-[${accentColor}]/10 dark:bg-[${accentColor}]/20`;
 const completedColor = `text-green-600 dark:text-green-400`;
 const completedBg = `bg-green-100 dark:bg-green-900/30`;
 export default function CoursesPage() {
-    const { user, loading: authLoading } = useAuth();
+    const { currentUser: user, loading: authLoading } = useAuth();
     const [coursesOverview, setCoursesOverview] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);

@@ -42,7 +42,7 @@ const tabsTriggerInactiveClasses = `text-[#4A1F1F] dark:text-[#E0D6C3]/80 hover:
 const tabsTriggerActiveClasses = `shadow-md bg-white dark:bg-gray-900 text-[${accentColor}] font-semibold border-b-2 ${goldBorder}`;
 // --- End Style Constants ---
 export default function DashboardPage() {
-    const { user } = useAuth();
+    const { currentUser: user } = useAuth();
     const navigate = useNavigate();
     // This state will store the data structure returned by apiService.getAccessibleContent()
     const [userAccessibleCourses, setUserAccessibleCourses] = useState([]);

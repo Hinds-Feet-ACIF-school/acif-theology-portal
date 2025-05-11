@@ -78,7 +78,7 @@ const tabsTriggerActiveClasses = `shadow-md bg-white dark:bg-gray-900 text-[${ac
 // --- End Style Constants ---
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { currentUser: user } = useAuth();
   const navigate = useNavigate();
   // This state will store the data structure returned by apiService.getAccessibleContent()
   const [userAccessibleCourses, setUserAccessibleCourses] = useState<AccessibleContentCourse[]>([]);

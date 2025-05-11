@@ -558,12 +558,16 @@ export default function AdminCourseManagementPage() {
       <CreateEditQuizModal isOpen={showQuizModal} onClose={() => { setShowQuizModal(false); setEditingQuiz(null); setCurrentWeekIdForModal(undefined); }} quiz={editingQuiz} weekId={currentWeekIdForModal} onSave={handleSaveQuiz} />
       <CreateEditSectionModal isOpen={showSectionModal && !!currentWeekIdForModal} onClose={() => { setShowSectionModal(false); setEditingSection(null); setCurrentWeekIdForModal(undefined); }} section={editingSection} weekId={currentWeekIdForModal || ''} onSave={handleSaveSection} existingSectionOrders={currentWeekIdForModal ? contentDetails[currentWeekIdForModal]?.sections?.map(s => s.order || 0) || [] : []} />
       // ... other modals ...
-<CreateEditContentModal 
-    isOpen={showContentModal} 
-    onClose={() => { /* ... */ }} 
-    content={editingContent} 
-    sectionId={currentSectionIdForModal || ''} 
-    onSave={handleSaveContent} 
+<CreateEditContentModal
+    isOpen={showContentModal}
+    onClose={() => {
+        setShowContentModal(false); 
+        setEditingContent(null);      
+        setCurrentSectionIdForModal(undefined);
+    }}
+    content={editingContent}
+    sectionId={currentSectionIdForModal || ''}
+    onSave={handleSaveContent}
 />
 
 {/* Render SectionPreviewModal conditionally */}
