@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select.js";
 import { Checkbox } from "../components/ui/checkbox.js";
 import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
-import apiClient from "../services/apiClient.js";
+import apiClient from "../services/apiClient";
 
 // --- Define Country List (Outside Component) ---
 const allCountries: string[] = [
