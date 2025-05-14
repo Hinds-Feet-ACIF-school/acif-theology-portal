@@ -91,21 +91,40 @@ const RegisterPage: React.FC = () => {
   const buttonOutlineClasses = `border border-[#4A1F1F]/50 dark:border-[#E0D6C3]/50 ${secondaryTextLight} ${secondaryTextDark} hover:text-[${accentColor}] hover:border-[${accentColor}] dark:hover:text-[${accentColor}] dark:hover:border-[${accentColor}] hover:bg-transparent dark:hover:bg-transparent transition-colors duration-200 inline-flex items-center justify-center rounded-md text-sm ring-offset-background h-10 px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}]`;
 
 
-  useEffect(() => {
-    const fetchCohorts = async () => {
-      try {
-        setLoading(true);
-        const response = await apiClient.get<Cohort[]>('/cohorts/available');
-        setAvailableCohorts(response.data);
-        setFormError(null);
-      } catch (error) {
-      
-      } finally {
-        setLoading(false);
+ useEffect(() => {
+  const fetchCohorts = async () => {
+    try {
+      setLoading(true);
+      setFormError(null); // Clear previous errors
+      const response = await apiClient.get<Cohort[]>('/cohorts/available');
+      console.log("Fetched cohorts:", response.data); // Log successful fetch
+      setAvailableCohorts(response.data || []); // Ensure it's an array even if data is null/undefined
+    } catch (error: any) { // Add 'any' to inspect the error
+      console.error("Failed to fetch cohorts:", error);
+      let errorMessage = "Failed to load cohorts. Please try again.";
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error("Error data:", error.response.data);
+        console.error("Error status:", error.response.status);
+        errorMessage = `Error: ${error.response.data.message || error.response.statusText || 'Server error'}`;
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error("Error request:", error.request);
+        errorMessage = "No response from server. Check network or API URL.";
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error("Error message:", error.message);
+        errorMessage = `Error: ${error.message}`;
       }
-    };
-    fetchCohorts();
-  }, []);
+      setFormError(errorMessage);
+      setAvailableCohorts([]); // Set to empty array on error
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchCohorts();
+}, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
