@@ -1,4 +1,4 @@
-import { API } from "./api.js";
+import { API } from "./api";
 const DiscussionService = {
     async getAllDiscussions(params) {
         const response = await API.get("/discussions", { params });

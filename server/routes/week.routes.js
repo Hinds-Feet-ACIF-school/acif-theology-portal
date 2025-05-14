@@ -1,46 +1,52 @@
-// server/routes/week.routes.js
 import express from "express";
 import * as WeekController from "../controllers/week.controller.js";
 import { isInstructor, isAdmin, verifyToken } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-// GET a list of weeks for a specific course
 router.get(
     "/by-course/:courseId",
     verifyToken,
-    WeekController.getWeeksByCourse // This controller method must exist and be exported
+    WeekController.getWeeksByCourse
 );
 
-// GET detailed information for a specific week, including its sections and content
 router.get(
     "/:weekId/details",
     verifyToken,
-    WeekController.getWeekWithDetails // This controller method MUST exist and be exported
+    WeekController.getWeekWithDetails
 );
 
-// POST to create a new week
+router.get(
+    "/:weekId/progress",
+    verifyToken,
+    WeekController.getUserProgress
+);
+
+router.put(
+    "/:weekId/sections/:sectionId/progress",
+    verifyToken,
+    WeekController.updateUserSectionProgress
+);
+
 router.post(
     "/",
     verifyToken,
     isInstructor,
-    WeekController.createWeek // This controller method must exist and be exported
+    WeekController.createWeek
 );
 
-// PUT to update an existing week
 router.put(
     "/:weekId",
     verifyToken,
     isInstructor,
-    WeekController.updateWeek // This controller method must exist and be exported
+    WeekController.updateWeek
 );
 
-// DELETE a week
 router.delete(
     "/:weekId",
     verifyToken,
     isInstructor,
-    WeekController.deleteWeek // This controller method must exist and be exported
+    WeekController.deleteWeek
 );
 
 export default router;

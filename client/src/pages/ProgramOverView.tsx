@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Button } from "../components/ui/button.js"; 
+import { Button } from "../components/ui/button.js";
 import {
   BookOpen,
   Calendar,
@@ -9,9 +9,9 @@ import {
   CheckCircle2,
   FileText,
   GraduationCap,
-  LucideIcon, 
+  LucideIcon,
 } from "lucide-react";
-import { useAuth } from '../context/AuthContext.js'; 
+import { useAuth } from '../context/AuthContext.js';
 
 interface Course {
   id: string;
@@ -28,16 +28,12 @@ interface ProgramStructureItem {
   desc: string;
 }
 
-const accentColor = "#C5A467";
-const accentHoverColor = "#B08F55";
 const primaryTextLight = "text-[#2A0F0F]";
 const secondaryTextLight = "text-[#4A1F1F]";
 const primaryTextDark = "dark:text-[#FFF8F0]";
 const secondaryTextDark = "dark:text-[#E0D6C3]/90";
 const mutedTextLight = "text-gray-500";
 const mutedTextDark = "dark:text-gray-400";
-const contentBgLight = "bg-white";
-const contentBgDark = "dark:bg-gray-900";
 const cardBgLight = "bg-white";
 const cardBgDark = "dark:bg-gray-900";
 const cardBorder = `border border-[#C5A467]/20 dark:border-[#C5A467]/30`;
@@ -45,9 +41,7 @@ const sectionBgLight = "bg-[#FFF8F0]";
 const sectionBgDark = "dark:bg-gray-950";
 const altSectionBgLight = "bg-[#F4EDE4]";
 const altSectionBgDark = "dark:bg-gray-900";
-const headerBgLight = "bg-[#2A0F0F]";
 const headerTextLight = "text-[#FFF8F0]";
-const headerBgDark = "dark:bg-gray-800";
 const headerTextDark = "dark:text-[#FFF8F0]";
 const ctaBgLight = "bg-[#2A0F0F]";
 const ctaBgDark = "dark:bg-black";
@@ -55,7 +49,7 @@ const ctaText = "text-[#FFF8F0]";
 const ctaSubText = "text-[#E0D6C3]";
 
 const ProgramOverviewPage: React.FC = () => {
-  const { isAuthenticated } = useAuth(); 
+  const { isAuthenticated } = useAuth();
   const courses: Course[] = [
         {
       id: "foundations",
@@ -174,13 +168,13 @@ const ProgramOverviewPage: React.FC = () => {
     <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark}`}>
       <section className="w-full py-16 md:py-28 lg:py-36 bg-gradient-to-br from-[#2A0F0F] to-[#4A1F1F] dark:from-gray-900 dark:to-gray-800 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/path-to-subtle-cross-pattern.svg')] bg-repeat opacity-10 dark:opacity-5"></div>
-        <div className="container relative px-4 md:px-6 z-10">
+        <div className="container mx-auto relative px-4 md:px-6 z-10">
           <div className="flex flex-col items-center space-y-4 text-center">
             <div className="space-y-3">
-              <h1 className={`text-4xl ${headerTextLight} ${headerTextDark} font-bold font-serif tracking-tight sm:text-5xl md:text-6xl lg:text-7xl/none`}>
+              <h1 className={`text-4xl ${headerTextLight} ${headerTextDark} font-bold font-serif tracking-tight sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl/none`}>
                 Program Overview
               </h1>
-              <p className={`mx-auto max-w-[750px] ${ctaSubText} md:text-xl lg:text-lg`}>
+              <p className={`mx-auto max-w-[750px] ${ctaSubText} text-lg md:text-xl lg:text-xl xl:text-2xl`}>
                 A comprehensive guide to our Certificate in Apostolic & Evangelical Theology.
               </p>
             </div>
@@ -189,18 +183,18 @@ const ProgramOverviewPage: React.FC = () => {
       </section>
 
       <section className={`w-full py-16 md:py-24 lg:py-32 ${sectionBgLight} ${sectionBgDark}`}>
-        <div className="container px-4 md:px-6">
+        <div className="container mx-auto px-4 md:px-6">
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20">
-            <div className="space-y-6 pl-4">
-              <h2 className={`text-3xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Program Structure</h2>
-              <p className={`${secondaryTextLight} ${secondaryTextDark} text-lg`}>
+            <div className="space-y-6 pl-4 text-center lg:text-left">
+              <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Program Structure</h2>
+              <p className={`${secondaryTextLight} ${secondaryTextDark} text-base md:text-lg xl:text-xl`}>
                 Our certificate program is structured to provide a comprehensive understanding of Apostolic and
                 Evangelical theology through six sequential courses.
               </p>
               <div className="grid gap-4">
                 {programStructureItems.map((item, index) => (
                   <div key={index} className={`flex items-start gap-4 p-4 rounded-lg ${cardBgLight} ${cardBgDark} ${cardBorder} shadow-sm`}>
-                    <item.icon className={`h-6 w-6 text-[${accentColor}] mt-1 flex-shrink-0`} />
+                    <item.icon className="h-6 w-6 text-[#C5A467] mt-1 flex-shrink-0" />
                     <div>
                       <h3 className={`font-semibold ${primaryTextLight} ${primaryTextDark}`}>{item.title}</h3>
                       <p className={`text-sm ${mutedTextLight} ${mutedTextDark}`}>{item.desc}</p>
@@ -209,15 +203,15 @@ const ProgramOverviewPage: React.FC = () => {
                 ))}
               </div>
             </div>
-            <div className="space-y-6 pr-4">
-              <h2 className={`text-3xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Learning Approach</h2>
-              <p className={`${secondaryTextLight} ${secondaryTextDark} text-lg`}>
+            <div className="space-y-6 pr-4 text-center lg:text-left">
+              <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Learning Approach</h2>
+              <p className={`${secondaryTextLight} ${secondaryTextDark} text-base md:text-lg xl:text-xl`}>
                 Our program follows a structured, sequential learning approach to ensure you build a solid foundation.
               </p>
               <ul className="space-y-3">
                 {learningApproachPoints.map((item, index) => (
                     <li key={index} className="flex items-start gap-3">
-                       <CheckCircle2 className={`h-5 w-5 text-[${accentColor}] mt-0.5 flex-shrink-0`} />
+                       <CheckCircle2 className="h-5 w-5 text-[#C5A467] mt-0.5 flex-shrink-0" />
                        <span className={`${secondaryTextLight} ${secondaryTextDark}`}>{item}</span>
                     </li>
                 ))}
@@ -226,8 +220,8 @@ const ProgramOverviewPage: React.FC = () => {
                 <h3 className={`font-semibold mb-3 ${primaryTextLight} ${primaryTextDark}`}>Weekly Learning Components</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                    {weeklyComponents.map((item, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <div className={`h-2.5 w-2.5 rounded-full bg-[${accentColor}]`}></div>
+                      <div key={index} className="flex items-center gap-2 justify-center sm:justify-start">
+                        <div className="h-2.5 w-2.5 rounded-full bg-[#C5A467]"></div>
                         <span className={`${secondaryTextLight} ${secondaryTextDark}`}>{item}</span>
                       </div>
                    ))}
@@ -239,26 +233,26 @@ const ProgramOverviewPage: React.FC = () => {
       </section>
 
       <section className={`w-full py-16 md:py-24 lg:py-32 ${altSectionBgLight} ${altSectionBgDark}`}>
-        <div className="container px-4 md:px-6">
-           <div className="flex flex-col items-center space-y-4 text-center mb-12">
+        <div className="container mx-auto px-4 md:px-6">
+           <div className="flex flex-col items-center space-y-4 text-center mb-12 md:mb-16 lg:mb-20">
             <div className="space-y-2">
-              <h2 className={`text-3xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Course Curriculum</h2>
-              <p className={`mx-auto max-w-[700px] md:text-xl ${secondaryTextLight} ${secondaryTextDark}`}>
+              <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Course Curriculum</h2>
+              <p className={`mx-auto max-w-[700px] text-base md:text-lg xl:text-xl ${secondaryTextLight} ${secondaryTextDark}`}>
                 Detailed breakdown of the six courses included in the certificate program.
               </p>
             </div>
           </div>
 
-          <div className="space-y-12">
+          <div className="space-y-12 md:space-y-16 lg:space-y-20">
             {courses.map((course) => (
               <div
                 key={course.id}
                 className={`${cardBgLight} ${cardBgDark} ${cardBorder} rounded-lg overflow-hidden shadow-lg`}
               >
-                <div className={`${headerBgLight} ${headerBgDark} ${headerTextLight} ${headerTextDark} p-6`}>
+                <div className={`p-6 ${primaryTextLight} ${headerTextDark} bg-[#2A0F0F] dark:bg-gray-800`}>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <h3 className="text-2xl font-semibold font-serif flex-1">{course.title}</h3>
-                    <div className={`flex items-center gap-2 text-sm font-medium bg-[${accentColor}]/10 dark:bg-[${accentColor}]/20 text-[${accentColor}] px-3 py-1 rounded-full`}>
+                    <h3 className={`text-xl sm:text-2xl lg:text-3xl font-semibold font-serif flex-1 ${headerTextLight} ${headerTextDark}`}>{course.title}</h3>
+                    <div className="flex items-center gap-2 text-sm font-medium bg-[#C5A467]/10 dark:bg-[#C5A467]/20 text-[#C5A467] px-3 py-1 rounded-full">
                       <Clock className="h-4 w-4" />
                       <span>{course.ects} ECTS</span>
                     </div>
@@ -266,18 +260,18 @@ const ProgramOverviewPage: React.FC = () => {
                 </div>
 
                 <div className="p-6">
-                  <p className={`${secondaryTextLight} ${secondaryTextDark} mb-6 text-base`}>{course.description}</p>
+                  <p className={`${secondaryTextLight} ${secondaryTextDark} mb-6 text-base md:text-lg`}>{course.description}</p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     <div>
                       <h4 className={`text-lg font-semibold mb-3 flex items-center gap-2 ${primaryTextLight} ${primaryTextDark}`}>
-                        <Calendar className={`h-5 w-5 text-[${accentColor}]`} />
+                        <Calendar className="h-5 w-5 text-[#C5A467]" />
                         Weekly Breakdown
                       </h4>
                       <ul className="space-y-2 text-sm">
                         {course.weeks.map((week, i) => (
                           <li key={i} className={`flex items-start gap-2 ${secondaryTextLight} ${secondaryTextDark}`}>
-                            <CheckCircle2 className={`h-4 w-4 text-[${accentColor}] mt-1 flex-shrink-0`} />
+                            <CheckCircle2 className="h-4 w-4 text-[#C5A467] mt-1 flex-shrink-0" />
                             <span>{week}</span>
                           </li>
                         ))}
@@ -285,13 +279,13 @@ const ProgramOverviewPage: React.FC = () => {
                     </div>
                     <div>
                       <h4 className={`text-lg font-semibold mb-3 flex items-center gap-2 ${primaryTextLight} ${primaryTextDark}`}>
-                        <FileText className={`h-5 w-5 text-[${accentColor}]`} />
+                        <FileText className="h-5 w-5 text-[#C5A467]" />
                         Assessments
                       </h4>
                       <ul className="space-y-2 text-sm">
                         {course.assessments.map((assessment, i) => (
                           <li key={i} className={`flex items-start gap-2 ${secondaryTextLight} ${secondaryTextDark}`}>
-                            <CheckCircle2 className={`h-4 w-4 text-[${accentColor}] mt-1 flex-shrink-0`} />
+                            <CheckCircle2 className="h-4 w-4 text-[#C5A467] mt-1 flex-shrink-0" />
                             <span>{assessment}</span>
                           </li>
                         ))}
@@ -299,28 +293,28 @@ const ProgramOverviewPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </div> 
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       <section className={`w-full py-16 md:py-24 lg:py-32 ${sectionBgLight} ${sectionBgDark}`}>
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col items-center space-y-4 text-center mb-12">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex flex-col items-center space-y-4 text-center mb-12 md:mb-16 lg:mb-20">
             <div className="space-y-2">
-              <h2 className={`text-3xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Certification</h2>
-              <p className={`mx-auto max-w-[700px] md:text-xl ${secondaryTextLight} ${secondaryTextDark}`}>
+              <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Certification</h2>
+              <p className={`mx-auto max-w-[700px] text-base md:text-lg xl:text-xl ${secondaryTextLight} ${secondaryTextDark}`}>
                 Upon successful completion of all program requirements.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-8 lg:gap-12 items-center justify-center">
-            <div className="flex-1 max-w-md w-full">
-              <div className={`aspect-[4/3] relative ${altSectionBgLight} ${altSectionBgDark} rounded-lg shadow-lg flex items-center justify-center p-4 border-4 border-double border-[${accentColor}] dark:border-[${accentHoverColor}]`}>
-                 <div className={`border border-dashed border-[${accentColor}]/50 dark:border-[${accentHoverColor}]/50 p-6 w-full h-full flex flex-col items-center justify-center text-center`}>
-                  <GraduationCap className={`h-12 w-12 text-[${accentColor}] mb-4`} />
+          <div className="flex flex-col md:flex-row gap-8 lg:gap-12 items-center md:items-start justify-center">
+            <div className="flex-1 max-w-md w-full flex flex-col items-center text-center">
+              <div className={`aspect-[4/3] relative w-full ${altSectionBgLight} ${altSectionBgDark} rounded-lg shadow-lg flex items-center justify-center p-4 border-4 border-double border-[#C5A467] dark:border-[#B08F55]`}>
+                 <div className="border border-dashed border-[#C5A467]/50 dark:border-[#B08F55]/50 p-6 w-full h-full flex flex-col items-center justify-center text-center">
+                  <GraduationCap className="h-12 w-12 text-[#C5A467] mb-4" />
                   <h3 className={`text-lg font-semibold font-serif ${primaryTextLight} ${primaryTextDark}`}>Certificate in</h3>
                    <h3 className={`text-xl font-bold font-serif mb-2 ${primaryTextLight} ${primaryTextDark}`}>Apostolic & Evangelical Theology</h3>
                   <p className={`text-xs mt-3 ${secondaryTextLight} ${secondaryTextDark}`}>Awarded by the International Apostolic Church</p>
@@ -328,12 +322,12 @@ const ProgramOverviewPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="flex-1 max-w-md space-y-4">
+            <div className="flex-1 max-w-md space-y-4 text-center md:text-left">
                <h3 className={`text-xl font-semibold ${primaryTextLight} ${primaryTextDark}`}>What You'll Receive</h3>
               <ul className="space-y-3">
                  {certificationDetails.map((item, index) => (
                     <li key={index} className="flex items-start gap-3">
-                      <CheckCircle2 className={`h-5 w-5 text-[${accentColor}] mt-0.5 flex-shrink-0`} />
+                      <CheckCircle2 className="h-5 w-5 text-[#C5A467] mt-0.5 flex-shrink-0" />
                       <span className={`${secondaryTextLight} ${secondaryTextDark}`}>{item}</span>
                     </li>
                  ))}
@@ -346,26 +340,26 @@ const ProgramOverviewPage: React.FC = () => {
         </div>
       </section>
 
-     
-      {!isAuthenticated && ( 
+
+      {!isAuthenticated && (
         <section className={`w-full py-16 md:py-24 lg:py-28 ${ctaBgLight} ${ctaBgDark} relative ${ctaText}`}>
           <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-b from-[#C5A467]/30 to-transparent"></div>
           <div className="absolute inset-x-0 bottom-0 h-2 bg-gradient-to-t from-[#C5A467]/30 to-transparent"></div>
 
-          <div className="container relative px-4 md:px-6 z-10">
+          <div className="container mx-auto relative px-4 md:px-6 z-10">
             <div className="flex flex-col items-center space-y-6 text-center">
-              <GraduationCap className={`h-10 w-10 text-[${accentColor}] mb-2`} />
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl font-serif">
+              <GraduationCap className="h-10 w-10 text-[#C5A467] mb-2" />
+              <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight font-serif ${ctaText}`}>
                 Ready to Begin Your Theological Journey?
               </h2>
-              <p className={`mx-auto max-w-[700px] ${ctaSubText} md:text-xl lg:text-lg`}>
+              <p className={`mx-auto max-w-[700px] text-lg md:text-xl lg:text-xl xl:text-2xl ${ctaSubText}`}>
                 Join our next cohort and deepen your understanding of Apostolic and Evangelical theology.
               </p>
               <div className="space-x-4 pt-4">
                 <Link to="/register">
                   <Button
                     size="lg"
-                    className={`bg-[${accentColor}] hover:bg-[${accentHoverColor}] text-[#2A0F0F] font-semibold transition-colors`}
+                    className="bg-[#C5A467] hover:bg-[#B08F55] text-[#2A0F0F] font-semibold transition-colors text-base md:text-lg"
                   >
                     Apply Now
                   </Button>
@@ -374,7 +368,7 @@ const ProgramOverviewPage: React.FC = () => {
             </div>
           </div>
         </section>
-      )} 
+      )}
     </div>
   );
 };

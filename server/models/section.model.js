@@ -4,44 +4,35 @@ const sectionsCollection = db.collection("sections");
 
 export const getSectionsByWeekId = async (weekId) => {
     try {
-        // First check if the collection exists
-        const collectionRef = db.collection("sections");
-        const collectionSnapshot = await collectionRef.limit(1).get();
-        
-        if (collectionSnapshot.empty) {
-            // Create the collection by adding a dummy document
-            await collectionRef.add({
-                weekId: weekId,
-                title: "Initial Section",
-                order: 1,
-                content: [],
-                createdAt: new Date(),
-                updatedAt: new Date()
-            });
-            // Return empty array since this is a new collection
-            return [];
+        if (!weekId) { // Good practice to validate input
+            throw new Error("weekId parameter is required for getSectionsByWeekId.");
         }
 
         const sectionsSnapshot = await sectionsCollection
             .where("weekId", "==", weekId)
-            .orderBy("order", "asc")
+            .orderBy("order", "asc") // Assuming you want them ordered
             .get();
 
         const sections = [];
         sectionsSnapshot.forEach((doc) => {
             const sectionData = doc.data();
-            if (sectionData.createdAt?.toDate) sectionData.createdAt = sectionData.createdAt.toDate();
-            if (sectionData.updatedAt?.toDate) sectionData.updatedAt = sectionData.updatedAt.toDate();
+            // Convert Firestore Timestamps to JS Dates for consistency if needed by frontend
+            if (sectionData.createdAt && typeof sectionData.createdAt.toDate === 'function') {
+                sectionData.createdAt = sectionData.createdAt.toDate();
+            }
+            if (sectionData.updatedAt && typeof sectionData.updatedAt.toDate === 'function') {
+                sectionData.updatedAt = sectionData.updatedAt.toDate();
+            }
             sections.push({ id: doc.id, ...sectionData });
         });
 
-        return sections;
+        return sections; // This will be an empty array if no sections match the weekId
     } catch (error) {
-        console.error("Error in getSectionsByWeekId:", error);
-        throw error;
+        console.error("Error in getSectionsByWeekId for weekId:", weekId, error);
+        // Rethrow the error so the controller can handle it and send an appropriate response
+        throw new Error(`Database error fetching sections for week ${weekId}: ${error.message}`);
     }
 };
-
 export const createSection = async (sectionData) => {
     try {
         const docRef = await sectionsCollection.add({

@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from "../ui/button.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card.js";
 import { X } from 'lucide-react';
-import { AdminManagedUser } from '../../pages/admin/StudentManagementPage.js';
+import { AdminManagedUser } from '../../pages/admin/StudentManagementPage';
 
 // --- Theme Constants (Copy from AdminStudentManagementPage or define globally) ---
 const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';

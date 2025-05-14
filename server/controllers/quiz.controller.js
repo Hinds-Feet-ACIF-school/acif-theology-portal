@@ -1,6 +1,6 @@
 import * as QuizModel from "../models/quiz.model.js";
-import * as WeekModel from "../models/week.model.js";
-import * as UserModel from "../models/user.model.js";
+import * as WeekModel from "../models/week.model.js"; // Still needed for createQuiz
+import * as UserModel from "../models/user.model.js"; // Assuming used by other functions if any
 
 export const createQuiz = async (req, res) => {
     try {
@@ -77,7 +77,6 @@ export const updateQuiz = async (req, res) => {
 export const deleteQuiz = async (req, res) => {
      try {
         const { quizId } = req.params;
-
         await QuizModel.deleteQuiz(quizId);
         res.status(200).json({ message: "Quiz deleted successfully." });
     } catch (error) {
@@ -86,39 +85,47 @@ export const deleteQuiz = async (req, res) => {
     }
 };
 
-
-
-
 export const submitQuizAttempt = async (req, res) => {
     try {
-        const submissionData = req.body;
+        const submissionBody = req.body;
         const { uid, name: userName, displayName } = req.user;
         const { quizId } = req.params;
 
+        console.log("QUIZ CONTROLLER (submitQuizAttempt): Received req.body:", JSON.stringify(req.body, null, 2));
+        console.log("QUIZ CONTROLLER (submitQuizAttempt): Received req.params:", JSON.stringify(req.params, null, 2));
+
         if (!quizId) {
-             return res.status(400).json({ message: "quizId parameter is required." });
+            return res.status(400).json({ message: "quizId parameter is required." });
+        }
+        
+        if (!submissionBody.weekId) {
+            return res.status(400).json({ message: "weekId is required in the submission payload." });
+        }
+        if (!submissionBody.courseId) {
+            return res.status(400).json({ message: "courseId is required in the submission payload." });
+        }
+        if (!submissionBody.answers) {
+            return res.status(400).json({ message: "Answers are required in the submission payload." });
         }
 
-        const quiz = await QuizModel.getQuizById(quizId);
-        if (!quiz) return res.status(404).json({ message: "Quiz not found." });
-        const week = await WeekModel.getWeekById(quiz.weekId);
-        if (!week) return res.status(404).json({ message: "Parent week not found." });
-
-
-
-
-        const dataToSubmit = {
-            ...submissionData,
-            quizId: quizId,
+        const dataToSubmitToModel = {
+            answers: submissionBody.answers,
+            quizId: quizId, 
             userId: uid,
             userName: displayName || userName || "Unknown User",
-            weekId: quiz.weekId,
-            courseId: week.courseId,
-
+            weekId: submissionBody.weekId,
+            courseId: submissionBody.courseId,
         };
 
-        const newSubmission = await QuizModel.submitQuizAttempt(dataToSubmit);
-        res.status(201).json({ message: "Quiz attempt submitted successfully", submissionId: newSubmission.id });
+        console.log("QuizController: Data being sent to QuizModel.submitQuizAttempt:", dataToSubmitToModel);
+
+        const newSubmissionResult = await QuizModel.submitQuizAttempt(dataToSubmitToModel);
+        res.status(201).json({ 
+            message: "Quiz attempt submitted successfully", 
+            submissionId: newSubmissionResult.id,
+            score: newSubmissionResult.score,
+            status: newSubmissionResult.status 
+        });
 
     } catch (error) {
         console.error(`Error submitting quiz ${req.params.quizId} for user ${req.user.uid}:`, error);
@@ -132,17 +139,20 @@ export const gradeQuizSubmission = async (req, res) => {
         const gradeData = req.body;
         const { uid: graderId } = req.user;
 
-         if (gradeData.grade === undefined || gradeData.grade === null) {
-            return res.status(400).json({ message: "A numeric grade value is required." });
+         if (gradeData.score === undefined || gradeData.score === null) { // Changed 'grade' to 'score' for consistency
+            return res.status(400).json({ message: "A numeric score value is required." });
         }
 
         const submission = await QuizModel.getSubmissionById(submissionId);
         if (!submission) return res.status(404).json({ message: "Submission not found." });
 
+        const gradePayload = { // Renamed for clarity
+            score: Number(gradeData.score),
+            feedback: gradeData.feedback || "",
+            gradedBy: graderId
+        };
 
-        gradeData.gradedBy = graderId;
-
-        const updatedSubmission = await QuizModel.gradeQuizSubmission(submissionId, gradeData);
+        const updatedSubmission = await QuizModel.gradeQuizSubmission(submissionId, gradePayload);
         res.status(200).json({ message: "Submission graded successfully", submission: updatedSubmission });
 
     } catch (error) {
@@ -172,6 +182,9 @@ export const getUserSubmissionForQuiz = async (req, res) => {
         if (!quizId) {
              return res.status(400).json({ message: "quizId parameter is required." });
         }
+        if (!userId) {
+            return res.status(401).json({ message: "User not authenticated."});
+        }
         const submission = await QuizModel.getUserSubmissionForQuiz(userId, quizId);
          if (!submission) {
             return res.status(404).json({ message: "No submission found for this quiz." });
@@ -183,11 +196,12 @@ export const getUserSubmissionForQuiz = async (req, res) => {
     }
 };
 
-
 export const getMySubmissions = async (req, res) => {
      try {
         const { uid: userId } = req.user;
-
+        if (!userId) {
+            return res.status(401).json({ message: "User not authenticated."});
+        }
         const submissions = await QuizModel.getSubmissionsByUser(userId);
         res.status(200).json(submissions);
     } catch (error) {

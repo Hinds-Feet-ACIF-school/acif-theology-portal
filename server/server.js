@@ -4,23 +4,27 @@ import helmet from "helmet";
 import morgan from "morgan";
 import dotenv from "dotenv";
 import cookieParser from 'cookie-parser';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import router from "./routes/router.js";
-import 'dotenv/config';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Define allowed origins for CORS
 const allowedOrigins = [
     'http://localhost:5173',
-    'https://acif-theology-portall.vercel.app' // Add your Vercel URL here
+    'https://acif-theology-portall.vercel.app'
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      console.log(`CORS allowed for origin: ${origin}`);
       callback(null, true);
     } else {
       console.error(`CORS blocked for origin: ${origin}`);
@@ -31,19 +35,28 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 
+// Apply middleware
 app.use(cors(corsOptions));
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Serve static files from the uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Mount the main router at '/api'
 app.use("/api", router);
 
+// Default route for the root path
 app.get("/", (req, res) => {
   res.json({ message: "Welcome to Apostolic LMS API" });
 });
 
+// Error handling middleware
 app.use((err, req, res, next) => {
   if (err.message.includes('CORS policy does not allow access')) {
      console.error('CORS Error:', err.message);
@@ -57,6 +70,7 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

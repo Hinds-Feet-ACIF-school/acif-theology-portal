@@ -3,9 +3,8 @@ import { Button } from "../ui/button.js";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card.js";
 import { Input } from "../ui/input.js";
 import { Label } from "../ui/label.js";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.js";
 import { X, Save, Loader2, AlertCircle } from 'lucide-react';
-import { Course } from '../../services/api.js';
+import { Course } from '../../services/api';
 
 const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';
 const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]';
@@ -21,8 +20,6 @@ const focusRing = 'focus:ring-1 focus:ring-offset-0 focus:ring-[#C5A467]';
 const primaryButtonClasses = `${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold`;
 const outlineButtonClasses = `${goldBorder} ${goldAccent} hover:bg-[#C5A467]/10 dark:hover:bg-[#C5A467]/15 hover:text-[#A07F44] dark:hover:text-[#E0D6C3]`;
 const inputClasses = `h-9 rounded-md px-3 text-sm ${lightCardBg} ${darkCardBg} ${inputBorder} ${deepBrown} ${focusRing} placeholder:text-gray-400 dark:placeholder:text-gray-500`;
-const selectTriggerClasses = `h-9 rounded-md px-3 text-sm w-full ${lightCardBg} ${darkCardBg} ${inputBorder} ${deepBrown} ${focusRing}`;
-const selectContentClasses = `border ${inputBorder} ${lightCardBg} ${darkCardBg} ${deepBrown} z-[60]`;
 
 interface CreateEditCourseModalProps {
   isOpen: boolean;
@@ -49,16 +46,17 @@ const CreateEditCourseModal: React.FC<CreateEditCourseModalProps> = ({
 
   const isEditing = !!course;
 
-  useEffect(() => {
+useEffect(() => {
     if (isOpen) {
       setError(null);
       if (isEditing && course) {
         setTitle(course.title || '');
         setDescription(course.description || '');
         setMonthOrder(course.monthOrder ? String(course.monthOrder) : '');
-        setInstructor(course.instructor || '');
+        // UPDATED LINE:
+        setInstructor(course.instructorName || course.instructor || '');
         setEcts(course.ects ? String(course.ects) : '');
-      } else {
+      } else { // Reset for new course
         setTitle('');
         setDescription('');
         setMonthOrder('');
@@ -70,14 +68,14 @@ const CreateEditCourseModal: React.FC<CreateEditCourseModalProps> = ({
 
   const handleSaveClick = async () => {
     setError(null);
-    if (!title || !monthOrder) {
+    if (!title || monthOrder === '') {
       setError("Course Title and Month Order are required.");
       return;
     }
 
     const parsedMonthOrder = parseInt(String(monthOrder), 10);
-    if (isNaN(parsedMonthOrder) || parsedMonthOrder < 1 || parsedMonthOrder > 6) {
-      setError("Month Order must be between 1 and 6.");
+    if (isNaN(parsedMonthOrder) || parsedMonthOrder < 1) {
+      setError("Month Order must be a positive number.");
       return;
     }
 
@@ -97,8 +95,9 @@ const CreateEditCourseModal: React.FC<CreateEditCourseModalProps> = ({
       title,
       description,
       monthOrder: parsedMonthOrder,
-      instructor: instructor || undefined,
-      ects: ects ? parseInt(String(ects), 10) : undefined,
+      // UPDATED LINE:
+      instructor: instructor.trim() ? instructor.trim() : undefined,
+      ects: ects && !isNaN(parseInt(String(ects), 10)) ? parseInt(String(ects), 10) : undefined,
     };
 
     try {
@@ -107,7 +106,9 @@ const CreateEditCourseModal: React.FC<CreateEditCourseModalProps> = ({
       } else {
         await onSave(courseDataPayload as Omit<Course, 'id'>);
       }
+
     } catch (err: any) {
+      console.error("Error saving course:", err);
       setError(err.message || "An unexpected error occurred while saving the course.");
     } finally {
       setIsSaving(false);
@@ -150,25 +151,19 @@ const CreateEditCourseModal: React.FC<CreateEditCourseModalProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="course-month" className={deepBrown}>Month Order (1-6)</Label>
-            <Select
-              value={monthOrder ? String(monthOrder) : ''}
-              onValueChange={(value) => setMonthOrder(value)}
+            <Label htmlFor="course-month" className={deepBrown}>Month Order</Label>
+            <Input
+              id="course-month"
+              type="number"
+              value={monthOrder}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMonthOrder(e.target.value)}
+              placeholder="Enter order number (e.g., 1, 2, 7)"
+              className={inputClasses}
               disabled={isSaving}
               required
               aria-required="true"
-            >
-              <SelectTrigger id="course-month" className={selectTriggerClasses}>
-                <SelectValue placeholder="Select month..." />
-              </SelectTrigger>
-              <SelectContent className={selectContentClasses}>
-                {[1, 2, 3, 4, 5, 6].map((num) => (
-                  <SelectItem key={num} value={String(num)} disabled={!isEditing && existingMonthOrders.includes(num)}>
-                    Month {num}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              min="1"
+            />
           </div>
 
           <div className="space-y-2">
@@ -194,7 +189,7 @@ const CreateEditCourseModal: React.FC<CreateEditCourseModalProps> = ({
               className={inputClasses}
               disabled={isSaving}
               min="0"
-              max="30"
+
             />
           </div>
 

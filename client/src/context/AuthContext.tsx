@@ -2,8 +2,8 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, ReactNode } from "react";
 import { initializeApp, FirebaseApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, signOut as firebaseSignOut, Auth } from "firebase/auth";
-import * as apiService from "../services/api.js"; // Assuming .js, adjust if it's .ts
-import { getToken } from "../services/api.js";   // Assuming .js
+import * as apiService from "../services/api"; // Assuming .js, adjust if it's .ts
+import { getToken } from "../services/api";   // Assuming .js
 import { Loader2 } from "lucide-react";
 
 export interface AppUser {

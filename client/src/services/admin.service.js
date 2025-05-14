@@ -1,4 +1,4 @@
-import { API } from "./api.js";
+import { API } from "./api";
 const AdminService = {
     async getAllUsers() {
         const response = await API.get("/admin/users");

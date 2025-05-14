@@ -1,7 +1,6 @@
-// server/controllers/week.controller.js
 import * as WeekModel from "../models/week.model.js";
 import * as CourseModel from "../models/course.model.js";
-import * as SectionModel from "../models/section.model.js";
+import * as SectionModel from "../models/section.model.js"; // Keep if getSectionsForWeekRoute uses it
 
 export const createWeek = async (req, res) => {
     try {
@@ -13,12 +12,11 @@ export const createWeek = async (req, res) => {
         if (!course) {
             return res.status(404).json({ message: `Course with ID ${weekData.courseId} not found.` });
         }
-        const newWeek = await WeekModel.createWeek(weekData); 
+        const newWeek = await WeekModel.createWeek(weekData);
         res.status(201).json({ message: "Week created successfully", week: newWeek });
     } catch (error) {
         console.error("Error creating week:", error);
         const errorMessage = (error && typeof error === 'object' && error.message) ? error.message : "Unknown error creating week.";
-        // Check for 'code' property if error is an object
         const errorCode = (error && typeof error === 'object' && 'code' in error) ? error.code : null;
 
         if (errorMessage.includes("already exists") || errorCode === 11000 || errorMessage.includes("Use update instead")) {
@@ -34,7 +32,7 @@ export const getWeeksByCourse = async (req, res) => {
         if (!courseId) {
              return res.status(400).json({ message: "courseId parameter is required." });
         }
-        const weeks = await WeekModel.getWeeksByCourseId(courseId); 
+        const weeks = await WeekModel.getWeeksByCourseId(courseId);
         res.status(200).json(weeks);
     } catch (error) {
         console.error(`Error getting weeks for course ${req.params.courseId}:`, error);
@@ -50,54 +48,67 @@ export const getWeekWithDetails = async (req, res) => {
             return res.status(400).json({ message: "weekId parameter is required." });
         }
 
-        const week = await WeekModel.getWeekById(weekId); 
-        if (!week) {
+        // 1. Fetch the basic week data
+        const weekData = await WeekModel.getWeekById(weekId); // Assumes this fetches the week document
+
+        if (!weekData) {
             return res.status(404).json({ message: "Week not found." });
         }
 
-        const sectionsFromDb = await SectionModel.getSectionsByWeekId(weekId); 
-        
-        const sectionsWithProcessedContent = (sectionsFromDb || []).map(section => {
-            // Prefer .id, fallback to ._id if it exists and .id doesn't
-            const sectionIdStr = section.id?.toString() || (section._id ? section._id.toString() : undefined); 
-            const processedContent = (section.content || []).map(ci => {
-                const contentItemIdStr = ci.id?.toString() || (ci._id ? ci._id.toString() : undefined);
+        // 2. Fetch all sections for this week.
+        // Your SectionModel.getSectionsByWeekId returns section documents.
+        // Each section document ALREADY CONTAINS its 'content' array with 'richContent'
+        // where 'databaseQuizId' SHOULD HAVE BEEN SAVED by section.controller.js.
+        const sectionsFromDb = await SectionModel.getSectionsByWeekId(weekId);
+
+        // 3. Process the fetched data to ensure correct structure and string IDs for frontend
+        const processedSections = (sectionsFromDb || []).map(section => {
+            const sectionDataFromDb = typeof section.data === 'function' ? section.data() : section; // Handle direct data or Firestore doc snapshot
+            
+            const processedContent = (sectionDataFromDb.content || []).map(ci => {
+                const contentItemDataFromDb = typeof ci.data === 'function' ? ci.data() : ci;
+                
                 return {
-                    ...ci,
-                    id: contentItemIdStr,
-                    richContent: (ci.richContent || []).map(rcb => {
-                        const rcbIdStr = rcb.id?.toString() || (rcb._id ? rcb._id.toString() : undefined) || `rcb-fallback-${Math.random().toString(36).substring(2)}`;
-                        // Handle nested videoContent IDs
-                        let processedVideoContent;
-                        if (rcb.videoContent) {
-                            const videoContentIdStr = rcb.videoContent.id?.toString() || (rcb.videoContent._id ? rcb.videoContent._id.toString() : undefined) || `vc-fallback-${Math.random().toString(36).substring(2)}`;
-                            processedVideoContent = { ...rcb.videoContent, id: videoContentIdStr };
-                        }
-                        // Handle nested quizContent IDs
-                        let processedQuizContent;
-                        if (rcb.quizContent) {
-                            const quizContentIdStr = rcb.quizContent.id?.toString() || (rcb.quizContent._id ? rcb.quizContent._id.toString() : undefined) || `qc-fallback-${Math.random().toString(36).substring(2)}`;
-                            processedQuizContent = { ...rcb.quizContent, id: quizContentIdStr };
-                        }
+                    ...contentItemDataFromDb,
+                    id: ci.id?.toString() || ci._id?.toString() || contentItemDataFromDb.id, // Prioritize existing string id
+                    richContent: (contentItemDataFromDb.richContent || []).map(rcb => {
+                        const richContentBlockDataFromDb = typeof rcb.data === 'function' ? rcb.data() : rcb;
+
+                        const processedQuizContent = richContentBlockDataFromDb.quizContent ? {
+                            ...richContentBlockDataFromDb.quizContent,
+                            id: richContentBlockDataFromDb.quizContent.id?.toString() || richContentBlockDataFromDb.quizContent._id?.toString() || richContentBlockDataFromDb.quizContent.id,
+                            // CRITICAL: Ensure databaseQuizId is passed through as saved
+                            databaseQuizId: richContentBlockDataFromDb.quizContent.databaseQuizId || null 
+                        } : undefined;
+
+                        const processedVideoContent = richContentBlockDataFromDb.videoContent ? {
+                            ...richContentBlockDataFromDb.videoContent,
+                            id: richContentBlockDataFromDb.videoContent.id?.toString() || richContentBlockDataFromDb.videoContent._id?.toString() || richContentBlockDataFromDb.videoContent.id,
+                        } : undefined;
+                        
                         return {
-                            ...rcb,
-                            id: rcbIdStr,
-                            videoContent: processedVideoContent,
+                            ...richContentBlockDataFromDb,
+                            id: rcb.id?.toString() || rcb._id?.toString() || richContentBlockDataFromDb.id,
                             quizContent: processedQuizContent,
+                            videoContent: processedVideoContent,
                         };
                     })
                 };
             });
-            return { ...section, id: sectionIdStr, content: processedContent };
+            return { 
+                ...sectionDataFromDb, 
+                id: section.id?.toString() || section._id?.toString() || sectionDataFromDb.id, 
+                content: processedContent 
+            };
         });
-
-        const detailedWeek = {
-            ...week, 
-            id: week.id?.toString() || (week._id ? week._id.toString() : undefined),
-            sections: sectionsWithProcessedContent,
-        };
         
-        console.log("WeekController: Sending detailed week data for weekId:", weekId);
+        const weekDataFromDb = typeof weekData.data === 'function' ? weekData.data() : weekData;
+        const detailedWeek = {
+            ...weekDataFromDb,
+            id: weekData.id?.toString() || weekData._id?.toString() || weekDataFromDb.id,
+            sections: processedSections,
+        };
+
         res.status(200).json(detailedWeek);
 
     } catch (error) {
@@ -111,7 +122,7 @@ export const updateWeek = async (req, res) => {
     try {
         const { weekId } = req.params;
         const weekData = req.body;
-        const updatedWeek = await WeekModel.updateWeek(weekId, weekData); 
+        const updatedWeek = await WeekModel.updateWeek(weekId, weekData);
         if (!updatedWeek) {
             return res.status(404).json({ message: "Week not found for update." });
         }
@@ -130,7 +141,7 @@ export const updateWeek = async (req, res) => {
 export const deleteWeek = async (req, res) => {
      try {
         const { weekId } = req.params;
-        const result = await WeekModel.deleteWeek(weekId); 
+        const result = await WeekModel.deleteWeek(weekId);
         if (!result || (typeof result.deletedCount === 'number' && result.deletedCount === 0 && !result.success) ) {
              return res.status(404).json({ message: "Week not found or unable to delete." });
         }
@@ -149,43 +160,58 @@ export const getSectionsForWeekRoute = async (req, res) => {
             return res.status(400).json({ message: "weekId parameter is required." });
         }
         const sections = await SectionModel.getSectionsByWeekId(weekId);
-        
-        const processedSections = (sections || []).map(section => {
-            const sectionIdStr = section.id?.toString() || (section._id ? section._id.toString() : undefined);
-            const processedContent = (section.content || []).map(ci => {
-                const contentItemIdStr = ci.id?.toString() || (ci._id ? ci._id.toString() : undefined);
-                return {
-                    ...ci,
-                    id: contentItemIdStr,
-                    richContent: (ci.richContent || []).map(rcb => {
-                        const rcbIdStr = rcb.id?.toString() || (rcb._id ? rcb._id.toString() : undefined) || `rcb-fallback-${Math.random().toString(36).substring(2)}`;
-                        // Handle nested videoContent IDs
-                        let processedVideoContent;
-                        if (rcb.videoContent) {
-                            const videoContentIdStr = rcb.videoContent.id?.toString() || (rcb.videoContent._id ? rcb.videoContent._id.toString() : undefined) || `vc-fallback-${Math.random().toString(36).substring(2)}`;
-                            processedVideoContent = { ...rcb.videoContent, id: videoContentIdStr };
-                        }
-                        // Handle nested quizContent IDs
-                        let processedQuizContent;
-                        if (rcb.quizContent) {
-                            const quizContentIdStr = rcb.quizContent.id?.toString() || (rcb.quizContent._id ? rcb.quizContent._id.toString() : undefined) || `qc-fallback-${Math.random().toString(36).substring(2)}`;
-                            processedQuizContent = { ...rcb.quizContent, id: quizContentIdStr };
-                        }
-                        return {
-                            ...rcb,
-                            id: rcbIdStr,
-                            videoContent: processedVideoContent,
-                            quizContent: processedQuizContent,
-                        };
-                    })
-                };
-            });
-            return { ...section, id: sectionIdStr, content: processedContent };
-        });
-        res.status(200).json(processedSections);
+        res.status(200).json(sections);
     } catch (error) {
         console.error(`Error getting sections for week ${req.params.weekId}:`, error);
         const errorMessage = (error && typeof error === 'object' && error.message) ? error.message : "Unknown error getting sections for week.";
         res.status(500).json({ message: `Failed to get sections: ${errorMessage}` });
+    }
+};
+
+export const getUserProgress = async (req, res) => {
+    try {
+        const { weekId } = req.params;
+        const userId = req.user?.uid;
+
+        if (!weekId) {
+            return res.status(400).json({ message: "weekId parameter is required." });
+        }
+        if (!userId) {
+            return res.status(401).json({ message: "Authentication required." });
+        }
+
+        const progress = await WeekModel.getUserProgressForWeek(userId, weekId);
+        res.status(200).json(progress);
+
+    } catch (error) {
+        console.error(`Error getting user progress for week ${req.params.weekId}, user ${req.user?.uid}:`, error);
+        const errorMessage = (error && typeof error === 'object' && error.message) ? error.message : "Unknown error getting user progress.";
+        res.status(500).json({ message: `Failed to get user progress: ${errorMessage}` });
+    }
+};
+
+export const updateUserSectionProgress = async (req, res) => {
+    try {
+        const { weekId, sectionId } = req.params;
+        const userId = req.user?.uid;
+        const { completed } = req.body;
+
+        if (!weekId || !sectionId) {
+            return res.status(400).json({ message: "weekId and sectionId parameters are required." });
+        }
+        if (!userId) {
+            return res.status(401).json({ message: "Authentication required." });
+        }
+        if (typeof completed !== 'boolean') {
+            return res.status(400).json({ message: "Request body must include a 'completed' boolean field." });
+        }
+
+        await WeekModel.updateSectionProgress(userId, weekId, sectionId, completed);
+        res.status(200).json({ message: "Progress updated successfully." });
+
+    } catch (error) {
+        console.error(`Error updating section progress for week ${req.params.weekId}, section ${req.params.sectionId}, user ${req.user?.uid}:`, error);
+        const errorMessage = (error && typeof error === 'object' && error.message) ? error.message : "Unknown error updating progress.";
+        res.status(500).json({ message: `Failed to update progress: ${errorMessage}` });
     }
 };

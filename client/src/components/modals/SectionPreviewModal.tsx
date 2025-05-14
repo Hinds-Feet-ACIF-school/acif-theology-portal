@@ -8,7 +8,7 @@ import { Input } from "../ui/input.js";
 import { Textarea } from "../ui/textarea.js";
 
 // Import types from your single source of truth (api.ts)
-import type { Section, ContentItem, RichContentItemBlock, VideoBlockContent, QuizBlockContent, QuizQuestion as ApiQuizQuestion } from '../../services/api.js';
+import type { Section, ContentItem, RichContentItemBlock, VideoBlockContent, QuizBlockContent, QuizQuestion as ApiQuizQuestion } from '../../services/api';
 
 // --- Styling Constants ---
 const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]'; // Should be light on dark

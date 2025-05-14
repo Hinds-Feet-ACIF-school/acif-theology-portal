@@ -1,227 +1,90 @@
-// src/services/api.ts
-import axios, { type AxiosResponse } from 'axios';
+import axios, { type AxiosResponse, AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from 'axios';
 
-export interface QuizQuestionOption {
-    id: string;
-    text: string;
-    isCorrect?: boolean;
-}
-
-export interface QuizQuestion {
-    id: string;
-    type: 'multiple_choice' | 'checkbox' | 'short_answer' | 'paragraph';
-    question: string;
-    required: boolean;
-    description?: string;
-    options?: QuizQuestionOption[];
-    correctAnswer?: string | string[];
-}
-
-export interface VideoBlockContent {
-    id: string;
-    title: string;
-    description?: string;
-    videoFile?: File;
-    videoUrl?: string;
-    thumbnail?: File;
-    thumbnailUrl?: string;
-    duration?: number;
-    isRequired: boolean;
-    drmEnabled: boolean;
-    accessControl: {
-        allowDownload: boolean;
-        allowSharing: boolean;
-        expirationDate?: Date;
-    };
-}
-
+export interface QuizQuestionOption { id: string; text: string; isCorrect?: boolean; }
+export interface QuizQuestion { id: string; type: 'multiple_choice' | 'checkbox' | 'short_answer' | 'paragraph'; question: string; required: boolean; description?: string; options?: QuizQuestionOption[]; correctAnswer?: string | string[]; }
+export interface VideoBlockContent { id: string; title: string; description?: string; videoFile?: File; videoUrl?: string; thumbnail?: File; thumbnailUrl?: string; duration?: number; isRequired: boolean; drmEnabled: boolean; accessControl: { allowDownload: boolean; allowSharing: boolean; expirationDate?: Date; }; }
 export interface QuizBlockContent {
-    id: string;
-    title: string;
-    description?: string;
-    questions: QuizQuestion[];
-    settings: {
-        shuffleQuestions: boolean;
-        timeLimit?: number;
-        passingScore?: number;
-        showResults: boolean;
-        allowRetake: boolean;
-        maxAttempts?: number;
-        showCorrectAnswers: boolean;
-        showPoints: boolean;
-        requireLogin: boolean;
-        collectEmail: boolean;
-        allowProgressSaving: boolean;
-    };
-}
+  id: string; // This is the ID of the block itself within the rich content/editor structure.
+  title: string;
+  description?: string;
+  questions: QuizQuestion[]; // Array of questions within this quiz block
+  settings: {
+    shuffleQuestions: boolean;
+    timeLimit?: number; // in minutes
+    passingScore?: number; // percentage, e.g., 70
+    showResults: boolean; // Whether to show results/feedback immediately after submission
+    allowRetake: boolean;
+    maxAttempts?: number;
+    showCorrectAnswers: boolean; // Whether to show which answers were correct/incorrect
+    showPoints?: boolean; // If questions have individual point values to display
+    requireLogin?: boolean; // If applicable, though usually handled by page auth
+    collectEmail?: boolean; // If applicable
+    allowProgressSaving?: boolean; // For saving an in-progress attempt (more advanced)
+  };
+  databaseQuizId: string; // <<<< --- ADD THIS LINE ---
+                          // This MUST be the ID of the corresponding Quiz document
+                          // in your main 'quizzes' Firestore collection (or database table).
+}export interface RichContentItemBlock { id: string; type: 'text' | 'video' | 'quiz'; order?: number; content?: string; videoContent?: VideoBlockContent; quizContent?: QuizBlockContent; }
+export interface AssignmentDetails { id: string; weekId: string; title: string; description?: string; instructions?: string; type?: string; points?: number; dueDateOffsetDays?: number | null; order?: number; createdBy?: string; createdAt?: any; updatedAt?: any; weekNumber?: number; courseTitle?: string; courseId?: string; }
+export interface Section { id: string; weekId: string; title: string; description?: string; order: number; content: ContentItem[]; createdAt?: Date; updatedAt?: Date; }
+export interface DiscussionTopic { id: string; courseId: string; weekId?: string; sectionId?: string; title: string; description?: string; content?: string; createdAt?: Date; updatedAt?: Date; }
+export interface ContentItem { id?: string; type: 'text' | 'video' | 'quiz_link'; title: string; isRequired: boolean; content?: string; url?: string; richContent: RichContentItemBlock[]; order?: number; createdAt?: Date; updatedAt?: Date; }
+export interface SectionData { weekId: string; title: string; description?: string; order: number; }
+export interface ContentData { type: ContentItem['type']; title: string; isRequired: boolean; content?: string; url?: string; richContent?: RichContentItemBlock[]; order: number; }
+export interface Course { id: string; title: string; description?: string; monthOrder: number; instructor?: string; instructorName?: string; ects?: number; settings?: { defaultPassingScore?: number; }; }
+export interface Week { id: string; courseId: string; weekNumber: number; title: string; description?: string; sections?: Section[]; }
+export interface Material { id: string; weekId: string; title: string; type: 'video' | 'reading' | 'resource'; contentUrl?: string; details?: string; }
+export interface Quiz { id: string; weekId: string; title: string; description?: string; instructions?: string; quizUrl?: string; points?: number; dueDateOffsetDays?: number | null; isGraded?: boolean; passingScore?: number; }
+export interface DashboardStat { id: string | number; title: string; value: string | number; iconName: string; change?: string; }
+export interface StudentSummary { id: string; name: string; courseName: string; progress: number; }
+export interface AdminCourseSummary { id: string; title: string; studentCount: number; status: 'active' | 'upcoming' | 'completed' | 'archived' | string; startDate?: string; endDate?: string; courseId?: string; }
+export interface AdminQuizSummary { id: string; title: string; courseName: string; submittedCount: number; totalEligible: number; dueDate?: string; courseId?: string; }
+export interface AdminStudent extends StudentSummary { email: string; status: 'active' | 'at risk' | 'inactive' | 'completed' | string; }
+export interface AdminCourse extends AdminCourseSummary {}
+export interface AdminFullQuiz extends AdminQuizSummary {}
+export interface UserProgress { [sectionId: string]: boolean; }
+export interface GradedItem { id: string; title: string; type: 'section_completion' | 'quiz_score'; status?: 'completed' | 'incomplete' | 'not_started' | 'passed' | 'failed' | 'pending_grade' | 'submitted'; score?: number | null; maxScore?: 100; isGraded?: boolean; }
+export interface WeekGradeSummary { weekId: string; weekNumber: number; weekTitle: string; items: GradedItem[]; overallWeekProgress?: number; }
 
-export interface RichContentItemBlock {
-    id: string;
-    type: 'text' | 'video' | 'quiz';
-    order?: number;
-    content?: string;
-    videoContent?: VideoBlockContent;
-    quizContent?: QuizBlockContent;
-}
-
-export interface AssignmentDetails {
-    id: string;
-    weekId: string;
-    title: string;
-    description?: string;
-    instructions?: string;
-    type?: string;
-    points?: number;
-    dueDateOffsetDays?: number | null;
-    order?: number;
-    createdBy?: string;
-    createdAt?: any;
-    updatedAt?: any;
-    weekNumber?: number;
-    courseTitle?: string;
-    courseId?: string;
-}
-
-export interface Section {
-    id: string;
-    weekId: string;
-    title: string;
-    description?: string;
-    order: number;
-    content: ContentItem[];
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export interface DiscussionTopic {
-    id: string;
-    courseId: string;
-    weekId?: string;
-    sectionId?: string;
-    title: string;
-    description?: string;
-    content?: string;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export interface ContentItem {
-    id?: string;
-    type: 'text' | 'video' | 'quiz_link';
-    title: string;
-    isRequired: boolean;
-    content?: string;
-    url?: string;
-    richContent: RichContentItemBlock[];
-    order?: number;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export interface SectionData {
-    weekId: string;
-    title: string;
-    description?: string;
-    order: number;
-}
-
-export interface ContentData {
-    type: ContentItem['type'];
-    title: string;
-    isRequired: boolean;
-    content?: string;
-    url?: string;
-    richContent?: RichContentItemBlock[];
-    order: number;
-}
-
-export interface Course {
+export interface ProcessedCourseOverviewItem {
     id: string;
     title: string;
     description?: string;
     monthOrder: number;
-    instructor?: string;
-    instructorName?: string;
-    ects?: number;
+    status: 'locked' | 'active' | 'completed';
+    progress?: number;
 }
 
-export interface Week {
-    id: string;
-    courseId: string;
-    weekNumber: number;
-    title: string;
-    description?: string;
-    sections?: Section[];
+export interface CourseAccessState {
+    courses: ProcessedCourseOverviewItem[];
+    enrollmentMessage: string | null;
 }
 
-export interface Material {
-    id: string;
-    weekId: string;
-    title: string;
-    type: 'video' | 'reading' | 'resource';
-    contentUrl?: string;
-    details?: string;
+export interface UserAnswers {
+    [questionId: string]: string | string[];
 }
 
-export interface Quiz {
-    id: string;
-    weekId: string;
-    title: string;
-    description?: string;
-    instructions?: string;
-    quizUrl?: string;
-    points?: number;
-    dueDateOffsetDays?: number | null;
-}
-
-export interface DashboardStat {
-  id: string | number;
-  title: string;
-  value: string | number;
-  iconName: string;
-  change?: string;
-}
-
-export interface StudentSummary {
+export interface UserQuizSubmission {
   id: string;
-  name: string;
-  courseName: string;
-  progress: number;
-}
-
-export interface AdminCourseSummary {
-  id: string;
-  title: string;
-  studentCount: number;
-  status: 'active' | 'upcoming' | 'completed' | 'archived' | string;
-  startDate?: string;
-  endDate?: string;
+  quizId: string;
+  userId: string;
+  answers: UserAnswers;
+  score: number | null;
+  status: string;
+  submittedAt: any;
+  gradedAt?: any | null;
+  feedback?: string | null;
+  userName?: string;
+  weekId?: string;
   courseId?: string;
 }
 
-export interface AdminQuizSummary {
-  id: string;
-  title: string;
-  courseName: string;
-  submittedCount: number;
-  totalEligible: number;
-  dueDate?: string;
-  courseId?: string;
-}
-
-export interface AdminStudent extends StudentSummary {
-  email: string;
-  status: 'active' | 'at risk' | 'inactive' | 'completed' | string;
-}
-
-export interface AdminCourse extends AdminCourseSummary {
-}
-
-export interface AdminFullQuiz extends AdminQuizSummary {
+interface ApiError {
+  message: string;
 }
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api', // Corrected port to 3000 based on previous files
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -234,7 +97,7 @@ export const getToken = (): string | null => {
             return localStorage.getItem('token');
         }
         return null;
-    } catch (e) {
+    } catch (e: any) {
         console.error("Could not access localStorage:", e);
         return null;
     }
@@ -245,7 +108,7 @@ export const setToken = (token: string): void => {
         if (typeof window !== 'undefined' && window.localStorage) {
             localStorage.setItem('token', token);
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error("Could not access localStorage:", e);
     }
 };
@@ -255,7 +118,7 @@ export const removeToken = (): void => {
          if (typeof window !== 'undefined' && window.localStorage) {
             localStorage.removeItem('token');
          }
-    } catch (e) {
+    } catch (e: any) {
         console.error("Could not access localStorage:", e);
     }
 };
@@ -267,37 +130,49 @@ const processQueue = (error: any, token: string | null = null): void => {
     failedQueue.forEach(prom => {
         if (error) {
             prom.reject(error);
+        } else if (token) {
+            prom.resolve(token);
         } else {
-            prom.resolve(token!);
+             prom.reject(new Error("Token refresh resulted in null token without error."));
         }
     });
     failedQueue = [];
 };
 
 API.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = getToken();
     const publicPaths = [
         '/courses/public/overview',
         '/auth/login',
         '/auth/register',
         '/auth/refresh-token',
-        '/auth/reset-password', // Added reset-password as public
+        '/auth/reset-password',
     ];
-    if (token && config.url && !publicPaths.some(p => config.url!.startsWith(p) || config.url!.endsWith(p))) { // Added endsWith for more flexibility
-      config.headers.Authorization = `Bearer ${token}`;
+
+    if (token && config.url && !publicPaths.some(p => config.url!.includes(p))) {
+        config.headers.set('Authorization', `Bearer ${token}`);
     }
     return config;
   },
-  (error) => {
+  (error: AxiosError) => {
     return Promise.reject(error);
   }
 );
 
+interface AxiosErrorWithRetry<T = any> extends AxiosError<T> {
+    config: InternalAxiosRequestConfig<T> & { _retry?: boolean };
+}
+
 API.interceptors.response.use(
   (response: AxiosResponse) => response,
-  async (error: any) => {
+  async (error: AxiosErrorWithRetry) => {
     const originalRequest = error.config;
+
+    if (!originalRequest) {
+        return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && originalRequest.url && originalRequest.url !== '/auth/login' && originalRequest.url !== '/auth/refresh-token' && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -306,13 +181,18 @@ API.interceptors.response.use(
          try {
              const response = await API.post('/auth/refresh-token');
              const { token } = response.data;
+
+             if (!token) {
+                 throw new Error("Refresh endpoint did not return a token.");
+             }
+
              setToken(token);
              API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-             if (originalRequest.headers) {
-                originalRequest.headers['Authorization'] = `Bearer ${token}`;
-             }
+             originalRequest.headers.set('Authorization', `Bearer ${token}`);
+
              processQueue(null, token);
              return API(originalRequest);
+
          } catch (refreshError: any) {
             console.error('Token refresh failed:', refreshError);
             processQueue(refreshError, null);
@@ -331,9 +211,7 @@ API.interceptors.response.use(
          return new Promise<string>((resolve, reject) => {
             failedQueue.push({ resolve, reject });
          }).then(token => {
-            if (originalRequest.headers) {
-                originalRequest.headers['Authorization'] = `Bearer ${token}`;
-            }
+            originalRequest.headers.set('Authorization', `Bearer ${token}`);
             return API(originalRequest);
          }).catch(err => {
             return Promise.reject(err);
@@ -344,7 +222,22 @@ API.interceptors.response.use(
   }
 );
 
-export const getPublicCourseOverview = async () => {
+const getErrorMessage = (error: unknown): string => {
+    if (axios.isAxiosError(error)) {
+        return error.response?.data?.message || error.message || 'An Axios error occurred';
+    } else if (error instanceof Error) {
+        return error.message;
+    } else {
+        return 'An unknown error occurred';
+    }
+};
+
+export const getCourseAccessState = async (): Promise<CourseAccessState> => {
+  const response = await API.get<CourseAccessState>('/users/state');
+  return response.data;
+};
+
+export const getPublicCourseOverview = async (): Promise<ProcessedCourseOverviewItem[]> => {
   const response = await API.get('/courses/public/overview');
   return response.data;
 };
@@ -364,7 +257,25 @@ export const updateCourse = async (courseId: string, courseData: Partial<Omit<Co
 export const deleteCourse = async (courseId: string): Promise<void> => {
   await API.delete(`/courses/${courseId}`);
 };
-export const getAccessibleContent = async () => {
+
+export interface AccessibleContentWeek {
+  id: string;
+  weekNumber: number;
+  absoluteWeekNumber?: number;
+  title: string;
+  description?: string;
+  isCompleted?: boolean;
+}
+export interface AccessibleContentCourse {
+  id: string;
+  title: string;
+  monthOrder: number;
+  weeks: AccessibleContentWeek[];
+  progress?: number;
+  description?: string;
+  instructorName?: string;
+}
+export const getAccessibleContent = async (): Promise<AccessibleContentCourse[]> => {
    const response = await API.get('/courses/content/my-program');
    return response.data;
 };
@@ -423,22 +334,30 @@ export const updateQuiz = async (quizId: string, quizData: Partial<Omit<Quiz, 'i
 export const deleteQuiz = async (quizId: string): Promise<void> => {
     await API.delete(`/quizzes/${quizId}`);
 };
-export const submitQuizAttempt = async (quizId: string, submissionData: any) => {
-    const config = submissionData instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
-    const response = await API.post(`/quizzes/${quizId}/submit`, submissionData, config);
+export const submitQuizAttempt = async (quizId: string, submissionData: { answers: UserAnswers }): Promise<{ id: string; score: number | null; status: string; }> => {
+    const response = await API.post(`/quizzes/${quizId}/submit`, submissionData);
     return response.data;
 };
-export const gradeQuizSubmission = async (submissionId: string, gradeData: any) => {
+export const gradeQuizSubmission = async (submissionId: string, gradeData: { grade: number; feedback?: string; }): Promise<UserQuizSubmission> => {
     const response = await API.post(`/quizzes/submissions/${submissionId}/grade`, gradeData);
     return response.data;
 };
-export const getSubmissionsByQuiz = async (quizId: string) => {
+export const getSubmissionsByQuiz = async (quizId: string): Promise<UserQuizSubmission[]> => {
     const response = await API.get(`/quizzes/${quizId}/submissions`);
     return response.data;
 };
-export const getMySubmissionForQuiz = async (quizId: string) => {
-    const response = await API.get(`/quizzes/${quizId}/my-submission`);
-    return response.data;
+
+export const getMySubmissionForQuiz = async (quizId: string): Promise<UserQuizSubmission | null> => {
+    try {
+        const response = await API.get(`/quizzes/${quizId}/my-submission`);
+        return response.data || null;
+    } catch (error: any) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+            return null;
+        }
+        console.error(`Error in getMySubmissionForQuiz for quizId ${quizId}:`, getErrorMessage(error));
+        throw error;
+    }
 };
 
 export const createCohort = async (cohortData: any) => {
@@ -454,19 +373,19 @@ export const enrollUserInCohort = async (cohortId: string, userId: string) => {
     return response.data;
 };
 
-export const getCurrentUser = async () => { // Renamed from getUserProfile to avoid conflict
+export const getCurrentUser = async () => {
     const response = await API.get('/auth/me');
     return response.data;
 };
 export const updateUserProfile = async (profileData: any) => {
-    const response = await API.put('/auth/profile', profileData); // Corrected to /auth/profile based on your backend routes
+    const response = await API.put('/auth/profile', profileData);
     return response.data;
 };
 export const changePassword = async (passwordData: any) => {
-    const response = await API.post('/auth/change-password', passwordData); // Corrected to /auth/change-password
+    const response = await API.post('/auth/change-password', passwordData);
     return response.data;
 };
-export const loginUser = async (credentials: { idToken: string }) => { // Specified credentials type
+export const loginUser = async (credentials: { idToken: string }) => {
     const response = await API.post('/auth/login', credentials);
     if (response.data.token) {
         setToken(response.data.token);
@@ -481,8 +400,8 @@ export const registerUser = async (userData: any) => {
 export const logoutUser = async (): Promise<void> => {
     try {
         await API.post('/auth/logout');
-    } catch (error) {
-        console.error("Backend logout API call failed, proceeding with client-side clear.", error);
+    } catch (error: unknown) {
+        console.error("Backend logout API call failed, proceeding with client-side clear.", getErrorMessage(error));
     } finally {
          removeToken();
          delete API.defaults.headers.common['Authorization'];
@@ -490,20 +409,38 @@ export const logoutUser = async (): Promise<void> => {
 }
 
 export const getAllUsersForAdmin = async () => {
-    const response = await API.get('/admin/users');
-    return response.data;
+    try {
+        const response = await API.get('/admin/users');
+        return response.data;
+    } catch (error: unknown) {
+        console.error('API Error in getAllUsersForAdmin:', getErrorMessage(error));
+        throw error;
+    }
 }
+
 export const updateUserRoleAdmin = async (userId: string, role: string) => {
     const response = await API.put(`/admin/users/${userId}/role`, { role });
     return response.data;
 }
+
 export const createUserAdmin = async (userData: any) => {
-    const response = await API.post(`/admin/users`, userData);
-    return response.data;
-}
+    try {
+        const response = await API.post('/admin/users', userData);
+        return response.data;
+    } catch (error: unknown) {
+        console.error('API Error in createUserAdmin:', getErrorMessage(error));
+        throw error;
+    }
+};
+
 export const deleteUserAdmin = async (userId: string) => {
-    const response = await API.delete(`/admin/users/${userId}`);
-    return response.data;
+    try {
+        const response = await API.delete(`/admin/users/${userId}`);
+        return response.data;
+    } catch (error: unknown) {
+        console.error('API Error in deleteUserAdmin:', getErrorMessage(error));
+        throw error;
+    }
 }
 
 export const getSectionsByWeek = async (weekId: string): Promise<Section[]> => {
@@ -543,17 +480,16 @@ export async function getCourseById(courseId: string): Promise<Course | null> {
   try {
     const response = await API.get<Course>(`/courses/${courseId}`);
     return response.data;
-  } catch (error) {
+  } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response?.status === 404) {
       return null;
     }
-    console.error(`Error fetching course ${courseId}:`, error);
+    console.error(`Error fetching course ${courseId}:`, getErrorMessage(error));
     throw error;
   }
 }
 
 export async function getAdminDashboardStats(): Promise<DashboardStat[]> {
-    console.log("API (TS): Fetching admin dashboard stats (SIMULATED)...");
     await new Promise(resolve => setTimeout(resolve, 300));
     const simulatedData: DashboardStat[] = [
         { id: 'totalStudents', title: "Total Students", value: "150", iconName: "Users", change: "+10 since last week" },
@@ -565,7 +501,6 @@ export async function getAdminDashboardStats(): Promise<DashboardStat[]> {
 }
 
 export async function getAdminRecentStudents(limit: number = 4): Promise<StudentSummary[]> {
-    console.log(`API (TS): Fetching ${limit} recent students (SIMULATED)...`);
     await new Promise(resolve => setTimeout(resolve, 400));
     const simulatedData: StudentSummary[] = [
         { id: 's1', name: "Alice Wonderland", courseName: "Foundations", progress: 70 },
@@ -577,7 +512,6 @@ export async function getAdminRecentStudents(limit: number = 4): Promise<Student
 }
 
 export async function getAdminDashboardCourses(limit: number = 4): Promise<AdminCourseSummary[]> {
-    console.log(`API (TS): Fetching ${limit} dashboard courses (SIMULATED)...`);
     await new Promise(resolve => setTimeout(resolve, 500));
     const simulatedData: AdminCourseSummary[] = [
         { id: 'c1', courseId: 'c1', title: "Foundations of Faith (Live)", studentCount: 50, status: "active", startDate: "2024-01-15T00:00:00Z", endDate: "2024-03-15T00:00:00Z" },
@@ -589,7 +523,6 @@ export async function getAdminDashboardCourses(limit: number = 4): Promise<Admin
 }
 
 export async function getAdminDashboardQuizzes(limit: number = 4): Promise<AdminQuizSummary[]> {
-    console.log(`API (TS): Fetching ${limit} dashboard quizzes (SIMULATED)...`);
     await new Promise(resolve => setTimeout(resolve, 600));
     const simulatedData: AdminQuizSummary[] = [
         { id: 'q1', courseId: 'c1', title: "Week 1 - Foundations Quiz", courseName: "Foundations of Faith (Live)", submittedCount: 40, totalEligible: 50, dueDate: "2024-01-22T00:00:00Z" },
@@ -610,21 +543,12 @@ interface AdminDataParams {
 }
 
 export async function getAdminAllStudents(params: AdminDataParams = {}): Promise<AdminStudent[]> {
-    const query = new URLSearchParams(params as Record<string, string>).toString();
-    console.log(`API (TS): Fetching all students (SIMULATED) with filters: ${query}`);
     await new Promise(resolve => setTimeout(resolve, 500));
-
     let studentsDb: AdminStudent[] = [
         { id: 's101', name: "Alice Wonderland", email: "alice@example.com", courseName: "Foundations", progress: 70, status: "active" },
         { id: 's102', name: "Bob The Builder", email: "bob@example.com", courseName: "The Bible", progress: 45, status: "at risk" },
         { id: 's103', name: "Charlie Brown", email: "charlie@example.com", courseName: "Foundations", progress: 95, status: "completed" },
-        { id: 's104', name: "Diana Prince", email: "diana@example.com", courseName: "Apologetics", progress: 10, status: "inactive" },
-        { id: 's105', name: "Edward Scissorhands", email: "edward@example.com", courseName: "The Bible", progress: 60, status: "active" },
-        { id: 's106', name: "Fiona Gallagher", email: "fiona@example.com", courseName: "Systematic Theology I", progress: 88, status: "active" },
-        { id: 's107', name: "George Costanza", email: "george@example.com", courseName: "Foundations", progress: 22, status: "at risk" },
-        { id: 's108', name: "Harry Potter", email: "harry@example.com", courseName: "Old Testament Survey", progress: 75, status: "active" },
     ];
-
     if (params.search) {
         const searchTerm = params.search.toLowerCase();
         studentsDb = studentsDb.filter(s => s.name.toLowerCase().includes(searchTerm) || s.email.toLowerCase().includes(searchTerm));
@@ -636,16 +560,10 @@ export async function getAdminAllStudents(params: AdminDataParams = {}): Promise
 }
 
 export async function getAdminAllCourses(params: AdminDataParams = {}): Promise<AdminCourse[]> {
-    const query = new URLSearchParams(params as Record<string, string>).toString();
-    console.log(`API (TS): Fetching all courses (SIMULATED) with filters: ${query}`);
-    await new Promise(resolve => setTimeout(resolve, 500));
+     await new Promise(resolve => setTimeout(resolve, 500));
     let coursesDb: AdminCourse[] = [
         { id: 'c1', courseId: 'c1', title: "Foundations of Faith (Live)", studentCount: 50, status: "active", startDate: "2024-01-15T00:00:00Z", endDate: "2024-03-15T00:00:00Z" },
         { id: 'c2', courseId: 'c2', title: "Old Testament Survey (Live)", studentCount: 35, status: "upcoming", startDate: "2024-03-20T00:00:00Z", endDate: "2024-05-20T00:00:00Z" },
-        { id: 'c3', courseId: 'c3', title: "Apologetics 101 (Completed)", studentCount: 25, status: "completed", startDate: "2023-10-01T00:00:00Z", endDate: "2023-12-01T00:00:00Z" },
-        { id: 'c4', courseId: 'c4', title: "Systematic Theology I", studentCount: 40, status: "active", startDate: "2024-02-01T00:00:00Z", endDate: "2024-04-01T00:00:00Z" },
-        { id: 'c5', courseId: 'c5', title: "New Testament Gospels (Archived)", studentCount: 0, status: "archived", startDate: "2023-05-01T00:00:00Z", endDate: "2023-07-01T00:00:00Z" },
-        { id: 'c6', courseId: 'c6', title: "Church History Overview", studentCount: 15, status: "upcoming", startDate: "2024-06-01T00:00:00Z", endDate: "2024-08-01T00:00:00Z" },
     ];
     if (params.search) {
         const searchTerm = params.search.toLowerCase();
@@ -658,18 +576,11 @@ export async function getAdminAllCourses(params: AdminDataParams = {}): Promise<
 }
 
 export async function getAdminAllQuizzes(params: AdminDataParams = {}): Promise<AdminFullQuiz[]> {
-    const query = new URLSearchParams(params as Record<string, string>).toString();
-    console.log(`API (TS): Fetching all quizzes (SIMULATED) with filters: ${query}`);
     await new Promise(resolve => setTimeout(resolve, 500));
     let quizzesDb: AdminFullQuiz[] = [
         { id: 'q1', courseId: 'c1', title: "Week 1 - Foundations Quiz", courseName: "Foundations of Faith (Live)", submittedCount: 40, totalEligible: 50, dueDate: "2024-01-22T00:00:00Z" },
         { id: 'q2', courseId: 'c1', title: "Week 2 - Doctrine Basics", courseName: "Foundations of Faith (Live)", submittedCount: 10, totalEligible: 50, dueDate: "2024-01-29T00:00:00Z" },
-        { id: 'q3', courseId: 'c2', title: "Genesis Chapters 1-11", courseName: "Old Testament Survey (Live)", submittedCount: 0, totalEligible: 35, dueDate: "2024-03-27T00:00:00Z" },
-        { id: 'q4', courseId: 'c3', title: "Arguments for God's Existence", courseName: "Apologetics 101 (Completed)", submittedCount: 20, totalEligible: 25, dueDate: "2023-10-15T00:00:00Z" },
-        { id: 'q5', courseId: 'c4', title: "Theology Proper - Midterm", courseName: "Systematic Theology I", submittedCount: 30, totalEligible: 40, dueDate: "2024-03-01T00:00:00Z" },
-        { id: 'q6', courseId: 'c4', title: "Christology - Final Exam", courseName: "Systematic Theology I", submittedCount: 0, totalEligible: 40, dueDate: "2024-03-28T00:00:00Z" },
     ];
-
     if (params.search) {
         const searchTerm = params.search.toLowerCase();
         quizzesDb = quizzesDb.filter(q => q.title.toLowerCase().includes(searchTerm));
@@ -679,5 +590,45 @@ export async function getAdminAllQuizzes(params: AdminDataParams = {}): Promise<
     }
     return quizzesDb;
 }
+
+export const getUserWeekProgress = async (weekId: string): Promise<UserProgress> => {
+  try {
+    const response = await API.get<UserProgress>(`/weeks/${weekId}/progress`);
+    return response.data;
+  } catch (error: unknown) {
+     if (axios.isAxiosError(error) && error.response?.status === 404) {
+         return {};
+     }
+    console.error(`[apiService] Error fetching week progress for ${weekId}:`, getErrorMessage(error));
+    throw error;
+  }
+};
+
+export const updateSectionProgress = async (weekId: string, sectionId: string, completed: boolean): Promise<void> => {
+  try {
+    await API.put(`/weeks/${weekId}/sections/${sectionId}/progress`, { completed });
+  } catch (error: unknown) {
+    console.error(`[apiService] Error updating section progress for ${weekId}/${sectionId}:`, getErrorMessage(error));
+    throw error;
+  }
+};
+
+export const getMyCourseGrades = async (courseId: string): Promise<WeekGradeSummary[]> => {
+  if (!courseId) {
+    console.error("[apiService] getMyCourseGrades: courseId is required.");
+    throw new Error("Course ID is required to fetch grades.");
+  }
+  try {
+    const response = await API.get(`/courses/${courseId}/my-grades`);
+    return response.data;
+  } catch (error: unknown) {
+    console.error(`[apiService] Error fetching grades for course ${courseId}:`, getErrorMessage(error));
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+        console.warn(`[apiService] No grades found for course ${courseId}, returning empty array.`);
+        return [];
+    }
+    throw error;
+  }
+};
 
 export { API };

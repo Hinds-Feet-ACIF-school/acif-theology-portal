@@ -1,4 +1,4 @@
-import { API } from "./api.js";
+import { API } from "./api";
 const QuizService = {
     async getQuizzesByWeek(weekId) {
         const response = await API.get(`/quizzes/by-week/${weekId}`);

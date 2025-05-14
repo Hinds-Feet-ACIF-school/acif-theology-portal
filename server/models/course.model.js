@@ -2,8 +2,6 @@ import { db } from "../config/firebase.config.js";
 import { FieldValue } from 'firebase-admin/firestore';
 
 const coursesCollection = db.collection("courses");
-const weeksCollection = db.collection("weeks");
-
 
 export const getAllCourseOverviews = async () => {
     try {
@@ -17,7 +15,7 @@ export const getAllCourseOverviews = async () => {
                 id: doc.id,
                 title: data.title || 'Untitled Course',
                 description: data.description || '',
-                monthOrder: data.monthOrder || 0,
+                monthOrder: data.monthOrder !== undefined ? data.monthOrder : null,
             });
         });
         return courses;
@@ -27,15 +25,17 @@ export const getAllCourseOverviews = async () => {
     }
 };
 
-
 export const createCourse = async (courseData) => {
   try {
-    if (!courseData.title || !courseData.monthOrder) {
+    if (!courseData.title || courseData.monthOrder === undefined || courseData.monthOrder === null) {
       throw new Error("Course title and monthOrder are required.");
     }
-    if (courseData.monthOrder < 1 || courseData.monthOrder > 6) {
-       throw new Error("monthOrder must be between 1 and 6.");
+
+    if (typeof courseData.monthOrder !== 'number' || !Number.isInteger(courseData.monthOrder) || courseData.monthOrder < 1) {
+
+       throw new Error("monthOrder must be a positive integer.");
     }
+
 
     const courseRef = await coursesCollection.add({
       title: courseData.title,
@@ -43,16 +43,29 @@ export const createCourse = async (courseData) => {
       monthOrder: courseData.monthOrder,
       instructor: courseData.instructor || null,
       instructorName: courseData.instructorName || "",
-      ects: courseData.ects || null,
+      ects: (courseData.ects !== undefined && courseData.ects !== null && !isNaN(Number(courseData.ects))) ? Number(courseData.ects) : null,
       thumbnail: courseData.thumbnail || "",
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    return { id: courseRef.id };
+
+    const newCourseDoc = await courseRef.get();
+    const newCourseData = newCourseDoc.data();
+    return {
+        id: courseRef.id,
+        ...newCourseData,
+        createdAt: newCourseData.createdAt.toDate(),
+        updatedAt: newCourseData.updatedAt.toDate()
+    };
+
   } catch (error) {
     console.error("Error creating course in model:", error);
-    throw new Error(`Error creating course: ${error.message}`);
+
+    if (error.message.includes("monthOrder must be")) {
+        throw error;
+    }
+    throw new Error(`Error creating course.`);
   }
 };
 
@@ -65,16 +78,17 @@ export const getCourseById = async (courseId) => {
       return null;
     }
     const courseData = courseDoc.data();
-    if (courseData.createdAt && courseData.createdAt.toDate) {
+
+    if (courseData.createdAt && typeof courseData.createdAt.toDate === 'function') {
          courseData.createdAt = courseData.createdAt.toDate();
     }
-    if (courseData.updatedAt && courseData.updatedAt.toDate) {
+    if (courseData.updatedAt && typeof courseData.updatedAt.toDate === 'function') {
          courseData.updatedAt = courseData.updatedAt.toDate();
     }
     return { id: courseDoc.id, ...courseData };
   } catch (error) {
     console.error(`Error getting course by ID (${courseId}):`, error);
-    throw new Error(`Database error getting course ${courseId}: ${error.message}`);
+    throw new Error(`Database error getting course ${courseId}.`);
   }
 };
 
@@ -83,9 +97,24 @@ export const updateCourse = async (courseId, courseData) => {
   try {
     const courseRef = coursesCollection.doc(courseId);
 
-    if (courseData.monthOrder && (courseData.monthOrder < 1 || courseData.monthOrder > 6)) {
-       throw new Error("monthOrder must be between 1 and 6.");
+
+    if (courseData.monthOrder !== undefined && courseData.monthOrder !== null) {
+        if (typeof courseData.monthOrder !== 'number' || !Number.isInteger(courseData.monthOrder) || courseData.monthOrder < 1) {
+
+            throw new Error("monthOrder must be a positive integer.");
+        }
     }
+
+
+    if (courseData.ects !== undefined && courseData.ects !== null) {
+        if (isNaN(Number(courseData.ects))) {
+            throw new Error("ECTS must be a valid number.");
+        }
+        courseData.ects = Number(courseData.ects);
+    } else if (courseData.hasOwnProperty('ects')) {
+         courseData.ects = null;
+    }
+
 
     delete courseData.id;
     delete courseData.createdAt;
@@ -95,23 +124,30 @@ export const updateCourse = async (courseId, courseData) => {
       updatedAt: FieldValue.serverTimestamp(),
     };
 
+    Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+
     await courseRef.update(updateData);
 
-    const updatedDocData = await getCourseById(courseId); // Re-fetch to get resolved timestamp
+    const updatedDocData = await getCourseById(courseId);
     return updatedDocData;
 
   } catch (error) {
     console.error(`Error updating course (${courseId}):`, error);
-    if (error.code === 5) { // NOT_FOUND
+    if (error.code === 5) {
         throw new Error(`Cannot update course: Course with ID ${courseId} not found.`);
     }
-    throw new Error(`Database error updating course ${courseId}: ${error.message}`);
+
+    if (error.message.includes("monthOrder must be") || error.message.includes("ECTS must be")) {
+        throw error;
+    }
+    throw new Error(`Database error updating course ${courseId}.`);
   }
 };
 
 
 export const deleteCourse = async (courseId) => {
   try {
+
 
     await coursesCollection.doc(courseId).delete();
 
@@ -121,10 +157,11 @@ export const deleteCourse = async (courseId) => {
     return { success: true, message: "Course deleted successfully" };
   } catch (error) {
     console.error(`Error deleting course (${courseId}):`, error);
-     if (error.code === 5) { // NOT_FOUND
-        return { success: false, message: `Course with ID ${courseId} not found.` }; // Return failure object
+     if (error.code === 5) {
+
+        return { success: false, message: `Course with ID ${courseId} not found.` };
     }
-    throw new Error(`Database error deleting course ${courseId}: ${error.message}`);
+    throw new Error(`Database error deleting course ${courseId}.`);
   }
 };
 
@@ -136,10 +173,11 @@ export const getAllCourses = async () => {
 
     coursesSnapshot.forEach((doc) => {
        const courseData = doc.data();
-        if (courseData.createdAt && courseData.createdAt.toDate) {
+
+        if (courseData.createdAt && typeof courseData.createdAt.toDate === 'function') {
              courseData.createdAt = courseData.createdAt.toDate();
         }
-        if (courseData.updatedAt && courseData.updatedAt.toDate) {
+        if (courseData.updatedAt && typeof courseData.updatedAt.toDate === 'function') {
              courseData.updatedAt = courseData.updatedAt.toDate();
         }
        courses.push({ id: doc.id, ...courseData });
@@ -148,7 +186,7 @@ export const getAllCourses = async () => {
     return courses;
   } catch (error) {
     console.error("Error getting all courses:", error);
-    throw new Error(`Database error getting all courses: ${error.message}`);
+    throw new Error(`Database error getting all courses.`);
   }
 };
 
@@ -160,10 +198,11 @@ export const getCoursesByInstructor = async (instructorId) => {
 
     coursesSnapshot.forEach((doc) => {
        const courseData = doc.data();
-        if (courseData.createdAt && courseData.createdAt.toDate) {
+
+        if (courseData.createdAt && typeof courseData.createdAt.toDate === 'function') {
              courseData.createdAt = courseData.createdAt.toDate();
         }
-        if (courseData.updatedAt && courseData.updatedAt.toDate) {
+        if (courseData.updatedAt && typeof courseData.updatedAt.toDate === 'function') {
              courseData.updatedAt = courseData.updatedAt.toDate();
         }
        courses.push({ id: doc.id, ...courseData });
@@ -172,6 +211,6 @@ export const getCoursesByInstructor = async (instructorId) => {
     return courses;
   } catch (error) {
     console.error(`Error getting courses by instructor (${instructorId}):`, error);
-    throw new Error(`Database error getting courses by instructor: ${error.message}`);
+    throw new Error(`Database error getting courses by instructor.`);
   }
 };

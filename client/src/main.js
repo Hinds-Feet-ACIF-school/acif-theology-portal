@@ -5,4 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.js";
 import { AuthProvider } from "./context/AuthContext.js";
 import "./index.css";
-ReactDOM.createRoot(document.getElementById("root")).render(_jsx(React.StrictMode, { children: _jsx(BrowserRouter, { children: _jsx(AuthProvider, { children: _jsx(App, {}) }) }) }));
+import '@mantine/core/styles.css';
+import '@mantine/tiptap/styles.css';
+import { MantineProvider } from '@mantine/core';
+ReactDOM.createRoot(document.getElementById('root')).render(_jsx(React.StrictMode, { children: _jsx(BrowserRouter, { children: _jsx(AuthProvider, { children: _jsx(MantineProvider, { defaultColorScheme: "auto", children: _jsx(App, {}) }) }) }) }));

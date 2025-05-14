@@ -6,7 +6,7 @@ import { Input } from "../ui/input.js";
 import { Textarea } from "../ui/textarea.js";
 import { Label } from "../ui/label.js";
 import { X, Save, Loader2, AlertCircle } from 'lucide-react'; // Removed unused LinkIcon
-import { Quiz } from "../../services/api.js"; // Correct import
+import { Quiz } from "../../services/api"; // Correct import
 
 // --- Theme Constants ---
 const lightBg = 'bg-[#FFF8F0]';

@@ -6,7 +6,7 @@ import { Textarea } from "../ui/textarea.js";
 import { Label } from "../ui/label.js";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.js";
 import { X, Save, Loader2, AlertCircle } from 'lucide-react';
-import { Week } from '../../services/api.js';
+import { Week } from '../../services/api';
 
 const lightBg = 'bg-[#FFF8F0]';
 const darkBg = 'dark:bg-gray-950';

@@ -80,15 +80,15 @@ export default function ContactUsPage() {
 
   return (
     <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark}`}>
-      <section className={`w-full py-16 md:py-24 lg:py-32 ${altSectionBgLight} ${altSectionBgDark} border-b ${cardBorder}`}>
-        <div className="container px-4 md:px-6">
+      <section className="w-full py-16 sm:py-20 md:py-28 lg:py-36 xl:py-40 bg-gradient-to-br from-[#2A0F0F] to-[#4A1F1F] dark:from-gray-900 dark:to-gray-800 relative overflow-hidden text-[#FFF8F0]">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center space-y-4 text-center">
-            <Mail className={`h-10 w-10 text-[${accentColor}] mb-3`} />
+            <Mail className={`h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 text-[${accentColor}] mb-3`} />
             <div className="space-y-2">
-              <h1 className={`text-3xl font-bold font-serif tracking-tight sm:text-4xl md:text-5xl ${primaryTextLight} ${primaryTextDark}`}>
+              <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>
                 Contact Us
               </h1>
-              <p className={`mx-auto max-w-[700px] md:text-xl ${secondaryTextLight} ${secondaryTextDark}`}>
+              <p className={`mx-auto max-w-[700px] text-base sm:text-lg md:text-xl lg:text-xl xl:text-2xl ${secondaryTextLight} ${secondaryTextDark}`}>
                 We'd love to hear from you! Reach out with any questions or inquiries.
               </p>
             </div>
@@ -96,15 +96,15 @@ export default function ContactUsPage() {
         </div>
       </section>
 
-      <section className={`w-full py-12 md:py-16 lg:py-20 ${sectionBgLight} ${sectionBgDark}`}>
-        <div className="container px-4 md:px-6">
-          <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
-            <div className="space-y-6">
-              <h2 className={`text-2xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Get in Touch</h2>
-              <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-sm`}>
+      <section className={`w-full py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 ${sectionBgLight} ${sectionBgDark}`}>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-10 md:gap-12 lg:grid-cols-2 lg:gap-16">
+            <div className="space-y-6 text-center lg:text-left">
+              <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Get in Touch</h2>
+              <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-sm w-full`}>
                 <CardContent className="p-6 space-y-4">
-                  <div className="flex items-start gap-4">
-                    <Mail className={`h-5 w-5 text-[${accentColor}] mt-1 flex-shrink-0`} />
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
+                    <Mail className={`h-6 w-6 text-[${accentColor}] mt-1 flex-shrink-0`} />
                     <div>
                       <h3 className={`font-semibold ${primaryTextLight} ${primaryTextDark}`}>Email</h3>
                       <a href="mailto:info@apostolictheology.org" className={`${secondaryTextLight} ${secondaryTextDark} hover:text-[${accentColor}] transition-colors break-all`}>
@@ -118,38 +118,39 @@ export default function ContactUsPage() {
             </div>
 
             <div className="space-y-6">
-              <h2 className={`text-2xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Send Us a Message</h2>
-              <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-sm`}>
+              <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark} text-center lg:text-left`}>Send Us a Message</h2>
+              <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-sm w-full`}>
                 <form onSubmit={handleSubmit} noValidate>
                   <CardContent className="p-6 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <Label htmlFor="name" className={`${primaryTextLight} ${primaryTextDark}`}>Name</Label>
+                        <Label htmlFor="name" className={`${primaryTextLight} ${primaryTextDark} text-sm`}>Name</Label>
                         <Input id="name" name="name" value={formData.name} onChange={handleChange} required className={inputClasses} />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="email" className={`${primaryTextLight} ${primaryTextDark}`}>Email</Label>
+                        <Label htmlFor="email" className={`${primaryTextLight} ${primaryTextDark} text-sm`}>Email</Label>
                         <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required className={inputClasses} />
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="subject" className={`${primaryTextLight} ${primaryTextDark}`}>Subject</Label>
+                      <Label htmlFor="subject" className={`${primaryTextLight} ${primaryTextDark} text-sm`}>Subject</Label>
                       <Input id="subject" name="subject" value={formData.subject} onChange={handleChange} required className={inputClasses} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="message" className={`${primaryTextLight} ${primaryTextDark}`}>Message</Label>
+                      <Label htmlFor="message" className={`${primaryTextLight} ${primaryTextDark} text-sm`}>Message</Label>
                       <Textarea id="message" name="message" value={formData.message} onChange={handleChange} required rows={5} className={textareaClasses} />
                     </div>
                     {error && (
-                      <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
+                      <p className="text-sm font-medium text-red-600 dark:text-red-400 text-center sm:text-left">{error}</p>
                     )}
                     {success && (
-                      <p className="text-sm font-medium text-green-600 dark:text-green-400 flex items-center gap-2">
-                         <CheckCircle size={16} /> Message sent successfully! We'll be in touch soon.
-                      </p>
+                      <div className="flex items-center justify-center sm:justify-start gap-2 p-3 rounded-md bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700">
+                         <CheckCircle size={18} className="text-green-600 dark:text-green-400 flex-shrink-0" />
+                         <p className="text-sm font-medium text-green-700 dark:text-green-300">Message sent successfully! We'll be in touch soon.</p>
+                      </div>
                     )}
                   </CardContent>
-                  <CardFooter className="p-6 pt-0">
+                  <CardFooter className="p-6 pt-0 flex justify-center sm:justify-start">
                     <Button type="submit" className={buttonPrimaryClasses} disabled={isSubmitting}>
                       {isSubmitting ? (
                         <>

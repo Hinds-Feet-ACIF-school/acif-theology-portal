@@ -5,7 +5,7 @@ import { Button } from "../../components/ui/button.js";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs.js";
 import { PlusCircle, Edit, Eye, Trash2, ArrowLeft, Save, ChevronLeft, Loader2, AlertCircle, ExternalLink } from "lucide-react";
-import * as apiService from "../../services/api.js";
+import * as apiService from "../../services/api";
 const lightBg = 'bg-[#FFF8F0]';
 const darkBg = 'dark:bg-gray-950';
 const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';

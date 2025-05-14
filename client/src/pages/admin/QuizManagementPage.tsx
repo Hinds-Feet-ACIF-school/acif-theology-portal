@@ -23,7 +23,7 @@ import {
   ExternalLink,
   HelpCircle
 } from "lucide-react";
-import * as apiService from "../../services/api.js";
+import * as apiService from "../../services/api";
 
 
 

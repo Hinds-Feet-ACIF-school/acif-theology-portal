@@ -1,13 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "../components/ui/button.js"; // Assuming .ts or .tsx
-import { Input } from "../components/ui/input.js";   // Assuming .ts or .tsx
-import { Label } from "../components/ui/label.js";   // Assuming .ts or .tsx
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card.js"; // Assuming .ts or .tsx
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select.js"; // Assuming .ts or .tsx
-import { Checkbox } from "../components/ui/checkbox.js"; // Assuming .ts or .tsx
-import { useAuth } from "../context/AuthContext.js"; // Assuming .ts or .tsx
-import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react"; // Added Loader2
+import { Button } from "../components/ui/button.js";
+import { Input } from "../components/ui/input.js";
+import { Label } from "../components/ui/label.js";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card.js";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select.js";
+import { Checkbox } from "../components/ui/checkbox.js";
+import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
+import apiClient from "../services/apiClient.js";
 
 // --- Define Country List (Outside Component) ---
 const allCountries: string[] = [
@@ -35,7 +35,7 @@ const allCountries: string[] = [
   "Vanuatu", "Vatican City", "Venezuela", "Vietnam",
   "Yemen",
   "Zambia", "Zimbabwe"
-].sort(); // Sort alphabetically
+].sort();
 
 // --- Color Constants ---
 const accentColor = "#C5A467";
@@ -48,17 +48,20 @@ const mutedTextLight = "text-gray-500";
 const mutedTextDark = "dark:text-gray-400";
 const inputBgLight = "bg-[#FFF8F0]";
 const inputBgDark = "dark:bg-gray-800";
-const contentBgLight = "bg-white";
-const contentBgDark = "dark:bg-gray-900";
 const inputBorderLight = "border-[#E0D6C3]";
 const inputBorderDark = "dark:border-gray-700";
-const focusRingAccent = `focus:ring-[${accentColor}]`;
-const focusBorderAccent = `focus:border-[${accentColor}] dark:focus:border-[${accentColor}]`;
 const cardBgLight = "bg-white";
 const cardBgDark = "dark:bg-gray-900";
 const cardBorder = `border border-[#C5A467]/20 dark:border-[#C5A467]/30`;
+const contentBgLight = "bg-white";
+const contentBgDark = "dark:bg-gray-900";
 
-// --- Component ---
+
+interface Cohort {
+  id: string;
+  name: string;
+}
+
 const RegisterPage: React.FC = () => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -69,14 +72,41 @@ const RegisterPage: React.FC = () => {
     confirmPassword: "",
     country: "",
     church: "",
-    intake: "",
+    phoneNumber: "",
+    selectedCohortId: "",
     agreeTerms: false,
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { register, loading } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [availableCohorts, setAvailableCohorts] = useState<Cohort[]>([]);
   const navigate = useNavigate();
+
+  const inputClasses = `flex h-10 w-full rounded-md border ${inputBorderLight} ${inputBorderDark} ${inputBgLight} ${inputBgDark} px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}] disabled:cursor-not-allowed disabled:opacity-50 ${primaryTextLight} ${primaryTextDark} shadow-sm transition-colors`;
+  const selectTriggerClasses = `${inputClasses} flex items-center justify-between w-full`;
+  const selectContentClasses = `relative z-50 max-h-60 min-w-[8rem] overflow-y-auto rounded-md border ${cardBorder} ${contentBgLight} ${contentBgDark} ${primaryTextLight} ${primaryTextDark} shadow-md animate-in fade-in-80`;
+  const selectItemClasses = `relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-[#C5A467]/10 dark:focus:bg-[#C5A467]/20 data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-[#C5A467]/5 dark:hover:bg-[#C5A467]/10`;
+  const buttonPrimaryClasses = `bg-[${accentColor}] hover:bg-[${accentHoverColor}] text-[#2A0F0F] font-semibold transition-colors duration-200 inline-flex items-center justify-center rounded-md text-sm ring-offset-background h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}]`;
+  const buttonOutlineClasses = `border border-[#4A1F1F]/50 dark:border-[#E0D6C3]/50 ${secondaryTextLight} ${secondaryTextDark} hover:text-[${accentColor}] hover:border-[${accentColor}] dark:hover:text-[${accentColor}] dark:hover:border-[${accentColor}] hover:bg-transparent dark:hover:bg-transparent transition-colors duration-200 inline-flex items-center justify-center rounded-md text-sm ring-offset-background h-10 px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}]`;
+
+
+  useEffect(() => {
+    const fetchCohorts = async () => {
+      try {
+        setLoading(true);
+        const response = await apiClient.get<Cohort[]>('/cohorts/available');
+        setAvailableCohorts(response.data);
+        setFormError(null);
+      } catch (error) {
+        console.error("Failed to fetch cohorts:", error);
+        setFormError("Could not load cohort options. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCohorts();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -84,6 +114,13 @@ const RegisterPage: React.FC = () => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    if ( (name === "phoneNumber" && value && !/^(09|07)\d{8}$/.test(value)) ) {
+        setFormError("Invalid phone format (e.g., 0912345678 or 0712345678).");
+    } else if (name === "phoneNumber" || (name === "country" && value) || (name === "selectedCohortId" && value)) {
+         setFormError(null);
+    } else if (name === "firstName" || name === "lastName" || name === "email" || name === "password" || name === "confirmPassword") {
+        setFormError(null);
+    }
   };
 
   const handleSelectChange = (name: string, value: string | boolean) => {
@@ -91,12 +128,12 @@ const RegisterPage: React.FC = () => {
       ...prev,
       [name]: value,
     }));
-     if (name === "country" && value) {
+    if ((name === "country" || name === "selectedCohortId") && value) {
       setFormError(null);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleProceedToPayment = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFormError(null);
 
@@ -116,30 +153,46 @@ const RegisterPage: React.FC = () => {
       setStep(1);
       return;
     }
-     if (!formData.country) {
-        setFormError("Please select your country from Step 2.");
+    if (!formData.country || !formData.selectedCohortId) {
+        setFormError("Please select your country and desired cohort from Step 2.");
         setStep(2);
         return;
-     }
+    }
+    if (formData.phoneNumber && !/^(09|07)\d{8}$/.test(formData.phoneNumber)) {
+        setFormError("Invalid phone format. Please correct it in Step 2.");
+        setStep(2);
+        return;
+    }
 
     if (loading) return;
+    setLoading(true);
 
     try {
-      const registrationData = {
+      const registrationPayload = {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         password: formData.password,
         country: formData.country,
         church: formData.church || null,
+        phoneNumber: formData.phoneNumber || null,
+        selectedCohortId: formData.selectedCohortId,
       };
-      console.log("Submitting Registration Data:", registrationData);
-      await register(registrationData);
-      navigate("/dashboard", { replace: true });
+      console.log("Initiating Payment with Data:", registrationPayload);
+
+      const response = await apiClient.post<{ checkout_url: string, message?: string }>('/payments/initialize-registration', registrationPayload);
+
+      if (response.data && response.data.checkout_url) {
+        window.location.href = response.data.checkout_url;
+      } else {
+        setFormError(response.data.message || "Failed to initialize payment. Please try again.");
+      }
     } catch (error: any) {
-      const message = error.message || "Registration failed. Please check your details.";
+      const message = error.response?.data?.message || error.message || "Payment initiation failed. Please check your details.";
       setFormError(message);
-      console.error("Registration Submission Error:", error);
+      console.error("Payment Initiation Error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -158,9 +211,15 @@ const RegisterPage: React.FC = () => {
             return;
         }
      }
-     if (step === 2 && !formData.country) {
-        setFormError("Please select your country.");
-        return;
+     if (step === 2) {
+        if (!formData.country || !formData.selectedCohortId) {
+            setFormError("Please select your country and cohort.");
+            return;
+        }
+        if (formData.phoneNumber && !/^(09|07)\d{8}$/.test(formData.phoneNumber)) {
+            setFormError("Invalid phone format (e.g., 0912345678 or 0712345678). Please correct or remove.");
+            return;
+        }
      }
      setFormError(null);
      setStep((s) => Math.min(s + 1, 3));
@@ -169,22 +228,13 @@ const RegisterPage: React.FC = () => {
   const prevStep = () => {
     setFormError(null);
     setStep((s) => Math.max(s - 1, 1));
-  }
+  };
 
-  // --- Class Definitions ---
-  const inputClasses = `flex h-10 w-full rounded-md border ${inputBorderLight} ${inputBorderDark} ${inputBgLight} ${inputBgDark} px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}] disabled:cursor-not-allowed disabled:opacity-50 ${primaryTextLight} ${primaryTextDark} shadow-sm transition-colors`;
-  const inputWithIconPadding = "pr-10";
-  const selectTriggerClasses = `${inputClasses} flex items-center justify-between w-full`;
-  const selectContentClasses = `relative z-50 max-h-60 min-w-[8rem] overflow-y-auto rounded-md border ${cardBorder} ${contentBgLight} ${contentBgDark} ${primaryTextLight} ${primaryTextDark} shadow-md animate-in fade-in-80`;
-  const selectItemClasses = `relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-[#C5A467]/10 dark:focus:bg-[#C5A467]/20 data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-[#C5A467]/5 dark:hover:bg-[#C5A467]/10`;
-  const buttonPrimaryClasses = `bg-[${accentColor}] hover:bg-[${accentHoverColor}] text-[#2A0F0F] font-semibold transition-colors duration-200 inline-flex items-center justify-center rounded-md text-sm ring-offset-background h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}]`;
-  const buttonOutlineClasses = `border border-[#4A1F1F]/50 dark:border-[#E0D6C3]/50 ${secondaryTextLight} ${secondaryTextDark} hover:text-[${accentColor}] hover:border-[${accentColor}] dark:hover:text-[${accentColor}] dark:hover:border-[${accentColor}] hover:bg-transparent dark:hover:bg-transparent transition-colors duration-200 inline-flex items-center justify-center rounded-md text-sm ring-offset-background h-10 px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}]`;
 
   return (
-    <div className="flex flex-col items-center min-h-screen py-12 bg-[#FFF8F0] dark:bg-gray-950 px-4">
+    <div className={`flex flex-col items-center min-h-screen py-12 bg-[#FFF8F0] dark:bg-gray-950 px-4`}>
       <div className="container max-w-2xl px-4 md:px-6">
 
-        {/* Back Button */}
         <div className="w-full mb-6 flex justify-start">
           <button
             type="button"
@@ -199,7 +249,6 @@ const RegisterPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Header */}
         <div className="flex flex-col items-center space-y-4 text-center mb-12">
           <div className="space-y-2">
             <h1 className={`text-3xl font-bold font-serif tracking-tight sm:text-4xl ${primaryTextLight} ${primaryTextDark}`}>
@@ -212,7 +261,7 @@ const RegisterPage: React.FC = () => {
         </div>
 
         <div className="mx-auto w-full">
-          {/* Stepper */}
+          {/* STEPPER - Ensure labels are correct */}
           <div className="flex items-start justify-between mb-8 max-w-md mx-auto">
             {[1, 2, 3].map((num, index, arr) => (
               <React.Fragment key={num}>
@@ -223,7 +272,8 @@ const RegisterPage: React.FC = () => {
                     {num}
                   </div>
                   <span className="text-xs text-center font-medium">
-                    {num === 1 ? "Account" : num === 2 ? "Profile" : "Confirm"}
+                    {/* Corrected Stepper Labels */}
+                    {num === 1 ? "Account" : num === 2 ? "Profile & Cohort" : "Confirm & Pay"}
                   </span>
                 </div>
                 {index < arr.length - 1 && (
@@ -235,15 +285,14 @@ const RegisterPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Form Card */}
           <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-lg max-w-md mx-auto`}>
-            <form onSubmit={handleSubmit} noValidate>
+            <form onSubmit={handleProceedToPayment} noValidate>
 
-              {/* Step 1: Account */}
+              {/* STEP 1: ACCOUNT */}
               {step === 1 && (
                 <>
                   <CardHeader>
-                    <CardTitle className={`${primaryTextLight} ${primaryTextDark} font-serif`}>Create Your Account</CardTitle>
+<CardTitle className={`${primaryTextLight} ${primaryTextDark} font-serif`}>Create Your Account</CardTitle>
                     <CardDescription className={`${secondaryTextLight} ${secondaryTextDark}`}>
                       Enter your details to create your student account
                     </CardDescription>
@@ -275,7 +324,7 @@ const RegisterPage: React.FC = () => {
                           onChange={handleChange}
                           required
                           aria-required="true"
-                          className={`${inputClasses} ${inputWithIconPadding}`}
+                          className={`${inputClasses} pr-10`}
                           minLength={6}
                           aria-describedby="password-hint"
                         />
@@ -301,7 +350,7 @@ const RegisterPage: React.FC = () => {
                           onChange={handleChange}
                           required
                           aria-required="true"
-                          className={`${inputClasses} ${inputWithIconPadding}`}
+                          className={`${inputClasses} pr-10`}
                           aria-invalid={!!(formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword)}
                           aria-describedby="confirmPassword-error"
                         />
@@ -324,7 +373,14 @@ const RegisterPage: React.FC = () => {
                       type="button"
                       onClick={nextStep}
                       className={buttonPrimaryClasses}
-                      disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.password}
+                      disabled={
+                        !formData.firstName ||
+                        !formData.lastName ||
+                        !formData.email ||
+                        !formData.password ||
+                        formData.password.length < 6 ||
+                        formData.password !== formData.confirmPassword
+                      }
                     >
                       Next
                     </Button>
@@ -332,12 +388,13 @@ const RegisterPage: React.FC = () => {
                 </>
               )}
 
-              {/* Step 2: Profile */}
+              {/* STEP 2: PROFILE & COHORT SELECTION */}
               {step === 2 && (
                 <>
+                  {/* Corrected CardHeader for Step 2 */}
                   <CardHeader>
-                    <CardTitle className={`${primaryTextLight} ${primaryTextDark} font-serif`}>Your Profile</CardTitle>
-                    <CardDescription className={`${secondaryTextLight} ${secondaryTextDark}`}>Tell us more about yourself</CardDescription>
+                    <CardTitle className={`${primaryTextLight} ${primaryTextDark} font-serif`}>Your Profile & Cohort</CardTitle>
+                    <CardDescription className={`${secondaryTextLight} ${secondaryTextDark}`}>Tell us more and choose your intake</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {formError && <p role="alert" className="text-red-600 dark:text-red-400 text-sm font-medium">{formError}</p>}
@@ -356,9 +413,29 @@ const RegisterPage: React.FC = () => {
                         </SelectContent>
                       </Select>
                     </div>
+                     <div className="space-y-1.5">
+                        <Label htmlFor="phoneNumber" className={`${primaryTextLight} ${primaryTextDark} text-sm font-medium`}>Phone Number <span className="text-xs text-gray-400">(e.g., 09... or 07...)</span></Label>
+                        <Input id="phoneNumber" name="phoneNumber" type="tel" value={formData.phoneNumber} onChange={handleChange} placeholder="0912345678" className={inputClasses} />
+                    </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="church" className={`${primaryTextLight} ${primaryTextDark} text-sm font-medium`}>Church Affiliation <span className="text-xs text-gray-400">(Optional)</span></Label>
                       <Input id="church" name="church" value={formData.church} onChange={handleChange} placeholder="Your local church or ministry" className={inputClasses} />
+                    </div>
+                    {/* THIS IS THE COHORT SELECTION DROPDOWN */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="selectedCohortId" className={`${primaryTextLight} ${primaryTextDark} text-sm font-medium`}>Select Cohort</Label>
+                      <Select value={formData.selectedCohortId} onValueChange={(value: string) => handleSelectChange("selectedCohortId", value)} required>
+                        <SelectTrigger id="selectedCohortId" className={selectTriggerClasses} aria-required="true" disabled={loading || availableCohorts.length === 0}>
+                          <SelectValue placeholder={loading ? "Loading cohorts..." : "Select your preferred intake"} />
+                        </SelectTrigger>
+                        <SelectContent className={selectContentClasses}>
+                          {availableCohorts.length > 0 ? availableCohorts.map((cohort) => (
+                            <SelectItem key={cohort.id} value={cohort.id} className={selectItemClasses}>
+                              {cohort.name}
+                            </SelectItem>
+                          )) : <SelectItem value="loading" disabled className={selectItemClasses}>Loading cohorts...</SelectItem>}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </CardContent>
                   <CardFooter className="flex justify-between pt-6">
@@ -369,7 +446,12 @@ const RegisterPage: React.FC = () => {
                        type="button"
                        onClick={nextStep}
                        className={buttonPrimaryClasses}
-                       disabled={!formData.country}
+                       disabled={
+                         !formData.country ||
+                         !formData.selectedCohortId || // Ensure cohort is selected
+                         loading ||
+                         (formData.phoneNumber !== "" && !/^(09|07)\d{8}$/.test(formData.phoneNumber))
+                       }
                     >
                       Next
                     </Button>
@@ -377,27 +459,35 @@ const RegisterPage: React.FC = () => {
                 </>
               )}
 
-              {/* Step 3: Confirm */}
+              {/* STEP 3: CONFIRM & PAY */}
               {step === 3 && (
                 <>
+                  {/* Corrected CardHeader for Step 3 */}
                   <CardHeader>
-                    <CardTitle className={`${primaryTextLight} ${primaryTextDark} font-serif`}>Confirm & Submit</CardTitle>
-                    <CardDescription className={`${secondaryTextLight} ${secondaryTextDark}`}>Review your information before submitting</CardDescription>
+                    <CardTitle className={`${primaryTextLight} ${primaryTextDark} font-serif`}>Confirm & Proceed to Payment</CardTitle>
+                    <CardDescription className={`${secondaryTextLight} ${secondaryTextDark}`}>Review your information before payment</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className={`text-sm ${primaryTextLight} ${primaryTextDark}`}><strong>Full Name:</strong> {formData.firstName} {formData.lastName}</div>
                     <div className={`text-sm ${primaryTextLight} ${primaryTextDark}`}><strong>Email:</strong> {formData.email}</div>
                     <div className={`text-sm ${primaryTextLight} ${primaryTextDark}`}><strong>Country:</strong> {formData.country}</div>
+                    {formData.phoneNumber && <div className={`text-sm ${primaryTextLight} ${primaryTextDark}`}><strong>Phone:</strong> {formData.phoneNumber}</div>}
                     <div className={`text-sm ${primaryTextLight} ${primaryTextDark}`}><strong>Church:</strong> {formData.church || 'N/A'}</div>
+                    {/* CORRECTLY DISPLAYING SELECTED COHORT */}
+                    <div className={`text-sm ${primaryTextLight} ${primaryTextDark}`}>
+                      <strong>Selected Cohort:</strong> {availableCohorts.find(c => c.id === formData.selectedCohortId)?.name || formData.selectedCohortId || 'N/A'}
+                    </div>
 
-                    {/* Terms and Conditions */}
                     <div className="flex items-start space-x-2 pt-4">
                       <Checkbox
                         id="agreeTerms"
                         name="agreeTerms"
                         checked={formData.agreeTerms}
-                        // Type the 'checked' parameter explicitly
-                        onCheckedChange={(checked: boolean) => handleSelectChange("agreeTerms", !!checked)}
+                        onCheckedChange={(checked: boolean | 'indeterminate') => {
+                            if (typeof checked === 'boolean') {
+                                handleSelectChange("agreeTerms", checked);
+                            }
+                        }}
                         required
                         aria-required="true"
                         className={`border-[#C5A467]/50 data-[state=checked]:bg-[${accentColor}] data-[state=checked]:text-[#2A0F0F] focus-visible:ring-[${accentColor}] mt-0.5`}
@@ -419,6 +509,7 @@ const RegisterPage: React.FC = () => {
                     <Button variant="outline" type="button" onClick={prevStep} className={buttonOutlineClasses}>
                       Back
                     </Button>
+                    {/* Corrected Button Text for Step 3 */}
                     <Button
                       type="submit"
                       className={buttonPrimaryClasses}
@@ -426,12 +517,11 @@ const RegisterPage: React.FC = () => {
                     >
                       {loading ? (
                          <span className="flex items-center">
-                           {/* Use Loader2 from lucide-react */}
                            <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#2A0F0F]" />
-                           Submitting...
+                           Processing...
                          </span>
                       ) : (
-                         "Submit Registration"
+                         "Proceed to Payment"
                       )}
                     </Button>
                   </CardFooter>
@@ -441,7 +531,6 @@ const RegisterPage: React.FC = () => {
           </Card>
         </div>
 
-        {/* Login Link */}
         <div className="text-center mt-8">
           <p className={`${mutedTextLight} ${mutedTextDark} text-sm`}>
             Already have an account?{" "}

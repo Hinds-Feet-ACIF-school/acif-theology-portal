@@ -10,7 +10,7 @@ import {
   BookOpen, Users, FileText, Settings, PlusCircle, Search, Calendar, CheckCircle2, Clock, Edit, Eye, Trash2, ArrowUpRight, UserCircle, HelpCircle, LogOut, Loader2, AlertCircle // Import Loader2, AlertCircle
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.js";
-import * as apiService from "../services/api.js"; // Import your api service
+import * as apiService from "../services/api"; // Import your api service
 
 // --- Styling Constants (keep as is) ---
 const accentColor = "#C5A467";
