@@ -85,7 +85,7 @@ export default function ContactUsPage() {
           <div className="flex flex-col items-center space-y-4 text-center">
             <Mail className={`h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 text-[${accentColor}] mb-3`} />
             <div className="space-y-2">
-              <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>
+              <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-serif tracking-tight text-white`}>
                 Contact Us
               </h1>
               <p className={`mx-auto max-w-[700px] text-base sm:text-lg md:text-xl lg:text-xl xl:text-2xl ${secondaryTextLight} ${secondaryTextDark}`}>

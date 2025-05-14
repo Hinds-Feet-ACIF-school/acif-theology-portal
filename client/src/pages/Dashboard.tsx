@@ -1,18 +1,46 @@
-// src/pages/CourseDetailPage.tsx
-import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+// src/pages/DashboardPage.tsx
+import React, { useState, useEffect, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs.js";
 import { Progress } from "../components/ui/progress.js";
-import { BookOpen, PlayCircle, ArrowLeft, Loader2, AlertCircle, HelpCircle, CheckCircle, XCircle, MinusCircle, TrendingUp, ListChecks, FileText as FileTextIcon } from "lucide-react";
-import * as apiService from "../services/api";
-// Ensure GradedItem includes 'passingScore?: number' and 'status?: string' from your API types
-import type { Course, Week, WeekGradeSummary, GradedItem } from "../services/api";
-import { cn } from "../lib/utils.js";
+import { CheckCircle2, PlayCircle, Lock, Loader2, AlertCircle } from "lucide-react";
+import { useAuth } from "../context/AuthContext.js";
+import * as apiService from "../services/api"; // Assuming getCourseAccessState is exported
 
+// Interface from apiService for getCourseAccessState response
+// type ProcessedCourseOverviewItem = apiService.ProcessedCourseOverviewItem; // If you prefer to import type
+
+// --- Interfaces for Dashboard Overview ---
+// This interface should match what apiService.getCourseAccessState returns for each course
+interface DashboardProcessedCourse extends apiService.ProcessedCourseOverviewItem {
+    // id, title, description, monthOrder, status, progress are from ProcessedCourseOverviewItem
+    // We might add detailed weeks here if we merge data later
+    detailedWeeks?: AccessibleContentWeek[]; // For detailed progress display
+}
+
+// This interface is for what apiService.getAccessibleContent() (or a similar detailed progress endpoint) returns.
+export interface AccessibleContentWeek {
+  id: string;
+  weekNumber: number;
+  absoluteWeekNumber?: number;
+  title: string;
+  description?: string;
+  isCompleted?: boolean;
+}
+
+export interface AccessibleContentCourse { // This is for detailed progress data
+  id: string; // Course ID
+  title: string;
+  monthOrder: number;
+  weeks: AccessibleContentWeek[];
+  progress?: number; // Overall course progress
+  description?: string;
+  instructorName?: string;
+}
+// --- Style Constants --- (Keep your existing style constants)
 const accentColor = "#C5A467";
-const accentHoverColor = "#B08F55";
 const primaryTextLight = "text-[#2A0F0F]";
 const secondaryTextLight = "text-[#4A1F1F]";
 const primaryTextDark = "dark:text-[#FFF8F0]";
@@ -24,408 +52,300 @@ const cardBgDark = "dark:bg-gray-900";
 const cardBorder = `border border-[#C5A467]/20 dark:border-[#C5A467]/30`;
 const sectionBgLight = "bg-[#FFF8F0]";
 const sectionBgDark = "dark:bg-gray-950";
-const headerBgLight = "bg-[#F4EDE4]";
-const headerBgDark = "dark:bg-gray-800";
 const tabsListBgLight = "bg-[#F4EDE4]";
 const tabsListBgDark = "dark:bg-gray-800";
-const tabsTriggerTextLight = "text-[#4A1F1F]";
-const tabsTriggerTextDark = "dark:text-[#E0D6C3]/80";
-const tabsTriggerActiveTextLight = "text-[#2A0F0F]";
-const tabsTriggerActiveTextDark = "dark:text-white";
-const tabsTriggerActiveBgLight = "bg-white";
-const tabsTriggerActiveBgDark = "dark:bg-gray-950";
-const tabsTriggerHoverBgLight = "hover:bg-white/60";
-const tabsTriggerHoverBgDark = "dark:hover:bg-white/10";
-const tabsTriggerHoverTextLight = "hover:text-[#2A0F0F]";
-const tabsTriggerHoverTextDark = "dark:hover:text-white";
-const itemBorderLight = "border-gray-200";
-const itemBorderDark = "dark:border-gray-700";
+const positiveColor = "text-green-600 dark:text-green-400";
+const lockedColor = `text-gray-400 dark:text-gray-500`;
+const lockedBg = `bg-gray-100 dark:bg-gray-800`;
 const goldBgHover = 'hover:bg-[#B08F55]';
 const goldBg = 'bg-[#C5A467]';
 const goldBorder = 'border-[#C5A467]';
-const goldAccent = 'text-[#C5A467]';
-const primaryButtonClasses = `${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold`;
-const outlineButtonClasses = `${goldBorder} ${goldAccent} hover:bg-[#C5A467]/10 dark:hover:bg-[#C5A467]/15 hover:text-[#A07F44] dark:hover:text-[#E0D6C3]`;
+const goldAccentBgLight = `bg-[${accentColor}]/10 dark:bg-[${accentColor}]/20`;
+
+const tabsTriggerBaseClasses = `px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}] dark:focus-visible:ring-offset-gray-950`;
+const tabsTriggerInactiveClasses = `text-[#4A1F1F] dark:text-[#E0D6C3]/80 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white`;
+const tabsTriggerActiveClasses = `shadow-md bg-white dark:bg-gray-900 text-[${accentColor}] font-semibold border-b-2 ${goldBorder}`;
 
 
-interface CourseWithWeeksData extends Course {
-  weeks: Week[];
-}
-
-export default function CourseDetailPage() {
-  const { id: routeCourseId } = useParams<{ id: string }>();
+export default function DashboardPage() {
+  const { currentUser: user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const [courseData, setCourseData] = useState<CourseWithWeeksData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [dashboardCourses, setDashboardCourses] = useState<DashboardProcessedCourse[]>([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(true); // Specific loading for courses
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("content");
+  const [enrollmentMessage, setEnrollmentMessage] = useState<string | null>(null); // For messages like "cohort starts on X"
+  const [activeTab, setActiveTab] = useState("overview");
 
-  const [gradesData, setGradesData] = useState<WeekGradeSummary[]>([]);
-  const [isLoadingGrades, setIsLoadingGrades] = useState(false);
-  const [gradesError, setGradesError] = useState<string | null>(null);
-
-
-  const fetchGrades = useCallback(async () => {
-    if (!routeCourseId) return;
-    console.log("CourseDetailPage: Fetching grades...");
-    setIsLoadingGrades(true);
-    setGradesError(null);
-    try {
-      const fetchedGrades = await apiService.getMyCourseGrades(routeCourseId);
-      console.log("CourseDetailPage: Grades fetched data (raw for debugging):", JSON.parse(JSON.stringify(fetchedGrades)));
-      setGradesData(fetchedGrades);
-    } catch (err: any) {
-      console.error("CourseDetailPage: Failed to load grades:", err);
-      setGradesError(err.response?.data?.message || err.message || "Failed to load grades.");
-    } finally {
-      setIsLoadingGrades(false);
-    }
-  }, [routeCourseId]);
+  // Mock announcements
+  const announcements = [
+    { id: 1, title: "Live Q&A Session", date: "May 10, 2025", content: "Join us for a live Q&A with instructors this Friday." },
+    { id: 2, title: "Course Materials Update", date: "May 7, 2025", content: "Additional resources for Month 3 have been uploaded." },
+  ];
 
   useEffect(() => {
-    const fetchCourseAndWeeks = async () => {
-      if (!routeCourseId) {
-        setError("Course ID not found in URL path.");
-        setIsLoading(false);
-        return;
-      }
-      setIsLoading(true);
+    if (authLoading) return; // Wait for auth state to resolve
+
+    const fetchDashboardData = async () => {
+      setIsLoadingCourses(true);
       setError(null);
+      setDashboardCourses([]);
+      setEnrollmentMessage(null);
+
       try {
-        console.log("CourseDetailPage: Fetching course and weeks data...");
-        const courseDetails: Course | null = await apiService.getCourseById(routeCourseId);
-        if (!courseDetails) {
-          setError(`Course with ID ${routeCourseId} not found.`);
-          setCourseData(null);
-          setIsLoading(false);
-          return;
+        // Step 1: Get the primary course access state (locked/active by date, enrollment message)
+        const accessState = await apiService.getCourseAccessState();
+        setEnrollmentMessage(accessState.enrollmentMessage);
+
+        let coursesWithStatus = accessState.courses.sort((a, b) => a.monthOrder - b.monthOrder);
+
+        if (user) {
+          // Step 2: For 'active' courses (by date), fetch detailed progress if needed
+          // and potentially update status to 'completed' based on actual progress.
+          // For simplicity, we'll assume getAccessibleContent fetches details for ALL courses the user *can* see.
+          // A more optimized approach would be to fetch details only for courses marked 'active' by accessState.
+          
+          try {
+            const detailedProgressCourses: AccessibleContentCourse[] = await apiService.getAccessibleContent();
+            
+            coursesWithStatus = coursesWithStatus.map(course => {
+              const detailedMatch = detailedProgressCourses.find(dp => dp.id === course.id);
+              let finalStatus = course.status;
+              let finalProgress = course.progress; // Progress from getCourseAccessState (might be basic)
+
+              if (detailedMatch) {
+                finalProgress = detailedMatch.progress; // Use more detailed progress if available
+                // If the course was 'active' by date, check if it's truly completed by progress
+                if (finalStatus === 'active') {
+                  const allWeeks = detailedMatch.weeks || [];
+                  if (allWeeks.length > 0 && allWeeks.every(w => w.isCompleted)) {
+                    finalStatus = 'completed';
+                  }
+                }
+              }
+              // If a course is 'locked' by date logic, it remains locked regardless of any stray progress data.
+              return { ...course, status: finalStatus, progress: finalProgress, detailedWeeks: detailedMatch?.weeks };
+            });
+
+          } catch (progressError: any) {
+            console.warn("DashboardPage: Could not fetch detailed user progress:", progressError.message);
+            // Proceed with coursesWithStatus from getCourseAccessState
+          }
+        } else {
+          // For non-logged-in users, all courses are 'locked' by getCourseAccessState
         }
-        const weeksForCourse: Week[] = await apiService.getWeeksByCourse(routeCourseId);
-        const sortedWeeks = weeksForCourse.sort((a, b) => (a.weekNumber || 0) - (b.weekNumber || 0));
-        setCourseData({ ...courseDetails, weeks: sortedWeeks });
         
-        fetchGrades(); 
+        setDashboardCourses(coursesWithStatus as DashboardProcessedCourse[]);
 
       } catch (err: any) {
-        console.error("CourseDetailPage: Failed to load course details:", err);
-        setError(err.response?.data?.message || err.message || "Failed to load course details.");
+        setError((err as Error).message || "Failed to load dashboard content.");
+        console.error("DashboardPage: Fetch error:", err);
       } finally {
-        setIsLoading(false);
+        setIsLoadingCourses(false);
       }
     };
-    fetchCourseAndWeeks();
-  }, [routeCourseId, fetchGrades]);
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    if (value === "grades") {
-        console.log("CourseDetailPage: Switched to Grades tab, re-fetching grades.");
-        fetchGrades(); 
-    }
-  };
+    fetchDashboardData();
+  }, [user, authLoading]);
 
-  const renderGradedItem = (item: GradedItem) => {
-    let statusIcon = <MinusCircle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 flex-shrink-0" />;
-    let statusText = "Not Started";
-    let scoreDisplay: React.ReactNode = "-";
-    let statusTextColorClass = `${mutedTextLight} ${mutedTextDark}`;
+  const { completedCoursesCount, overallProgramProgressPercent } = useMemo(() => {
+    if (!user || dashboardCourses.length === 0) return { completedCoursesCount: 0, overallProgramProgressPercent: 0 };
+    
+    const trackableCourses = dashboardCourses.filter(c => c.status !== 'locked'); // Only consider active/completed for progress
+    if (trackableCourses.length === 0) return { completedCoursesCount: 0, overallProgramProgressPercent: 0 };
 
-    // Log the item being rendered for easier debugging in "Grades & Progress"
-    // console.log(`CourseDetailPage: renderGradedItem - Item ID: ${item.id}, Title: ${item.title}, Type: ${item.type}, Score: ${item.score}, Status: ${item.status}, isGraded: ${item.isGraded}`);
+    let totalProgressSum = 0;
+    const actualCompletedCount = trackableCourses.filter(c => c.status === 'completed').length;
+
+    trackableCourses.forEach(course => {
+        totalProgressSum += (course.progress || 0);
+    });
+    
+    const avgProgress = Math.round(totalProgressSum / trackableCourses.length);
+
+    return { 
+        completedCoursesCount: actualCompletedCount, 
+        overallProgramProgressPercent: avgProgress 
+    };
+  }, [user, dashboardCourses]);
 
 
-    if (item.type === 'section_completion') {
-      if (item.status === 'completed') {
-        statusIcon = <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 flex-shrink-0" />;
-        statusText = "Completed";
-        scoreDisplay = `${item.progressPercent || 100}%`;
-        statusTextColorClass = `text-green-600 dark:text-green-400`;
-      } else if (item.status === 'incomplete' || item.status === 'in_progress') {
-        statusIcon = <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 flex-shrink-0" />;
-        statusText = "In Progress";
-        scoreDisplay = `${item.progressPercent || 0}%`;
-        statusTextColorClass = `text-blue-600 dark:text-blue-400`;
-      } else { // 'not_started' or undefined
-        statusText = "Not Started";
-        scoreDisplay = "0%"; // Or "-", depending on preference for not started sections
-      }
-    } else if (item.type === 'quiz_score') {
-      const itemSpecificPassingScore = item.passingScore; 
-      const courseDefaultPassingScore = courseData?.settings?.defaultPassingScore;
-      const passingScoreToUse = itemSpecificPassingScore ?? courseDefaultPassingScore ?? 70; 
-
-      if (item.score !== null && item.score !== undefined) { 
-        // If a numeric score is provided by the backend, display it.
-        statusText = "Your Previous Result"; 
-        if (item.score >= passingScoreToUse) {
-            statusIcon = <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 flex-shrink-0" />;
-            statusTextColorClass = `text-green-600 dark:text-green-400`;
-        } else {
-            statusIcon = <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 flex-shrink-0" />;
-            statusTextColorClass = `text-red-600 dark:text-red-400`;
-        }
-        scoreDisplay = `${item.score}%`; // Display the score percentage
-      } else { 
-        // Score is null or undefined. Rely on the status from the backend.
-        if (item.status === 'pending_grade') {
-            statusText = "Pending Grade"; 
-            scoreDisplay = "-";
-            statusTextColorClass = `text-yellow-600 dark:text-yellow-400`;
-            statusIcon = <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 flex-shrink-0" />;
-        } else if (item.status === 'not_started') {
-            statusText = "Not Taken"; 
-            scoreDisplay = "-";
-            statusTextColorClass = `${mutedTextLight} ${mutedTextDark}`; // Default color for "Not Taken"
-            statusIcon = <MinusCircle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 flex-shrink-0" />;
-        } else if (item.status === 'pending_manual_grading' || item.status === 'pending_review') {
-            statusText = "Pending Review";
-            scoreDisplay = "-";
-            statusTextColorClass = `text-yellow-600 dark:text-yellow-400`;
-            statusIcon = <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 flex-shrink-0" />;
-        }
-        // This case handles if backend might send 'passed' or 'failed' as status but score is still null (less common)
-        // Or if item.isGraded is true, but status is not one of the above handled ones.
-        else if (item.isGraded && (item.status !== 'passed' && item.status !== 'failed')) { 
-            statusText = "Pending"; // A general "Pending" if an attempt was made but no specific pending status
-            scoreDisplay = "-";
-            statusTextColorClass = `text-yellow-600 dark:text-yellow-400`;
-            statusIcon = <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 flex-shrink-0" />;
-        } else if (item.status === 'passed') { // If backend explicitly says passed but score is somehow null
-            statusText = "Passed (No Score)"; // Or "Your Previous Result" if preferred even without score detail
-            scoreDisplay = "-";
-            statusTextColorClass = `text-green-600 dark:text-green-400`;
-            statusIcon = <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 flex-shrink-0" />;
-        } else if (item.status === 'failed') { // If backend explicitly says failed but score is somehow null
-            statusText = "Failed (No Score)"; // Or "Your Previous Result"
-            scoreDisplay = "-";
-            statusTextColorClass = `text-red-600 dark:text-red-400`;
-            statusIcon = <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 flex-shrink-0" />;
-        }
-        else {
-            // Fallback for any other unhandled combination where score is null
-            console.warn("CourseDetailPage: Quiz item has null score and unhandled status from backend:", JSON.stringify(item));
-            statusText = "Info Unavailable"; 
-            scoreDisplay = "-";
-            statusTextColorClass = `${mutedTextLight} ${mutedTextDark}`;
-            statusIcon = <MinusCircle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 flex-shrink-0" />;
-        }
-      }
-    }
-
+  // --- Render Loading States ---
+  if (authLoading || (isLoadingCourses && dashboardCourses.length === 0 && !error)) {
     return (
-      <div key={item.id} className={`flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 border-b ${itemBorderLight} ${itemBorderDark} last:border-b-0`}>
-        <div className="flex items-center gap-2 sm:gap-3 flex-grow min-w-0">
-            {item.type === 'quiz_score' ? <ListChecks className={`h-5 w-5 ${primaryTextLight} ${primaryTextDark} flex-shrink-0`} /> : <FileTextIcon className={`h-5 w-5 ${primaryTextLight} ${primaryTextDark} flex-shrink-0`} />}
-            <span className={`${secondaryTextLight} ${secondaryTextDark} truncate`}>{item.title}</span>
-        </div>
-        <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 text-xs sm:text-sm w-full sm:w-auto flex-shrink-0">
-          <div className="flex items-center gap-1 sm:gap-2">
-            {statusIcon}
-            <span className={cn("min-w-[5rem] w-auto sm:w-auto text-left sm:text-right font-medium", statusTextColorClass)}>{statusText}</span>
-          </div>
-          <span className={`font-medium min-w-[3rem] sm:w-16 text-right ${ (item.score !== null && item.score !== undefined) || (item.type === 'section_completion' && (item.status === 'completed' || item.status === 'in_progress' || item.status === 'incomplete')) ? `${primaryTextLight} ${primaryTextDark}` : `${mutedTextLight} ${mutedTextDark}` }`}>
-            {scoreDisplay} {/* This will show the score like "100%" or "-" */}
-          </span>
-        </div>
+      <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark} justify-center items-center`}>
+        <Loader2 className="h-12 w-12 animate-spin text-[#C5A467]" />
+        <p className={`mt-4 ${primaryTextLight} ${primaryTextDark}`}>Loading dashboard...</p>
       </div>
     );
-  };
-
-  if (isLoading) {
-    return (
-        <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark} justify-center items-center p-4`}>
-            <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-[#C5A467]" />
-            <p className={`mt-4 text-sm sm:text-base ${primaryTextLight} ${primaryTextDark}`}>Loading course details...</p>
-        </div>
-    );
   }
+
   if (error) {
     return (
-        <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark} justify-center items-center p-4 text-center`}>
-            <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-red-500 mb-4" />
-            <h2 className={`text-lg sm:text-xl font-semibold mb-2 ${primaryTextLight} ${primaryTextDark}`}>Error Loading Course</h2>
-            <p className={`text-sm sm:text-base ${secondaryTextLight} ${secondaryTextDark} mb-4`}>{error}</p>
-            <Button onClick={() => navigate('/dashboard')} className={`${primaryButtonClasses} text-sm sm:text-base`}>Back to Dashboard</Button>
-        </div>
+      <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark} justify-center items-center p-4`}>
+        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+        <h2 className={`text-xl font-semibold mb-2 ${primaryTextLight} ${primaryTextDark}`}>Error Loading Dashboard</h2>
+        <p className={`${secondaryTextLight} ${secondaryTextDark} text-center mb-4`}>{error}</p>
+        <Button onClick={() => window.location.reload()} className={`${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold`}>Try Again</Button>
+      </div>
     );
   }
-  if (!courseData && !isLoading) {
+
+  if (!user && !authLoading && !isLoadingCourses) {
     return (
-        <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark} justify-center items-center p-4 text-center`}>
-            <HelpCircle className={`mx-auto h-10 w-10 sm:h-12 sm:w-12 ${goldAccent} mb-4`} />
-            <h2 className={`text-lg sm:text-xl font-semibold mb-2 ${primaryTextLight} ${primaryTextDark}`}>Course Not Found</h2>
-            <p className={`text-sm sm:text-base ${secondaryTextLight} ${secondaryTextDark} mb-4`}>The course you are looking for could not be found.</p>
-            <Button onClick={() => navigate('/dashboard')} className={`${primaryButtonClasses} text-sm sm:text-base`}>Back to Dashboard</Button>
-        </div>
+      <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark} justify-center items-center p-4 text-center`}>
+        <Lock className="h-12 w-12 text-[#C5A467] mb-4" />
+        <h2 className={`text-xl font-semibold mb-2 ${primaryTextLight} ${primaryTextDark}`}>Access Denied</h2>
+        <p className={`${secondaryTextLight} ${secondaryTextDark} mb-4`}>Please log in to view your dashboard.</p>
+        <Button onClick={() => navigate('/login')} className={`${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold`}>
+          Go to Login
+        </Button>
+      </div>
     );
   }
+  // --- End Render Loading States ---
 
-
-  const totalWeeksInCourse = courseData?.weeks?.length || 0;
-  const completedWeeksCount = gradesData.filter(w => w.overallWeekProgress === 100).length;
-  const overallCourseProgress = totalWeeksInCourse > 0 ? Math.round((completedWeeksCount / totalWeeksInCourse) * 100) : 0;
 
   return (
     <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark}`}>
-      <div className="container mx-auto px-4 py-6 sm:px-6 md:py-8 lg:py-10 xl:py-12">
-        <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
-         <Button
-            variant="link"
-            onClick={() => navigate('/dashboard')}
-            className={`flex items-center ${goldAccent} hover:text-[${accentHoverColor}] p-0 h-auto mb-4 text-xs sm:text-sm font-medium transition-colors`}
-          >
-            <ArrowLeft className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            Back to Dashboard
-          </Button>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              {courseData?.monthOrder !== undefined && <p className={`text-xs sm:text-sm font-medium ${mutedTextLight} ${mutedTextDark} mb-1`}>Month {courseData.monthOrder}</p>}
-              <h1 className={`text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>{courseData?.title}</h1>
-            </div>
+      <div className="container px-4 py-8 md:px-6 lg:py-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 lg:mb-12 gap-4">
+          <div>
+            <h1 className={`text-3xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Student Dashboard</h1>
+            <p className={`${secondaryTextLight} ${secondaryTextDark}`}>Welcome back, {user?.displayName || user?.firstName || user?.email || 'Student'}</p>
           </div>
-           {courseData?.description && <p className={`mt-3 sm:mt-4 text-sm sm:text-base leading-relaxed ${secondaryTextLight} ${secondaryTextDark}`}>{courseData.description}</p>}
         </div>
 
-        <Tabs defaultValue="content" value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className={`grid w-full grid-cols-2 mb-6 sm:mb-8 rounded-lg p-1 sm:p-1.5 ${tabsListBgLight} ${tabsListBgDark} shadow-sm`}>
-             <TabsTrigger value="content" className={`px-3 py-2 sm:py-2.5 text-xs sm:text-sm font-medium ${tabsTriggerTextLight} ${tabsTriggerTextDark} ${tabsTriggerHoverBgLight} ${tabsTriggerHoverBgDark} ${tabsTriggerHoverTextLight} ${tabsTriggerHoverTextDark} data-[state=active]:${tabsTriggerActiveBgLight} dark:data-[state=active]:${tabsTriggerActiveBgDark} data-[state=active]:${tabsTriggerActiveTextLight} dark:data-[state=active]:${tabsTriggerActiveTextDark} data-[state=active]:shadow-md rounded-md transition-all duration-200`}>Course Content</TabsTrigger>
-             <TabsTrigger value="grades" className={`px-3 py-2 sm:py-2.5 text-xs sm:text-sm font-medium ${tabsTriggerTextLight} ${tabsTriggerTextDark} ${tabsTriggerHoverBgLight} ${tabsTriggerHoverBgDark} ${tabsTriggerHoverTextLight} ${tabsTriggerHoverTextDark} data-[state=active]:${tabsTriggerActiveBgLight} dark:data-[state=active]:${tabsTriggerActiveBgDark} data-[state=active]:${tabsTriggerActiveTextLight} dark:data-[state=active]:${tabsTriggerActiveTextDark} data-[state=active]:shadow-md rounded-md transition-all duration-200`}>Grades & Progress</TabsTrigger>
+        {enrollmentMessage && (
+          <Card className={`mb-6 ${cardBgLight} ${cardBgDark} ${cardBorder} border-l-4 border-[${accentColor}]`}>
+            <CardContent className="p-4">
+              <div className="flex items-center">
+                <AlertCircle className={`h-5 w-5 mr-3 text-[${accentColor}]`} />
+                <p className={`${primaryTextLight} ${primaryTextDark} text-sm`}>{enrollmentMessage}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className={`grid w-full grid-cols-2 mb-8 rounded-lg p-1.5 ${tabsListBgLight} ${tabsListBgDark} shadow-sm`}>
+             <TabsTrigger value="overview" className={`${tabsTriggerBaseClasses} ${activeTab === 'overview' ? tabsTriggerActiveClasses : tabsTriggerInactiveClasses}`}>Overview</TabsTrigger>
+             <TabsTrigger value="announcements" className={`${tabsTriggerBaseClasses} ${activeTab === 'announcements' ? tabsTriggerActiveClasses : tabsTriggerInactiveClasses}`}>Announcements</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="content" className="space-y-4 sm:space-y-6">
-            {courseData && courseData.weeks && courseData.weeks.length === 0 && (
-                <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder}`}>
-                    <CardContent className={`p-6 sm:p-8 text-center ${mutedTextLight} ${mutedTextDark}`}>
-                        <BookOpen className="mx-auto h-10 w-10 sm:h-12 sm:w-12 mb-3" />
-                        No weeks have been added to this course yet.
-                    </CardContent>
-                </Card>
-            )}
-            {courseData && courseData.weeks && courseData.weeks.map((week) => {
-              const weekProgressData = gradesData.find(g => g.weekId === week.id);
-              const currentWeekProgress = weekProgressData?.overallWeekProgress;
-
-              return (
-                <Card key={week.id} className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-md hover:shadow-lg transition-shadow duration-200`}>
-                  <CardHeader className={`p-4 sm:p-5 ${headerBgLight} ${headerBgDark} border-b ${itemBorderLight} ${itemBorderDark}`}>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                      <div className="flex-grow min-w-0">
-                        <CardTitle className={`flex items-center gap-2 sm:gap-2.5 text-lg sm:text-xl font-semibold ${primaryTextLight} ${primaryTextDark}`}>
-                          <PlayCircle className={`h-5 w-5 sm:h-6 sm:w-6 text-[${accentColor}] flex-shrink-0`} />
-                          <span className="truncate">Week {week.weekNumber}: {week.title}</span>
-                        </CardTitle>
-                        {week.description && <CardDescription className={`mt-1.5 text-xs sm:text-sm ${secondaryTextLight} ${secondaryTextDark}`}>{week.description}</CardDescription>}
-                      </div>
-                      <Button
-                        onClick={() => {
-                          if (routeCourseId && week.id) {
-                             navigate(`/courses/${routeCourseId}/week/${week.id}`);
-                          }
-                        }}
-                        className={`${primaryButtonClasses} text-xs sm:text-sm px-4 py-2 sm:px-5 sm:py-2.5 h-auto self-start sm:self-center mt-2 sm:mt-0 shrink-0`}
-                      >
-                        Open Week
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  {(isLoadingGrades && currentWeekProgress === undefined) ? (
-                    <CardContent className="p-2.5 sm:p-3 pt-1.5 sm:pt-2">
-                        <div className="flex items-center justify-center text-xs">
-                            <Loader2 className={`h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin mr-2 ${goldAccent}`} />
-                            <span className={`${mutedTextLight} ${mutedTextDark}`}>Loading progress...</span>
+          <TabsContent value="overview" className="space-y-6">
+             <h2 className={`text-xl font-semibold mb-4 ${primaryTextLight} ${primaryTextDark}`}>Program Overview & Progress</h2>
+              <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-sm`}>
+               <CardHeader>
+                 <CardTitle className={`${primaryTextLight} ${primaryTextDark} font-serif`}>Certificate Progress</CardTitle>
+                 <CardDescription className={`${secondaryTextLight} ${secondaryTextDark}`}>Your progress through the program</CardDescription>
+               </CardHeader>
+               <CardContent>
+                  <div className="mb-6">
+                     <div className={`flex justify-between mb-2 ${secondaryTextLight} ${secondaryTextDark}`}>
+                       <span className="text-sm font-medium">Overall Program Progress</span>
+                       <span className="text-sm font-medium">{overallProgramProgressPercent}% ({completedCoursesCount}/{dashboardCourses.filter(c => c.status !== 'locked').length} Courses Tracked)</span>
+                     </div>
+                     <Progress value={overallProgramProgressPercent} className={`h-2 [&>div]:bg-[${accentColor}]`} />
+                   </div>
+                 <div className="space-y-2">
+                   <h3 className={`font-semibold mb-3 ${primaryTextLight} ${primaryTextDark}`}>Course Status</h3>
+                    {isLoadingCourses && dashboardCourses.length === 0 && (
+                        <div className="flex justify-center items-center py-8">
+                            <Loader2 className="h-8 w-8 animate-spin text-[#C5A467]" />
+                            <p className={`ml-3 ${secondaryTextLight} ${secondaryTextDark}`}>Loading courses...</p>
                         </div>
-                    </CardContent>
-                  ) : currentWeekProgress !== undefined ? (
-                      <CardContent className="p-2.5 sm:p-3 pt-1.5 sm:pt-2">
-                          <div className="flex items-center justify-between text-xs">
-                              <span className={`${mutedTextLight} ${mutedTextDark}`}>Week Progress</span>
-                              <span className={`${primaryTextLight} ${primaryTextDark} font-medium`}>{currentWeekProgress}%</span>
-                          </div>
-                          <Progress value={currentWeekProgress || 0} className={`h-1 sm:h-1.5 mt-1 [&>div]:bg-[${accentColor}]`} />
-                      </CardContent>
-                  ) : (
-                    !isLoadingGrades && !gradesError && (
-                        <CardContent className="p-2.5 sm:p-3 pt-1.5 sm:pt-2">
-                             <div className="flex items-center justify-between text-xs">
-                                <span className={`${mutedTextLight} ${mutedTextDark}`}>Week Progress</span>
-                                <span className={`${mutedTextLight} ${mutedTextDark}`}>N/A</span>
-                            </div>
-                            <Progress value={0} title="Progress not available" className={`h-1 sm:h-1.5 mt-1 bg-gray-200 dark:bg-gray-700 [&>div]:bg-gray-400 dark:[&>div]:bg-gray-600`} />
-                        </CardContent>
-                    )
-                  )}
-                </Card>
-              );
-            })}
-          </TabsContent>
+                    )}
+                    {!isLoadingCourses && dashboardCourses.length === 0 && !enrollmentMessage && (
+                        <p className={`${mutedTextLight} ${mutedTextDark} text-center py-4`}>No courses are currently available or assigned to you.</p>
+                    )}
+                    {dashboardCourses.map((course) => {
+                         const isLocked = course.status === 'locked';
+                         const isCompleted = course.status === 'completed';
 
-          <TabsContent value="grades" className="space-y-4 sm:space-y-6">
-            {isLoadingGrades && <div className="flex justify-center items-center p-8 sm:p-10"><Loader2 className={`h-8 w-8 sm:h-10 sm:w-10 animate-spin ${goldAccent}`} /></div>}
-            {gradesError && (
-                 <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder}`}>
-                    <CardContent className={`p-5 sm:p-6 text-center`}>
-                        <AlertCircle className={`mx-auto h-8 w-8 sm:h-10 sm:w-10 text-red-500 dark:text-red-400 mb-3`} />
-                        <p className={`text-red-600 dark:text-red-400 text-sm sm:text-base`}>{gradesError}</p>
-                         <Button variant="outline" onClick={fetchGrades} className={`mt-4 ${outlineButtonClasses} text-xs sm:text-sm`}>Retry</Button>
-                    </CardContent>
-                 </Card>
-            )}
-            {!isLoadingGrades && !gradesError && gradesData.length === 0 && (
-                <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder}`}>
-                    <CardContent className={`p-6 sm:p-8 text-center ${mutedTextLight} ${mutedTextDark}`}>
-                        <ListChecks className="mx-auto h-10 w-10 sm:h-12 sm:w-12 mb-3" />
-                        No grades or progress information available yet for this course.
-                    </CardContent>
-                </Card>
-            )}
+                         let statusText = 'View Course';
+                         let statusColor = `text-[${accentColor}]`;
+                         let statusIcon = <PlayCircle className={`h-5 w-5 text-[${accentColor}]`} />;
+                         let rowBg = `${goldAccentBgLight} ${cardBorder} hover:shadow-md`;
+                         let textColor = `${primaryTextLight} ${primaryTextDark}`; // Use primary for active
+                         let cursorClass = 'cursor-pointer';
 
-            {!isLoadingGrades && !gradesError && gradesData.length > 0 && (
-                <>
-                 <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-sm`}>
-                    <CardHeader className="p-4 sm:p-5">
-                        <CardTitle className={`text-lg sm:text-xl ${primaryTextLight} ${primaryTextDark}`}>Overall Course Progress</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 sm:p-5 pt-0">
-                        <div className="flex items-center justify-between text-xs sm:text-sm mb-1">
-                            <span className={`${secondaryTextLight} ${secondaryTextDark}`}>Completion</span>
-                            <span className={`${primaryTextLight} ${primaryTextDark} font-semibold`}>{overallCourseProgress}%</span>
-                        </div>
-                        <Progress value={overallCourseProgress} className={`h-1.5 sm:h-2 [&>div]:bg-[${accentColor}]`} />
-                         <p className={`${mutedTextLight} ${mutedTextDark} text-xs mt-1.5`}>
-                            Based on {completedWeeksCount} of {totalWeeksInCourse} weeks fully completed.
-                        </p>
-                    </CardContent>
-                </Card>
+                         if (isCompleted) {
+                             statusText = 'Completed - Review';
+                             statusColor = positiveColor;
+                             statusIcon = <CheckCircle2 className={`h-5 w-5 ${positiveColor}`} />;
+                             rowBg = `${cardBgLight} ${cardBgDark} hover:shadow-md dark:hover:bg-gray-800/50`; // Slight hover for completed
+                             textColor = `${secondaryTextLight} ${secondaryTextDark}`; // Muted for completed
+                         } else if (isLocked) {
+                             statusText = 'Locked';
+                             statusColor = lockedColor;
+                             statusIcon = <Lock className="h-5 w-5" />;
+                             rowBg = lockedBg;
+                             textColor = lockedColor;
+                             cursorClass = 'cursor-not-allowed';
+                         }
 
-                {gradesData.map((weekGrade) => (
-                    <Card key={weekGrade.weekId} className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-sm`}>
-                        <CardHeader className="p-4 sm:p-5">
-                            <CardTitle className={`text-base sm:text-lg md:text-xl ${primaryTextLight} ${primaryTextDark}`}>Week {weekGrade.weekNumber}: {weekGrade.weekTitle}</CardTitle>
-                            {weekGrade.overallWeekProgress !== undefined && (
-                                 <div className="mt-2">
-                                     <div className="flex items-center justify-between text-xs">
-                                         <span className={`${mutedTextLight} ${mutedTextDark}`}>Week Progress</span>
-                                         <span className={`${primaryTextLight} ${primaryTextDark} font-medium`}>{weekGrade.overallWeekProgress}%</span>
-                                     </div>
-                                     <Progress value={weekGrade.overallWeekProgress} className={`h-1 sm:h-1.5 mt-1 [&>div]:bg-[${accentColor}]`} />
-                                 </div>
-                            )}
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            {weekGrade.items.length > 0 ? (
-                                <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                                    {weekGrade.items.map(item => renderGradedItem(item))}
+                         return (
+                            <div 
+                                key={course.id} 
+                                className={`flex items-center justify-between p-3 rounded-lg border text-sm transition-all duration-150 ${rowBg} ${isLocked ? 'opacity-70' : ''} ${cursorClass}`}
+                                onClick={() => {
+                                    if (!isLocked) { 
+                                        // Navigate to a specific course page, e.g., /course/:monthOrder or /course/:courseId
+                                        // For now, let's assume a generic course detail page structure using course.id
+                                        navigate(`/courses/${course.id}`); // Or potentially /dashboard/course/${course.id}
+                                    }
+                                }}
+                                role={isLocked ? undefined : "button"}
+                                tabIndex={isLocked ? -1 : 0}
+                                onKeyDown={(e) => {
+                                    if (!isLocked && (e.key === 'Enter' || e.key === ' ')) {
+                                        e.preventDefault();
+                                        navigate(`/courses/${course.id}`);
+                                    }
+                                }}
+                                aria-label={`Month ${course.monthOrder}: ${course.title} - ${statusText}`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    {statusIcon}
+                                    <span className={textColor}>Month {course.monthOrder}: {course.title}</span>
                                 </div>
-                            ) : (
-                                <p className={`${mutedTextLight} ${mutedTextDark} text-xs sm:text-sm py-4 px-4 sm:px-5`}>No graded items or activities for this week.</p>
-                            )}
+                                <div className="flex items-center gap-2">
+                                    {course.status === 'active' && typeof course.progress === 'number' && (
+                                        <div className="flex items-center text-xs w-20">
+                                            <Progress value={course.progress} className={`h-1.5 w-full [&>div]:bg-[${accentColor}]`} />
+                                            <span className={`ml-1.5 ${textColor}`}>{course.progress}%</span>
+                                        </div>
+                                    )}
+                                    <span className={`${statusColor} font-medium`}>
+                                        {statusText}
+                                    </span>
+                                </div>
+                            </div>
+                        );
+                    })}
+                 </div>
+               </CardContent>
+             </Card>
+          </TabsContent>
+          
+           <TabsContent value="announcements" className="space-y-4">
+                <h2 className={`text-xl font-semibold mb-4 ${primaryTextLight} ${primaryTextDark}`}>Announcements</h2>
+                 {announcements.map((announcement) => (
+                    <Card key={announcement.id} className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-sm`}>
+                        <CardHeader>
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
+                            <CardTitle className={`text-lg font-semibold ${primaryTextLight} ${primaryTextDark}`}>{announcement.title}</CardTitle>
+                            <span className={`text-xs pt-1 sm:pt-0 ${mutedTextLight} ${mutedTextDark}`}>{announcement.date}</span>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className={`${secondaryTextLight} ${secondaryTextDark}`}>{announcement.content}</p>
                         </CardContent>
                     </Card>
-                ))}
-                </>
-            )}
-          </TabsContent>
+                 ))}
+                 {announcements.length === 0 && <p className={`${mutedTextLight} ${mutedTextDark}`}>No recent announcements.</p>}
+            </TabsContent>
         </Tabs>
       </div>
     </div>
