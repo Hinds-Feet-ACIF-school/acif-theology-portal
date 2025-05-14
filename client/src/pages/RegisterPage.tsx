@@ -92,6 +92,13 @@ const RegisterPage: React.FC = () => {
 
 
  useEffect(() => {
+   if (apiClient && apiClient.defaults) {
+    console.log("RegisterPage.tsx: Imported apiClient.defaults.baseURL:", apiClient.defaults.baseURL); // <-- ADD THIS PRECISE LOG
+  } else {
+    console.error("RegisterPage.tsx: apiClient or apiClient.defaults is undefined!");
+  }
+
+  
   const fetchCohorts = async () => {
     try {
       setLoading(true);

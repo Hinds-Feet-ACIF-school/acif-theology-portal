@@ -114,6 +114,8 @@ const API = axios.create({
   withCredentials: true,
 });
 
+console.log("api.ts: Actual Axios baseURL after create:", API.defaults.baseURL);
+
 export const getToken = (): string | null => {
     try {
         if (typeof window !== 'undefined' && window.localStorage) {
