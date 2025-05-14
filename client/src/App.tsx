@@ -27,6 +27,10 @@ import AdminSettingsPage from "./pages/admin/SettingsPage.js";
 import AboutUsPage from "./pages/AboutUsPage";
 import ContactUsPage from "./pages/ContactUsPage";
 
+console.log("VITE_API_BASE_URL from env:", import.meta.env.VITE_API_BASE_URL);
+
+
+
 import ProtectedRoute from "./components/ProtectedRoute.js";
 
 import "./App.css";
