@@ -259,27 +259,22 @@ export const getUserCourseGrades = async (req, res) => {
             let completedItemsInWeek = 0;
             let totalGradableItemsInWeek = 0;
 
-            // Using SectionModel.getSectionsByWeekId, which should return sections with their content array.
             const sections = await SectionModel.getSectionsByWeekId(week.id); 
             const sectionProgress = await WeekModel.getUserProgressForWeek(userId, week.id);
 
             for (const section of sections) {
-                // Ensure we are working with plain data object if model returns Firestore doc
                 const sectionData = typeof section.data === 'function' ? section.data() : section;
                 const currentSectionId = section.id?.toString() || section._id?.toString() || sectionData.id;
-
-
                 const isSectionCompleted = sectionProgress[currentSectionId] === true;
                 
-                totalGradableItemsInWeek++; // Count each section as a gradable item for progress
+                totalGradableItemsInWeek++;
                 gradedItems.push({
                     id: currentSectionId,
                     title: sectionData.title,
                     type: 'section_completion',
                     status: isSectionCompleted ? 'completed' : (sectionProgress[currentSectionId] !== undefined ? 'incomplete' : 'not_started'),
-                    isGraded: false, 
-                    // You could add a 'progressPercent' if you calculate it for sections
-                    // progressPercent: isSectionCompleted ? 100 : 0,
+                    isGraded: sectionProgress[currentSectionId] !== undefined, // Section is "graded" if progress exists
+                    progressPercent: isSectionCompleted ? 100 : (sectionProgress[currentSectionId] !== undefined ? 50 : 0), // Example progress
                 });
                 if (isSectionCompleted) {
                     completedItemsInWeek++;
@@ -294,46 +289,59 @@ export const getUserCourseGrades = async (req, res) => {
                                 
                                 if (richBlockData.type === 'quiz' && richBlockData.quizContent && richBlockData.quizContent.databaseQuizId) {
                                     const quizContent = richBlockData.quizContent;
-                                    const actualDatabaseQuizId = quizContent.databaseQuizId; // CRITICAL: Use this ID
+                                    const actualDatabaseQuizId = quizContent.databaseQuizId;
+
+                                    console.log(`[getUserCourseGrades] User: ${userId}, Processing Quiz ID: ${actualDatabaseQuizId}, Title: ${quizContent.title}`); // DEBUG LOG
 
                                     totalGradableItemsInWeek++;
 
-                                    // Fetch submission using the correct databaseQuizId
                                     const submission = await QuizSubmissionModel.getSubmissionForQuizBlock(userId, actualDatabaseQuizId);
+                                    
+                                    // DEBUG LOG to see if submission is found by this controller
+                                    if (!submission) {
+                                        console.log(`[getUserCourseGrades] User: ${userId}, Submission NOT FOUND by getSubmissionForQuizBlock for Quiz ID: ${actualDatabaseQuizId}`);
+                                    } else {
+                                        console.log(`[getUserCourseGrades] User: ${userId}, Submission FOUND for Quiz ID: ${actualDatabaseQuizId}. DB Score: ${submission.score}`);
+                                    }
 
                                     const mainQuizDetails = await QuizModel.getQuizById(actualDatabaseQuizId);
                                     const mainQuizSettings = mainQuizDetails?.settings || {};
                                     
-                                    let defaultPassingScore = 70;
+                                    let defaultPassingScore = 70; // Default course passing score
                                     if (course && course.settings && typeof course.settings.defaultPassingScore === 'number') {
                                         defaultPassingScore = course.settings.defaultPassingScore;
                                     }
+                                    // Order of precedence for passing score: Quiz specific settings > Quiz content settings > Course default
                                     const quizPassingScore = mainQuizSettings?.passingScore ?? quizContent.settings?.passingScore ?? defaultPassingScore;
 
                                     if (submission && typeof submission.score === 'number') {
                                         const passed = submission.score >= quizPassingScore;
                                         gradedItems.push({
-                                            id: actualDatabaseQuizId, // Use databaseQuizId
+                                            id: actualDatabaseQuizId,
                                             title: quizContent.title || mainQuizDetails?.title || "Untitled Quiz",
                                             type: 'quiz_score',
                                             score: submission.score,
                                             maxScore: 100,
                                             isGraded: true, 
                                             status: passed ? 'passed' : 'failed',
+                                            passingScore: quizPassingScore // Include passing score
                                         });
-                                        if (passed) {
+                                        if (passed) { // Only count as completed if passed
                                             completedItemsInWeek++;
                                         }
                                     } else {
+                                        // Submission might exist but score is null (pending), or submission is null (not started)
                                         gradedItems.push({
-                                            id: actualDatabaseQuizId, // Use databaseQuizId
+                                            id: actualDatabaseQuizId,
                                             title: quizContent.title || mainQuizDetails?.title || "Untitled Quiz",
                                             type: 'quiz_score',
                                             score: null,
                                             maxScore: 100,
-                                            isGraded: true, 
+                                            isGraded: !!submission, // True if submission object exists, false if submission is null
                                             status: submission ? 'pending_grade' : 'not_started', 
+                                            passingScore: quizPassingScore // Include passing score
                                         });
+                                        // Do not increment completedItemsInWeek if not_started or pending_grade
                                     }
                                 }
                             }
@@ -353,7 +361,7 @@ export const getUserCourseGrades = async (req, res) => {
         }
         res.status(200).json(courseGradesSummary);
     } catch (error) {
-        console.error(`Error getting grades for course ${req.params.courseId} for user ${userId}:`, error); // Added userId to log
+        console.error(`[getUserCourseGrades] Error for course ${req.params.courseId}, user ${userId}:`, error);
         res.status(500).json({ message: "Failed to get course grades. " + (error.message || "Unknown error") });
     }
 };
