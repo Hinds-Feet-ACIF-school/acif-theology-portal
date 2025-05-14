@@ -88,7 +88,7 @@ export default function ContactUsPage() {
               <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-serif tracking-tight text-white`}>
                 Contact Us
               </h1>
-              <p className={`mx-auto max-w-[700px] text-base sm:text-lg md:text-xl lg:text-xl xl:text-2xl ${secondaryTextLight} ${secondaryTextDark}`}>
+              <p className={`mx-auto max-w-[700px] text-base sm:text-lg md:text-xl lg:text-xl xl:text-2xl text-white`}>
                 We'd love to hear from you! Reach out with any questions or inquiries.
               </p>
             </div>

@@ -33,10 +33,10 @@ export default function AboutUsPage() {
           <div className="flex flex-col items-center space-y-4 text-center">
             <img src={logo} alt="Apostolic & Evangelical Theology Logo" className="h-16 w-16 sm:h-18 sm:w-18 md:h-20 md:w-20 lg:h-24 lg:w-24 mx-auto rounded-full object-cover mb-4 shadow-md border-2 border-[#C5A467]/50" />
             <div className="space-y-2">
-              <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>
+              <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-serif tracking-tight text-white`}>
                 About Our Program
               </h1>
-              <p className={`mx-auto max-w-[700px] text-base sm:text-lg md:text-xl lg:text-xl xl:text-2xl ${secondaryTextLight} ${secondaryTextDark}`}>
+              <p className={`mx-auto max-w-[700px] text-base sm:text-lg md:text-xl lg:text-xl xl:text-2xl text-white`}>
                 Equipping believers for faithful understanding and service through theological education rooted in Apostolic and Evangelical traditions.
               </p>
             </div>
