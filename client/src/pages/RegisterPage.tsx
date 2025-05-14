@@ -91,22 +91,22 @@ const RegisterPage: React.FC = () => {
   const buttonOutlineClasses = `border border-[#4A1F1F]/50 dark:border-[#E0D6C3]/50 ${secondaryTextLight} ${secondaryTextDark} hover:text-[${accentColor}] hover:border-[${accentColor}] dark:hover:text-[${accentColor}] dark:hover:border-[${accentColor}] hover:bg-transparent dark:hover:bg-transparent transition-colors duration-200 inline-flex items-center justify-center rounded-md text-sm ring-offset-background h-10 px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}]`;
 
 
-  useEffect(() => {
-    const fetchCohorts = async () => {
-      try {
-        setLoading(true);
-        const response = await apiClient.get<Cohort[]>('/cohorts/available');
-        setAvailableCohorts(response.data);
-        setFormError(null);
-      } catch (error) {
-        console.error("Failed to fetch cohorts:", error);
-        setFormError("Could not load cohort options. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCohorts();
-  }, []);
+  // useEffect(() => {
+  //   const fetchCohorts = async () => {
+  //     try {
+  //       setLoading(true);
+  //       const response = await apiClient.get<Cohort[]>('/cohorts/available');
+  //       setAvailableCohorts(response.data);
+  //       setFormError(null);
+  //     } catch (error) {
+  //       console.error("Failed to fetch cohorts:", error);
+  //       setFormError("Could not load cohort options. Please try again later.");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  //   fetchCohorts();
+  // }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
