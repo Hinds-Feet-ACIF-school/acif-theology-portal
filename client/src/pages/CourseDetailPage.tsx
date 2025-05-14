@@ -68,12 +68,12 @@ export default function CourseDetailPage() {
 
   const fetchGrades = useCallback(async () => {
     if (!routeCourseId) return;
-    console.log("CourseDetailPage: Fetching grades...");
+    console.log("CourseDetailPage: Fetching grades from apiService.getMyCourseGrades...");
     setIsLoadingGrades(true);
     setGradesError(null);
     try {
       const fetchedGrades = await apiService.getMyCourseGrades(routeCourseId);
-      console.log("CourseDetailPage: Grades fetched data (raw):", JSON.parse(JSON.stringify(fetchedGrades)));
+      console.log("CourseDetailPage: RAW Grades data received from backend:", JSON.parse(JSON.stringify(fetchedGrades)));
       setGradesData(fetchedGrades);
     } catch (err: any) {
       console.error("CourseDetailPage: Failed to load grades:", err);
@@ -115,12 +115,12 @@ export default function CourseDetailPage() {
       }
     };
     fetchCourseAndWeeks();
-  }, [routeCourseId, fetchGrades]);
+  }, [routeCourseId, fetchGrades]); 
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     if (value === "grades") {
-        console.log("CourseDetailPage: Switched to Grades tab, re-fetching grades.");
+        console.log("CourseDetailPage: Switched to Grades tab. Re-fetching grades.");
         fetchGrades(); 
     }
   };
@@ -142,7 +142,7 @@ export default function CourseDetailPage() {
         statusText = "In Progress";
         scoreDisplay = `${item.progressPercent || 0}%`;
         statusTextColorClass = `text-blue-600 dark:text-blue-400`;
-      } else { // 'not_started' or undefined
+      } else { 
         statusText = "Not Started";
         scoreDisplay = "0%";
       }
@@ -160,7 +160,7 @@ export default function CourseDetailPage() {
             statusIcon = <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 flex-shrink-0" />;
             statusTextColorClass = `text-red-600 dark:text-red-400`;
         }
-        scoreDisplay = `${item.score}%`;
+        scoreDisplay = `${item.score}%`; 
       } else { 
         if (item.status === 'pending_grade') {
             statusText = "Pending Grade"; 
@@ -177,19 +177,28 @@ export default function CourseDetailPage() {
             scoreDisplay = "-";
             statusTextColorClass = `text-yellow-600 dark:text-yellow-400`;
             statusIcon = <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 flex-shrink-0" />;
-        } else { 
-            if (item.isGraded && (item.status !== 'passed' && item.status !== 'failed')) { 
-                statusText = "Pending";
-                scoreDisplay = "-";
-                statusTextColorClass = `text-yellow-600 dark:text-yellow-400`;
-                statusIcon = <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 flex-shrink-0" />;
-            } else {
-                console.warn("CourseDetailPage: Quiz item has null score and unhandled status from backend:", JSON.stringify(item));
-                statusText = "Info Unavailable"; 
-                scoreDisplay = "-";
-                statusTextColorClass = `${mutedTextLight} ${mutedTextDark}`;
-                statusIcon = <MinusCircle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 flex-shrink-0" />;
-            }
+        } else if (item.isGraded && (item.status !== 'passed' && item.status !== 'failed')) { 
+            statusText = "Pending";
+            scoreDisplay = "-";
+            statusTextColorClass = `text-yellow-600 dark:text-yellow-400`;
+            statusIcon = <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 flex-shrink-0" />;
+        } else if (item.status === 'passed') { 
+            statusText = "Passed (No Score Detail)"; 
+            scoreDisplay = "-";
+            statusTextColorClass = `text-green-600 dark:text-green-400`;
+            statusIcon = <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 flex-shrink-0" />;
+        } else if (item.status === 'failed') { 
+            statusText = "Failed (No Score Detail)"; 
+            scoreDisplay = "-";
+            statusTextColorClass = `text-red-600 dark:text-red-400`;
+            statusIcon = <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 flex-shrink-0" />;
+        }
+        else {
+            console.warn(`CourseDetailPage: Quiz item "${item.title}" (ID: ${item.id}) has null score and unhandled status "${item.status}" from backend.`);
+            statusText = "Info Unavailable"; 
+            scoreDisplay = "-";
+            statusTextColorClass = `${mutedTextLight} ${mutedTextDark}`;
+            statusIcon = <MinusCircle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 flex-shrink-0" />;
         }
       }
     }
@@ -206,7 +215,7 @@ export default function CourseDetailPage() {
             <span className={cn("min-w-[5rem] w-auto sm:w-auto text-left sm:text-right font-medium", statusTextColorClass)}>{statusText}</span>
           </div>
           <span className={`font-medium min-w-[3rem] sm:w-16 text-right ${ (item.score !== null && item.score !== undefined) || (item.type === 'section_completion' && (item.status === 'completed' || item.status === 'in_progress' || item.status === 'incomplete')) ? `${primaryTextLight} ${primaryTextDark}` : `${mutedTextLight} ${mutedTextDark}` }`}>
-            {scoreDisplay}
+            {scoreDisplay} 
           </span>
         </div>
       </div>

@@ -7,7 +7,7 @@ import { Button } from "../components/ui/button.js";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card.js";
 import { Input } from "../components/ui/input.js";
 import { Label } from "../components/ui/label.js";
-import { Textarea } from "../components/ui/textarea.js"; // For bio
+import { Textarea } from "../components/ui/textarea.js";
 import {
   UserCircle2 as UserIcon,
   Edit3,
@@ -18,11 +18,12 @@ import {
   Home,
   Loader2,
   AlertCircle,
-  Camera, // For profile picture upload (future)
+  Camera,
   X,
-  Briefcase, // For role
-  CalendarDays, // For Joined Date
-} from 'lucide-react';
+  Briefcase,
+  CalendarDays,
+  CheckCircle, // <<< ADDED IMPORT
+} from 'lucide-react'; // <<< ENSURE CheckCircle IS IMPORTED HERE
 import { cn } from '../lib/utils.js';
 
 
@@ -60,10 +61,6 @@ const UserProfilePage: React.FC = () => {
   const [country, setCountry] = useState('');
   const [church, setChurch] = useState('');
   const [bio, setBio] = useState('');
-  // Profile picture state would go here if implementing upload
-  // const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
-  // const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
-
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
@@ -84,9 +81,6 @@ const UserProfilePage: React.FC = () => {
       setCountry(user.country || '');
       setChurch(user.church || '');
       setBio(user.bio || '');
-      // if (user.profilePicture) {
-      //   setProfilePicturePreview(user.profilePicture);
-      // }
       setPageLoading(false);
     } else if (!authLoading) {
       setPageLoading(false);
@@ -105,17 +99,16 @@ const UserProfilePage: React.FC = () => {
 
     setIsSavingProfile(true);
 
-    const profileDataToUpdate: Partial<{firstName: string; lastName: string; country: string; church: string | null; bio: string | null; /* profilePicture: File */}> = {};
+    const profileDataToUpdate: Partial<{firstName: string; lastName: string; country: string; church: string | null; bio: string | null;}> = {};
 
     if (firstName !== user?.firstName) profileDataToUpdate.firstName = firstName;
     if (lastName !== user?.lastName) profileDataToUpdate.lastName = lastName;
     if (country !== user?.country) profileDataToUpdate.country = country;
-    if (church !== (user?.church || '')) profileDataToUpdate.church = church || null; // Send null if empty
-    if (bio !== (user?.bio || '')) profileDataToUpdate.bio = bio || null; // Send null if empty
-    // if (profilePictureFile) profileDataToUpdate.profilePicture = profilePictureFile; // For FormData
+    if (church !== (user?.church || '')) profileDataToUpdate.church = church || null;
+    if (bio !== (user?.bio || '')) profileDataToUpdate.bio = bio || null;
 
 
-    if (Object.keys(profileDataToUpdate).length === 0 /* && !profilePictureFile */) {
+    if (Object.keys(profileDataToUpdate).length === 0 ) {
         setSuccessMessage("No changes detected in profile information.");
         setIsEditingProfile(false);
         setIsSavingProfile(false);
@@ -123,11 +116,9 @@ const UserProfilePage: React.FC = () => {
     }
 
     try {
-      // If sending a file, use FormData. Otherwise, JSON.
-      // For now, assuming JSON as file upload isn't fully implemented on frontend.
       const response = await apiService.updateUserProfile(profileDataToUpdate);
       if (response && response.user) {
-        updateUserContextProfile(response.user); // Update context with the full user object from backend
+        updateUserContextProfile(response.user);
         setSuccessMessage('Profile updated successfully!');
         setIsEditingProfile(false);
       } else {
@@ -159,7 +150,7 @@ const UserProfilePage: React.FC = () => {
       setNewPassword('');
       setConfirmNewPassword('');
       setIsChangingPassword(false);
-       setTimeout(() => { // Give user a moment to see success message before potential redirect
+       setTimeout(() => {
          alert("For security reasons, after a password change, it's recommended to log out and log back in if you experience any issues.");
        }, 1000);
     } catch (err: any) {
@@ -177,14 +168,6 @@ const UserProfilePage: React.FC = () => {
     setError(null);
     setSuccessMessage(null);
   };
-
-  // const handlePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   if (e.target.files && e.target.files[0]) {
-  //     const file = e.target.files[0];
-  //     setProfilePictureFile(file);
-  //     setProfilePicturePreview(URL.createObjectURL(file));
-  //   }
-  // };
 
   if (authLoading || pageLoading) {
     return (
@@ -227,19 +210,12 @@ const UserProfilePage: React.FC = () => {
         <Card className={`${lightCardBg} ${darkCardBg} border ${inputBorder} shadow-lg mb-8`}>
           <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 md:p-6 border-b ${inputBorder}">
             <div className="flex items-center gap-4">
-              {/* Profile Picture Area (Placeholder for upload) */}
               <div className="relative">
-                {user.profilePicture /* || profilePicturePreview */ ? (
-                  <img src={/*profilePicturePreview ||*/ user.profilePicture} alt="Profile" className={`h-20 w-20 md:h-24 md:w-24 rounded-full object-cover border-2 ${goldBorder}`} />
+                {user.profilePicture ? (
+                  <img src={user.profilePicture} alt="Profile" className={`h-20 w-20 md:h-24 md:w-24 rounded-full object-cover border-2 ${goldBorder}`} />
                 ) : (
                   <UserIcon className={`h-20 w-20 md:h-24 md:w-24 ${goldAccent}`} />
                 )}
-                {/* {isEditingProfile && (
-                  <label htmlFor="profilePictureUpload" className={`absolute -bottom-1 -right-1 p-1.5 bg-gray-700 hover:bg-gray-600 rounded-full cursor-pointer text-white border-2 border-white dark:border-gray-800`}>
-                    <Camera size={16} />
-                    <input id="profilePictureUpload" type="file" className="sr-only" accept="image/*" onChange={handlePictureChange} />
-                  </label>
-                )} */}
               </div>
               <div>
                 <CardTitle className={`${deepBrown} text-2xl font-serif`}>{user.displayName}</CardTitle>

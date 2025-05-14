@@ -24,21 +24,28 @@ import TableRowTiptapExtension from '@tiptap/extension-table-row';
 import TableCellTiptapExtension from '@tiptap/extension-table-cell';
 import TableHeaderTiptapExtension from '@tiptap/extension-table-header';
 import ReactPlayer from 'react-player';
+import type {
+    ContentItem as ApiContentItem,
+    RichContentItemBlock as ApiRichContentItemBlock,
+    QuizBlockContent as ApiQuizBlockContent,
+    VideoBlockContent as ApiVideoBlockContent,
+    QuizQuestion as ApiQuizQuestion,
+    QuizQuestionOption as ApiQuizQuestionOption
+} from '../../services/api'; // Adjust path as necessary
 
 const deepBrownLightHex = '#2A0F0F';
 const deepBrownDarkHex = '#FFF8F0';
-const goldAccent = 'text-[#C5A467]'; // This is a Tailwind class
-const goldAccentHex = '#C5A467'; // Hex for direct use
+const goldAccent = 'text-[#C5A467]';
+const goldAccentHex = '#C5A467';
 
 const editorDarkBgHex = '#1f2937';
 const toolbarDarkBgHex = '#111827';
 const editorLightBgHex = '#ffffff';
 const toolbarLightBgHex = '#f9fafb';
 
-const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]'; // Tailwind class
+const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]';
 const midBrownLightHex = '#4A1F1F';
 const midBrownDarkHex = '#E0D6C3';
-
 
 const goldBg = 'bg-[#C5A467]';
 const goldBgHover = 'hover:bg-[#B08F55]';
@@ -47,17 +54,15 @@ const lightCardBg = 'bg-white';
 const darkCardBg = 'dark:bg-gray-950';
 
 const themedInputBorder = `border-gray-300 dark:border-gray-700`;
-const themedInputBg = `bg-white dark:bg-gray-800`; // Tailwind classes for general purpose
+const themedInputBg = `bg-white dark:bg-gray-800`;
 const primaryButtonClasses = `${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold`;
 const outlineButtonClasses = `${goldBorder} ${goldAccent} hover:bg-[#C5A467]/10 dark:hover:bg-[#C5A467]/15 hover:text-[#A07F44] dark:hover:text-[#E0D6C3]`;
 const selectTriggerClasses = `h-9 rounded-md px-3 py-2 text-sm w-full ${themedInputBg} ${themedInputBorder} text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] flex items-center justify-between`;
 const selectContentClasses = `border ${themedInputBorder} ${themedInputBg} text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] z-[110] shadow-lg`;
 const mutedText = 'text-gray-600 dark:text-gray-400';
-const editorCardBgMantine = 'dark:bg-gray-900'; // Base for card, inputs will override
+const editorCardBgMantine = 'dark:bg-gray-900';
 const editorToolbarBgMantine = 'bg-gray-100 dark:bg-gray-800';
 
-
-// Style function for Mantine inputs
 const mantineInputStyles = (theme: MantineTheme) => {
     const isDarkMode = document.documentElement.classList.contains('dark');
     return {
@@ -65,36 +70,68 @@ const mantineInputStyles = (theme: MantineTheme) => {
             backgroundColor: isDarkMode ? editorDarkBgHex : editorLightBgHex,
             borderColor: isDarkMode ? theme.colors.dark[4] : theme.colors.gray[4],
             color: isDarkMode ? deepBrownDarkHex : deepBrownLightHex,
-            lineHeight: theme.lineHeight,
+            lineHeight: theme.lineHeights.md,
             '&::placeholder': {
                 color: isDarkMode ? theme.colors.dark[3] : theme.colors.gray[6],
             },
         },
-        label: { 
+        label: {
             color: isDarkMode ? deepBrownDarkHex : deepBrownLightHex,
             fontSize: theme.fontSizes.xs,
             fontWeight: 500,
-            marginBottom: '4px', 
+            marginBottom: '4px',
         },
-        placeholder: { // For FileInput's own placeholder text
+        placeholder: {
              color: isDarkMode ? theme.colors.dark[3] : theme.colors.gray[6],
         }
     };
 };
 
-interface QuizQuestionOption { id: string; text: string; isCorrect?: boolean; }
-interface QuizQuestion { id: string; type: 'multiple_choice' | 'checkbox' | 'short_answer' | 'paragraph'; question: string; required: boolean; description?: string; options?: QuizQuestionOption[]; correctAnswer?: string | string[]; }
-interface VideoContentData { id: string; title: string; description?: string; videoFile?: File | undefined; videoUrl?: string; videoObjectUrl?: string; thumbnail?: File | undefined; thumbnailUrl?: string; thumbnailObjectUrl?: string; duration?: number; isRequired: boolean; drmEnabled: boolean; accessControl: { allowDownload: boolean; allowSharing: boolean; expirationDate?: Date; }; }
-interface QuizContentData { id: string; title: string; description?: string; questions: QuizQuestion[]; settings: { shuffleQuestions: boolean; timeLimit?: number; passingScore?: number; showResults: boolean; allowRetake: boolean; maxAttempts?: number; showCorrectAnswers: boolean; showPoints: boolean; requireLogin: boolean; collectEmail: boolean; allowProgressSaving: boolean; }; }
-interface RichContentItem { id: string; type: 'text' | 'video' | 'quiz'; content?: string; videoContent?: VideoContentData; quizContent?: QuizContentData; }
-export interface ContentItem { id?: string; title: string; isRequired: boolean; type: 'text' | 'video' | 'quiz_link'; richContent: RichContentItem[]; order?: number; content?: string; url?: string; textContent?: string; createdAt?: Date; updatedAt?: Date; }
-interface CreateEditContentModalProps { isOpen: boolean; onClose: () => void; content: ContentItem | null; sectionId: string; onSave: (contentData: ContentItem) => Promise<void>; }
+// Modal-specific types that might include temporary client-side fields like File objects or object URLs
+interface ModalQuizQuestionOption extends ApiQuizQuestionOption {}
+interface ModalQuizQuestion extends ApiQuizQuestion {
+    options?: ModalQuizQuestionOption[];
+}
+
+interface ModalVideoContentData extends Omit<ApiVideoBlockContent, 'videoFile' | 'thumbnail'> {
+    videoFile?: File | undefined;
+    thumbnail?: File | undefined;
+    videoObjectUrl?: string;
+    thumbnailObjectUrl?: string;
+}
+
+interface ModalQuizContentData extends Omit<ApiQuizBlockContent, 'settings' | 'questions'> {
+    questions: ModalQuizQuestion[];
+    settings: Omit<ApiQuizBlockContent['settings'], 'requireLogin' | 'showPoints'> & {
+        requireLogin?: boolean; // To match api.ts optionality
+        showPoints?: boolean;   // To match api.ts optionality
+    };
+    // databaseQuizId is inherited from ApiQuizBlockContent and IS REQUIRED (string)
+}
+
+interface ModalRichContentItem extends Omit<ApiRichContentItemBlock, 'videoContent' | 'quizContent'> {
+    videoContent?: ModalVideoContentData;
+    quizContent?: ModalQuizContentData;
+}
+
+interface ModalContentStructure extends Omit<ApiContentItem, 'richContent'> {
+    richContent: ModalRichContentItem[];
+}
+
+interface CreateEditContentModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    content: ApiContentItem | null;
+    sectionId: string;
+    onSave: (contentData: ApiContentItem) => Promise<void>;
+}
+
 
 async function uploadFileToServer(file: File, type: 'video' | 'image'): Promise<string> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('type', type);
-    const response = await fetch('/api/upload', { // Ensure this endpoint is correct
+    const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
     });
@@ -130,12 +167,11 @@ const IntegratedRichTextEditor: React.FC<IntegratedRichTextEditorProps> = React.
 
     useEffect(() => {
         if (editor && value !== editor.getHTML()) {
-            // Debounce or ensure this doesn't cause infinite loops if `value` prop changes frequently from parent
             const handle = setTimeout(() => {
-                if (editor && !editor.isDestroyed) { // Check if editor is not destroyed
+                if (editor && !editor.isDestroyed) {
                     editor.commands.setContent(value, false);
                 }
-            }, 0); // Using 0ms timeout to push to next tick, often helps with race conditions
+            }, 0);
             return () => clearTimeout(handle);
         }
     }, [value, editor]);
@@ -189,11 +225,11 @@ const IntegratedRichTextEditor: React.FC<IntegratedRichTextEditorProps> = React.
                     },
                     control: {
                          backgroundColor: isDarkMode ? toolbarDarkBgHex : toolbarLightBgHex,
-                         borderColor: isDarkMode ? '#4b5563' : '#d1d5db', // Should not need border here typically
+                         borderColor: isDarkMode ? '#4b5563' : '#d1d5db',
                          color: isDarkMode ? theme.colors.dark[0] : theme.colors.gray[7],
-                         '&[data-active="true"]': { // Mantine uses data-active="true"
-                             backgroundColor: isDarkMode ? goldAccentHex : goldAccentHex, // Use hex for direct bg color
-                             color: deepBrownLightHex, // Ensure contrast on gold
+                         '&[data-active="true"]': {
+                             backgroundColor: isDarkMode ? goldAccentHex : goldAccentHex,
+                             color: deepBrownLightHex,
                          },
                          '&:hover': {
                              backgroundColor: isDarkMode ? '#374151' : '#f3f4f6',
@@ -219,7 +255,7 @@ const IntegratedRichTextEditor: React.FC<IntegratedRichTextEditorProps> = React.
                     prose prose-sm sm:prose dark:prose-invert max-w-none
                     prose-headings:font-serif prose-headings:mt-4 prose-headings:mb-2
                     prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-blockquote:my-2
-                    prose-a:text-[${goldAccentHex}] hover:prose-a:underline 
+                    prose-a:text-[${goldAccentHex}] hover:prose-a:underline
                     dark:prose-headings:text-gray-200 dark:prose-p:text-gray-300 dark:prose-strong:text-gray-100
                     dark:prose-li:text-gray-300 dark:prose-blockquote:text-gray-400
                 `}
@@ -265,7 +301,7 @@ const OptionInput: React.FC<OptionInputProps> = React.memo(({
                     <Radio
                         checked={isCorrect}
                         onChange={(event) => onCorrectChange(event.currentTarget.checked)}
-                        name={`correct-opt-${optionId.split('_')[0]}`} // Ensure unique name per question for radio group
+                        name={`correct-opt-${optionId.split('_')[0]}`}
                         aria-label={`Mark option as correct`}
                         size="xs"
                     />
@@ -302,18 +338,19 @@ const OptionInput: React.FC<OptionInputProps> = React.memo(({
 OptionInput.displayName = 'OptionInput';
 
 const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
-    isOpen, onClose, content, onSave,
+    isOpen, onClose, content: apiContentProp, onSave, // Renamed content to apiContentProp
 }) => {
     const [title, setTitle] = useState('');
     const [isRequired, setIsRequired] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [richContent, setRichContent] = useState<RichContentItem[]>([]);
+    // Use ModalRichContentItem for internal state
+    const [richContent, setRichContent] = useState<ModalRichContentItem[]>([]);
     const [expandedContentIndex, setExpandedContentIndex] = useState<number | null>(null);
     const [isPreviewMode, setIsPreviewMode] = useState(false);
     const richContentRef = useRef(richContent);
 
-    const isEditing = !!content;
+    const isEditing = !!apiContentProp;
     const generateId = useCallback(() => `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, []);
 
     useEffect(() => {
@@ -324,49 +361,54 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         if (isOpen) {
             setError(null);
             setIsPreviewMode(false);
-            let currentRichContentState: RichContentItem[] = [];
+            let currentRichContentState: ModalRichContentItem[] = [];
 
-            if (isEditing && content && content.richContent) {
-                setTitle(content.title);
-                setIsRequired(content.isRequired || false);
+            if (isEditing && apiContentProp && apiContentProp.richContent) {
+                setTitle(apiContentProp.title);
+                setIsRequired(apiContentProp.isRequired || false);
 
-                currentRichContentState = content.richContent.map((rc) => {
-                    const blockId = rc.id || generateId();
-                    let processedVideoContent: VideoContentData | undefined = undefined;
-                    const processedQuizContent: QuizContentData | undefined = rc.quizContent
-                        ? { ...rc.quizContent, id: rc.quizContent.id || blockId }
-                        : undefined;
-
-                    if (rc.videoContent) {
-                        const videoFileInstance = rc.videoContent.videoFile instanceof File ? rc.videoContent.videoFile : undefined;
-                        const thumbnailFileInstance = rc.videoContent.thumbnail instanceof File ? rc.videoContent.thumbnail : undefined;
-
+                currentRichContentState = apiContentProp.richContent.map((apiRcBlock: ApiRichContentItemBlock) => {
+                    const blockId = apiRcBlock.id || generateId();
+                    let modalVideoContent: ModalVideoContentData | undefined = undefined;
+                    if (apiRcBlock.videoContent) {
+                        const videoFileInstance = apiRcBlock.videoContent.videoFile instanceof File ? apiRcBlock.videoContent.videoFile : undefined;
+                        const thumbnailFileInstance = apiRcBlock.videoContent.thumbnail instanceof File ? apiRcBlock.videoContent.thumbnail : undefined;
                         let newVideoObjectUrl: string | undefined = undefined;
-                        if (videoFileInstance) {
-                            newVideoObjectUrl = URL.createObjectURL(videoFileInstance);
-                        }
-
+                        if (videoFileInstance) newVideoObjectUrl = URL.createObjectURL(videoFileInstance);
                         let newThumbnailObjectUrl: string | undefined = undefined;
-                        if (thumbnailFileInstance) {
-                            newThumbnailObjectUrl = URL.createObjectURL(thumbnailFileInstance);
-                        }
-                        processedVideoContent = {
-                            ...rc.videoContent,
-                            id: rc.videoContent.id || blockId,
-                            videoFile: videoFileInstance,
-                            thumbnail: thumbnailFileInstance,
+                        if (thumbnailFileInstance) newThumbnailObjectUrl = URL.createObjectURL(thumbnailFileInstance);
+
+                        modalVideoContent = {
+                            ...apiRcBlock.videoContent, // Spread all from API
+                            id: apiRcBlock.videoContent.id || blockId, // Ensure ID
+                            videoFile: videoFileInstance, // Keep File object if present
+                            thumbnail: thumbnailFileInstance, // Keep File object if present
                             videoObjectUrl: newVideoObjectUrl,
                             thumbnailObjectUrl: newThumbnailObjectUrl,
-                            videoUrl: videoFileInstance ? '' : rc.videoContent.videoUrl,
-                            thumbnailUrl: thumbnailFileInstance ? '' : rc.videoContent.thumbnailUrl,
+                            // Keep API URLs if no file, clear if file is set
+                            videoUrl: videoFileInstance ? undefined : apiRcBlock.videoContent.videoUrl,
+                            thumbnailUrl: thumbnailFileInstance ? undefined : apiRcBlock.videoContent.thumbnailUrl,
+                        };
+                    }
+
+                    let modalQuizContent: ModalQuizContentData | undefined = undefined;
+                    if (apiRcBlock.quizContent) {
+                        modalQuizContent = {
+                            ...apiRcBlock.quizContent, // Spread all from API QuizBlockContent
+                            // databaseQuizId is already part of ApiQuizBlockContent and will be spread
+                            questions: apiRcBlock.quizContent.questions.map(q => ({...q, options: q.options ? q.options.map(opt => ({...opt})) : undefined })), // Deep copy
+                            settings: {
+                                ...apiRcBlock.quizContent.settings, // Spread all settings
+                                // Optional fields are handled by spread. No need to explicitly map if names are same.
+                            }
                         };
                     }
                     return {
-                        ...rc,
-                        id: blockId,
-                        videoContent: processedVideoContent,
-                        quizContent: processedQuizContent,
-                        content: rc.content || '<p></p>', // Ensure text content always has a default
+                        ...apiRcBlock, // Spread id, type, order, content from ApiRichContentItemBlock
+                        id: blockId,    // Ensure blockId
+                        videoContent: modalVideoContent,
+                        quizContent: modalQuizContent,
+                        content: apiRcBlock.content || '<p></p>',
                     };
                 });
             } else {
@@ -380,36 +422,25 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
             } else {
                 setExpandedContentIndex(null);
             }
-        } else { // Modal is closing
+        } else {
             richContentRef.current.forEach(item => {
                 if (item.videoContent) {
-                    if (item.videoContent.videoObjectUrl) {
-                        URL.revokeObjectURL(item.videoContent.videoObjectUrl);
-                    }
-                    if (item.videoContent.thumbnailObjectUrl) {
-                        URL.revokeObjectURL(item.videoContent.thumbnailObjectUrl);
-                    }
+                    if (item.videoContent.videoObjectUrl) URL.revokeObjectURL(item.videoContent.videoObjectUrl);
+                    if (item.videoContent.thumbnailObjectUrl) URL.revokeObjectURL(item.videoContent.thumbnailObjectUrl);
                 }
             });
-            // Clear object URLs from state as well to prevent stale references if modal reopens quickly
             setRichContent(prevRichContent => prevRichContent.map(item => {
                 if (item.videoContent) {
-                    return {
-                        ...item,
-                        videoContent: {
-                            ...item.videoContent,
-                            videoObjectUrl: undefined,
-                            thumbnailObjectUrl: undefined,
-                        }
-                    };
+                    return { ...item, videoContent: { ...item.videoContent, videoObjectUrl: undefined, thumbnailObjectUrl: undefined }};
                 }
                 return item;
             }));
             setExpandedContentIndex(null);
         }
-    }, [isOpen, content, isEditing, generateId]);
+    }, [isOpen, apiContentProp, isEditing, generateId]);
 
-    useEffect(() => { // Cleanup for any remaining object URLs on unmount
+
+    useEffect(() => {
         return () => {
             richContentRef.current.forEach(item => {
                 if (item.videoContent?.videoObjectUrl) URL.revokeObjectURL(item.videoContent.videoObjectUrl);
@@ -418,19 +449,37 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         };
     }, []);
 
-    const handleAddRichContent = (contentType: RichContentItem['type']) => {
+    const handleAddRichContent = (contentType: ModalRichContentItem['type']) => {
         const newBlockId = generateId();
-        let newBlock: RichContentItem = { id: newBlockId, type: contentType };
-        if (contentType === 'text') newBlock.content = '<p></p>';
-        else if (contentType === 'video') newBlock.videoContent = { id: newBlockId, title: '', videoFile: undefined, videoUrl: '', videoObjectUrl: undefined, thumbnail: undefined, thumbnailUrl: '', thumbnailObjectUrl: undefined, isRequired: true, drmEnabled: false, accessControl: { allowDownload: true, allowSharing: true } };
-        else if (contentType === 'quiz') newBlock.quizContent = { id: newBlockId, title: '', questions: [], settings: { shuffleQuestions: false, showResults: true, allowRetake: true, showCorrectAnswers: true, showPoints: true, requireLogin: false, collectEmail: false, allowProgressSaving: true } };
+        let newBlock: ModalRichContentItem = { id: newBlockId, type: contentType, order: richContent.length };
+
+        if (contentType === 'text') {
+            newBlock.content = '<p></p>';
+        } else if (contentType === 'video') {
+            newBlock.videoContent = {
+                id: newBlockId, title: '', description: '', videoFile: undefined, videoUrl: '', videoObjectUrl: undefined,
+                thumbnail: undefined, thumbnailUrl: '', thumbnailObjectUrl: undefined, isRequired: true, drmEnabled: false,
+                accessControl: { allowDownload: true, allowSharing: true }, duration: 0
+            };
+        } else if (contentType === 'quiz') {
+            newBlock.quizContent = {
+                id: newBlockId, // Block ID
+                databaseQuizId: newBlockId, // Placeholder/New Quiz ID, backend needs to handle this
+                title: '', description: '', questions: [],
+                settings: {
+                    shuffleQuestions: false, timeLimit: undefined, passingScore: undefined, showResults: true, allowRetake: true, maxAttempts: undefined,
+                    showCorrectAnswers: true, showPoints: false, requireLogin: false, collectEmail: false, allowProgressSaving: true
+                }
+            };
+        }
 
         setRichContent(prev => {
             const updatedRichContent = [...prev, newBlock];
-            setExpandedContentIndex(updatedRichContent.length - 1); // Expand the newly added block
+            setExpandedContentIndex(updatedRichContent.length - 1);
             return updatedRichContent;
         });
     };
+
 
     const handleRemoveRichContent = (idToRemove: string) => {
         const indexToRemove = richContent.findIndex(item => item.id === idToRemove);
@@ -442,19 +491,18 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         setRichContent(prev => {
             const newRichContent = prev.filter(item => item.id !== idToRemove);
             if (expandedContentIndex === indexToRemove) {
-                setExpandedContentIndex(newRichContent.length > 0 ? 0 : null); // Expand first or none
+                setExpandedContentIndex(newRichContent.length > 0 ? 0 : null);
             } else if (expandedContentIndex !== null && expandedContentIndex > indexToRemove) {
-                setExpandedContentIndex(prevIdx => prevIdx !== null ? prevIdx - 1 : null); // Adjust index
+                setExpandedContentIndex(prevIdx => prevIdx !== null ? prevIdx - 1 : null);
             }
             return newRichContent;
         });
     };
 
-    const handleUpdateRichContentItem = useCallback((itemId: string, updatedData: Partial<Omit<RichContentItem, 'id' | 'type'>>) => {
+    const handleUpdateRichContentItem = useCallback((itemId: string, updatedData: Partial<Omit<ModalRichContentItem, 'id' | 'type'>>) => {
         setRichContent(prev => prev.map(item => {
             if (item.id === itemId) {
                 const newUpdate = { ...updatedData };
-                // Preserve existing IDs for nested content if not explicitly changed
                 if (newUpdate.videoContent && item.videoContent) newUpdate.videoContent = { ...item.videoContent, ...newUpdate.videoContent };
                 if (newUpdate.quizContent && item.quizContent) newUpdate.quizContent = { ...item.quizContent, ...newUpdate.quizContent };
                 return { ...item, ...newUpdate };
@@ -471,23 +519,23 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         for (const item of richContent) {
              const isEmptyText = !item.content || item.content.trim() === '<p></p>' || item.content.trim() === '<p><br></p>' || item.content.trim() === '';
              if (item.type === 'text' && isEmptyText) { setError("Text content blocks cannot be empty. Please add text or remove the empty block."); return; }
-             if (item.type === 'video') {
-                 if (!item.videoContent?.title.trim()) { setError("Video blocks must have a title."); return; }
-                 if (!item.videoContent?.videoFile && !item.videoContent?.videoUrl?.trim()) { setError(`Video block "${item.videoContent?.title || 'Untitled'}" must have a video file or URL.`); return;}
+             if (item.type === 'video' && item.videoContent) {
+                 if (!item.videoContent.title.trim()) { setError("Video blocks must have a title."); return; }
+                 if (!item.videoContent.videoFile && !item.videoContent.videoUrl?.trim()) { setError(`Video block "${item.videoContent.title || 'Untitled'}" must have a video file or URL.`); return;}
              }
-             if (item.type === 'quiz') {
-                 if (!item.quizContent?.title.trim()) { setError("Quiz blocks must have a title."); return; }
-                 if (!item.quizContent?.questions || item.quizContent.questions.length === 0) { setError(`Quiz "${item.quizContent?.title || 'Untitled'}" must have at least one question.`); return; }
-                 if (item.quizContent.questions.some(q => !q.question.trim())) { setError(`All questions in quiz "${item.quizContent?.title || 'Untitled'}" must have text.`); return; }
+             if (item.type === 'quiz' && item.quizContent) {
+                 if (!item.quizContent.title.trim()) { setError("Quiz blocks must have a title."); return; }
+                 if (!item.quizContent.questions || item.quizContent.questions.length === 0) { setError(`Quiz "${item.quizContent.title || 'Untitled'}" must have at least one question.`); return; }
+                 if (item.quizContent.questions.some(q => !q.question.trim())) { setError(`All questions in quiz "${item.quizContent.title || 'Untitled'}" must have text.`); return; }
                  for (const q of item.quizContent.questions) {
                     if ((q.type === 'multiple_choice' || q.type === 'checkbox') && (!q.options || q.options.length === 0)) {
-                        setError(`Question "${q.question.substring(0,20)}..." in quiz "${item.quizContent?.title || 'Untitled'}" requires at least one option.`); return;
+                        setError(`Question "${q.question.substring(0,20)}..." in quiz "${item.quizContent.title || 'Untitled'}" requires at least one option.`); return;
                     }
                     if ((q.type === 'multiple_choice' || q.type === 'checkbox') && q.options?.some(opt => !opt.text.trim())) {
-                        setError(`All options for question "${q.question.substring(0,20)}..." in quiz "${item.quizContent?.title || 'Untitled'}" must have text.`); return;
+                        setError(`All options for question "${q.question.substring(0,20)}..." in quiz "${item.quizContent.title || 'Untitled'}" must have text.`); return;
                     }
                     if (q.type === 'multiple_choice' && !(q.options?.some(opt => opt.isCorrect))) {
-                        setError(`Multiple choice question "${q.question.substring(0,20)}..." in quiz "${item.quizContent?.title || 'Untitled'}" must have one correct answer selected.`); return;
+                        setError(`Multiple choice question "${q.question.substring(0,20)}..." in quiz "${item.quizContent.title || 'Untitled'}" must have one correct answer selected.`); return;
                     }
                  }
              }
@@ -495,68 +543,79 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
 
         setIsSaving(true);
         try {
-            const processedRichContentPromises = richContent.map(async (rc) => {
-                if (rc.type === 'video' && rc.videoContent) {
-                    let { videoFile, thumbnail, videoObjectUrl, thumbnailObjectUrl, ...restVideoContent } = rc.videoContent;
-                    let finalVideoUrl = restVideoContent.videoUrl;
-                    let finalThumbnailUrl = restVideoContent.thumbnailUrl;
+            const finalRichContentForApi: ApiRichContentItemBlock[] = await Promise.all(
+                richContent.map(async (modalRcBlock: ModalRichContentItem) => {
+                    let apiVideoContent: ApiVideoBlockContent | undefined = undefined;
+                    if (modalRcBlock.type === 'video' && modalRcBlock.videoContent) {
+                        const { videoFile, thumbnail, videoObjectUrl, thumbnailObjectUrl, ...restVideo } = modalRcBlock.videoContent;
+                        let finalVideoUrl = restVideo.videoUrl;
+                        let finalThumbnailUrl = restVideo.thumbnailUrl;
 
-                    if (videoFile instanceof File) {
-                        try {
+                        if (videoFile instanceof File) {
                             finalVideoUrl = await uploadFileToServer(videoFile, 'video');
-                        } catch (e: any) {
-                            console.error("Video upload error", e);
-                            setError(`Failed to upload video: ${restVideoContent.title || 'Untitled'} - ${e.message || 'Unknown error'}`);
-                            throw e; // Re-throw to stop save process
                         }
-                    }
-                    if (thumbnail instanceof File) {
-                        try {
-                            finalThumbnailUrl = await uploadFileToServer(thumbnail, 'image');
-                        } catch (e: any) {
-                            console.error("Thumbnail upload error", e);
-                            // Don't throw for thumbnail, it's optional
-                            setError(`Failed to upload thumbnail for: ${restVideoContent.title || 'Untitled'} - ${e.message || 'Unknown error'}. Continuing without it.`);
-                            finalThumbnailUrl = restVideoContent.thumbnailUrl; // Revert to original if upload fails
+                        if (thumbnail instanceof File) {
+                            try {
+                                finalThumbnailUrl = await uploadFileToServer(thumbnail, 'image');
+                            } catch (e: any) {
+                                console.error("Thumbnail upload error for video:", restVideo.title, e);
+                                // Don't fail the whole save for a thumbnail
+                            }
                         }
+                        apiVideoContent = { ...restVideo, videoUrl: finalVideoUrl, thumbnailUrl: finalThumbnailUrl };
                     }
+
+                    let apiQuizContent: ApiQuizBlockContent | undefined = undefined;
+                    if (modalRcBlock.type === 'quiz' && modalRcBlock.quizContent) {
+                        // Ensure databaseQuizId is a string for ApiQuizBlockContent
+                        const dbQuizId = modalRcBlock.quizContent.databaseQuizId || modalRcBlock.quizContent.id; // Use block ID as fallback for new
+
+                        apiQuizContent = {
+                            ...modalRcBlock.quizContent,
+                            databaseQuizId: dbQuizId, // This is now guaranteed to be a string
+                            questions: modalRcBlock.quizContent.questions.map(q => ({
+                                ...q,
+                                options: q.options ? q.options.map(opt => ({...opt})) : undefined,
+                            })),
+                            settings: {
+                                ...modalRcBlock.quizContent.settings,
+                                // Ensure optional booleans from modal are explicitly passed or defaulted if API expects non-optional
+                                // (though api.ts has them optional, so direct spread is fine)
+                            }
+                        };
+                    }
+
                     return {
-                        ...rc,
-                        videoContent: {
-                            ...restVideoContent,
-                            videoFile: undefined, // Ensure File objects are not sent
-                            thumbnail: undefined,
-                            videoUrl: finalVideoUrl,
-                            thumbnailUrl: finalThumbnailUrl,
-                        } as VideoContentData // Cast to ensure type correctness after removing File objects
-                    };
-                }
-                return rc;
-            });
+                        id: modalRcBlock.id,
+                        type: modalRcBlock.type,
+                        order: modalRcBlock.order,
+                        content: modalRcBlock.content,
+                        videoContent: apiVideoContent,
+                        quizContent: apiQuizContent,
+                    } as ApiRichContentItemBlock;
+                })
+            );
 
-            const finalRichContent = await Promise.all(processedRichContentPromises);
 
-            let determinedType: ContentItem['type'];
-            const hasQuiz = finalRichContent.some(item => item.type === 'quiz');
-            const hasVideo = finalRichContent.some(item => item.type === 'video');
+            let determinedType: ApiContentItem['type'];
+            const hasQuiz = finalRichContentForApi.some(item => item.type === 'quiz');
+            const hasVideo = finalRichContentForApi.some(item => item.type === 'video');
             if (hasQuiz) determinedType = 'quiz_link';
             else if (hasVideo) determinedType = 'video';
             else determinedType = 'text';
 
-            const payload: ContentItem = {
-                ...(isEditing && content?.id && { id: content.id }),
+            const payload: ApiContentItem = {
+                ...(isEditing && apiContentProp?.id && { id: apiContentProp.id }),
                 title,
                 isRequired,
-                richContent: finalRichContent,
-                type: determinedType, // This type is for the overall ContentItem, might need review
-                order: content?.order ?? 0, // Preserve order
+                richContent: finalRichContentForApi,
+                type: determinedType,
+                order: apiContentProp?.order ?? 0,
             };
             await onSave(payload);
-            // onClose(); // Usually close modal on successful save
 
         } catch (err: any) {
-            // Error is already set by uploadFileToServer or validation loops
-            if (!error) { // Fallback error message
+            if (!error) {
                 setError(err.message || "An unexpected error occurred during save.");
             }
             console.error("Save Error:", err);
@@ -566,8 +625,8 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
     };
 
      const QuizQuestionEditor: React.FC<{
-        question: QuizQuestion;
-        onUpdate: (updatedQuestion: QuizQuestion) => void;
+        question: ModalQuizQuestion; // Use ModalQuizQuestion
+        onUpdate: (updatedQuestion: ModalQuizQuestion) => void;
         onRemove: () => void;
     }> = React.memo(({ question, onUpdate, onRemove }) => {
         const [localQuestionText, setLocalQuestionText] = useState(question.question);
@@ -585,14 +644,13 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                 setLocalDescription(desc);
             }
         }, [question.question, question.description]);
-        
+
         useEffect(() => {
             const currentLength = question.options?.length ?? 0;
             const previousLength = prevOptionsLength.current ?? 0;
-    
+
             if (currentLength > previousLength && cardRef.current) {
-                // Option was added, scroll this question card into view
-                setTimeout(() => { // Ensures DOM update before scrolling
+                setTimeout(() => {
                     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }, 0);
             }
@@ -601,14 +659,14 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
 
 
         const handleQuestionBlur = () => {
-            if (localQuestionText.trim() !== question.question) { // Use trim for comparison
+            if (localQuestionText.trim() !== question.question) {
                 onUpdate({ ...question, question: localQuestionText.trim() });
             }
         };
 
         const handleDescriptionBlur = () => {
             const currentDesc = question.description || '';
-            if (localDescription.trim() !== currentDesc) { // Use trim
+            if (localDescription.trim() !== currentDesc) {
                 const updatedDesc = localDescription.trim() ? localDescription.trim() : undefined;
                 onUpdate({ ...question, description: updatedDesc });
             }
@@ -617,7 +675,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         const handleOptionTextChange = (optIndex: number, newText: string) => {
             const newOptions = [...(question.options || [])];
             if (newOptions[optIndex]) {
-                 newOptions[optIndex] = { ...newOptions[optIndex], text: newText }; // No trim here, allow spaces during typing
+                 newOptions[optIndex] = { ...newOptions[optIndex], text: newText };
                  onUpdate({ ...question, options: newOptions });
             }
         };
@@ -636,7 +694,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         };
 
         const addOption = () => {
-            const newOption = { id: generateId(), text: '', isCorrect: false };
+            const newOption: ModalQuizQuestionOption = { id: generateId(), text: '', isCorrect: false };
             onUpdate({ ...question, options: [...(question.options || []), newOption] });
         };
 
@@ -685,15 +743,14 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                         styles={mantineInputStyles}
                     />
                 </div>
-                <Select value={question.type} onValueChange={(type: QuizQuestion['type']) => {
+                <Select value={question.type} onValueChange={(type: ApiQuizQuestion['type']) => { // Use ApiQuizQuestion['type']
                     const needsOptions = type === 'multiple_choice' || type === 'checkbox';
                     const currentOptions = question.options;
-                    let resetOptions: QuizQuestionOption[] | undefined;
+                    let resetOptions: ModalQuizQuestionOption[] | undefined;
 
-                    if (!needsOptions) { 
-                        resetOptions = undefined; 
-                    } else if (needsOptions && currentOptions && (question.type === 'multiple_choice' || question.type === 'checkbox')) { 
-                        // If switching between MC and Checkbox, keep options but reset correctness for MC if multiple were true
+                    if (!needsOptions) {
+                        resetOptions = undefined;
+                    } else if (needsOptions && currentOptions && (question.type === 'multiple_choice' || question.type === 'checkbox')) {
                         if (type === 'multiple_choice') {
                             let foundFirstCorrect = false;
                             resetOptions = currentOptions.map(opt => {
@@ -706,8 +763,8 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                         } else {
                              resetOptions = currentOptions;
                         }
-                    } else { // Switching from non-options to options type
-                        resetOptions = [{ id: generateId(), text: '', isCorrect: false }]; 
+                    } else {
+                        resetOptions = [{ id: generateId(), text: '', isCorrect: false }];
                     }
                     onUpdate({...question, type, options: resetOptions });
                 }}>
@@ -727,7 +784,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                 initialText={opt.text}
                                 placeholder={`Option ${optIndex + 1}`}
                                 onTextChange={(newText) => handleOptionTextChange(optIndex, newText)}
-                                questionType={question.type as 'multiple_choice' | 'checkbox'} // Cast is safe here
+                                questionType={question.type as 'multiple_choice' | 'checkbox'}
                                 isCorrect={opt.isCorrect ?? false}
                                 onCorrectChange={(isCorrect) => handleOptionCorrectChange(optIndex, isCorrect)}
                                 onRemove={() => removeOption(optIndex)}
@@ -752,6 +809,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
     QuizQuestionEditor.displayName = 'QuizQuestionEditor';
 
     const renderPreview = () => {
+        // Preview logic should use the 'richContent' (ModalRichContentItem[]) state for consistency
         return (
             <div className={`p-3 sm:p-4 space-y-5 prose prose-sm sm:prose dark:prose-invert max-w-none
                             prose-headings:font-serif prose-headings:text-[${deepBrownLightHex}] dark:prose-headings:text-[${deepBrownDarkHex}]
@@ -788,15 +846,15 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                                  controls={true}
                                                  width='100%'
                                                  height='100%'
-                                                 light={posterSrc || false} // Use posterSrc or false
+                                                 light={posterSrc || false}
                                                  playing={false}
                                                  config={{
                                                      file: {
                                                          attributes: {
-                                                             controlsList: 'nodownload', // Example attribute
+                                                             controlsList: 'nodownload',
                                                              disablePictureInPicture: true,
                                                          },
-                                                         forceVideo: true // Can be useful for some formats
+                                                         forceVideo: true
                                                      }
                                                  }}
                                                  onError={(e: any) => console.error('ReactPlayer Error', e)}
@@ -871,7 +929,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                             <div className="space-y-3 pt-3">
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                                     <ShadcnLabel className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-medium mb-1 sm:mb-0`}>Content Blocks</ShadcnLabel>
-                                    <div className="flex flex-wrap gap-1.5 sm:gap-2"> {[ { type: 'text', Icon: FileTextIcon, label: 'Text' }, { type: 'video', Icon: VideoIcon, label: 'Video' }, { type: 'quiz', Icon: HelpCircle, label: 'Quiz' } ].map(btn => ( <Button key={btn.type} variant="outline" size="sm" onClick={() => handleAddRichContent(btn.type as RichContentItem['type'])} className={`${outlineButtonClasses} text-xs h-8 px-2.5`} disabled={isSaving}> <btn.Icon className="h-3.5 w-3.5 mr-1.5"/> Add {btn.label} </Button> ))} </div>
+                                    <div className="flex flex-wrap gap-1.5 sm:gap-2"> {[ { type: 'text', Icon: FileTextIcon, label: 'Text' }, { type: 'video', Icon: VideoIcon, label: 'Video' }, { type: 'quiz', Icon: HelpCircle, label: 'Quiz' } ].map(btn => ( <Button key={btn.type} variant="outline" size="sm" onClick={() => handleAddRichContent(btn.type as ApiRichContentItemBlock['type'])} className={`${outlineButtonClasses} text-xs h-8 px-2.5`} disabled={isSaving}> <btn.Icon className="h-3.5 w-3.5 mr-1.5"/> Add {btn.label} </Button> ))} </div>
                                 </div>
                                 {richContent.length === 0 && ( <div className={`text-center p-6 border-2 border-dashed ${themedInputBorder} rounded-md ${mutedText} text-sm`}> No content blocks added yet. Click a button above. </div> )}
                                 {richContent.map((item, index) => (
@@ -959,7 +1017,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                                         <Textarea label="Quiz Description (Optional)" placeholder="Instructions..." size="sm" minRows={2} autosize value={item.quizContent.description || ''} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, description: e.target.value}})} styles={mantineInputStyles} />
                                                         <details className="group">
                                                             <summary className={`list-none flex items-center justify-between cursor-pointer p-2 border rounded-md ${themedInputBorder} ${editorToolbarBgMantine}`}> <span className={`${midBrown} text-sm font-medium`}>Quiz Settings</span> <ChevronDown className="h-4 w-4 text-gray-500 group-open:rotate-180 transition-transform"/> </summary>
-                                                            <div className={`mt-2 p-3 border rounded-md border-t-0 rounded-t-none ${themedInputBorder} space-y-3 bg-white dark:bg-gray-800/30`}> {/* Added bg for contrast */}
+                                                            <div className={`mt-2 p-3 border rounded-md border-t-0 rounded-t-none ${themedInputBorder} space-y-3 bg-white dark:bg-gray-800/30`}>
                                                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                                                                     <div className="flex items-center gap-1">
                                                                         <ShadcnLabel htmlFor={`timeLimit-${item.id}`} className={`${midBrown} text-xs`}>Time Limit (min):</ShadcnLabel>
@@ -972,6 +1030,9 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                                                     <Group>
                                                                         <MantineCheckbox id={`shuffle-${item.id}`} checked={item.quizContent.settings?.shuffleQuestions ?? false} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent!.settings, shuffleQuestions: e.currentTarget.checked }}})} label={<span className={midBrown}>Shuffle Qs</span>} size="xs"/>
                                                                         <MantineCheckbox id={`retake-${item.id}`} checked={item.quizContent.settings?.allowRetake ?? false} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent!.settings, allowRetake: e.currentTarget.checked }}})} label={<span className={midBrown}>Allow Retakes</span>} size="xs"/>
+                                                                        <MantineCheckbox id={`showPoints-${item.id}`} checked={item.quizContent.settings?.showPoints ?? false} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent!.settings, showPoints: e.currentTarget.checked }}})} label={<span className={midBrown}>Show Points</span>} size="xs"/>
+                                                                        <MantineCheckbox id={`requireLogin-${item.id}`} checked={item.quizContent.settings?.requireLogin ?? false} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent!.settings, requireLogin: e.currentTarget.checked }}})} label={<span className={midBrown}>Require Login</span>} size="xs"/>
+
                                                                     </Group>
                                                                  </div>
                                                             </div>
@@ -984,7 +1045,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                                                 onRemove={() => { if (!item.quizContent?.questions) return; handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: item.quizContent.questions.filter(oldQ => oldQ.id !== q.id) } }); }}
                                                             />
                                                         ))}
-                                                         <Button variant="outline" size="sm" onClick={() => { const newQ: QuizQuestion = {id: generateId(), type: 'multiple_choice', question: '', required: false, options: [{id: generateId(), text:'', isCorrect:false}]}; handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: [...(item.quizContent!.questions || []), newQ] } }); }} className={`${outlineButtonClasses} text-xs h-8`}><Plus className="h-3.5 w-3.5 mr-1.5"/>Add Question</Button>
+                                                         <Button variant="outline" size="sm" onClick={() => { const newQ: ModalQuizQuestion = {id: generateId(), type: 'multiple_choice', question: '', required: false, options: [{id: generateId(), text:'', isCorrect:false}]}; handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: [...(item.quizContent!.questions || []), newQ] } }); }} className={`${outlineButtonClasses} text-xs h-8`}><Plus className="h-3.5 w-3.5 mr-1.5"/>Add Question</Button>
                                                     </div>
                                                 )}
                                             </CardContent>

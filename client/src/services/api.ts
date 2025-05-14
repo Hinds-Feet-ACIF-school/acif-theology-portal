@@ -4,27 +4,26 @@ export interface QuizQuestionOption { id: string; text: string; isCorrect?: bool
 export interface QuizQuestion { id: string; type: 'multiple_choice' | 'checkbox' | 'short_answer' | 'paragraph'; question: string; required: boolean; description?: string; options?: QuizQuestionOption[]; correctAnswer?: string | string[]; }
 export interface VideoBlockContent { id: string; title: string; description?: string; videoFile?: File; videoUrl?: string; thumbnail?: File; thumbnailUrl?: string; duration?: number; isRequired: boolean; drmEnabled: boolean; accessControl: { allowDownload: boolean; allowSharing: boolean; expirationDate?: Date; }; }
 export interface QuizBlockContent {
-  id: string; // This is the ID of the block itself within the rich content/editor structure.
+  id: string;
   title: string;
   description?: string;
-  questions: QuizQuestion[]; // Array of questions within this quiz block
+  questions: QuizQuestion[];
   settings: {
     shuffleQuestions: boolean;
-    timeLimit?: number; // in minutes
-    passingScore?: number; // percentage, e.g., 70
-    showResults: boolean; // Whether to show results/feedback immediately after submission
+    timeLimit?: number;
+    passingScore?: number;
+    showResults: boolean;
     allowRetake: boolean;
     maxAttempts?: number;
-    showCorrectAnswers: boolean; // Whether to show which answers were correct/incorrect
-    showPoints?: boolean; // If questions have individual point values to display
-    requireLogin?: boolean; // If applicable, though usually handled by page auth
-    collectEmail?: boolean; // If applicable
-    allowProgressSaving?: boolean; // For saving an in-progress attempt (more advanced)
+    showCorrectAnswers: boolean;
+    showPoints?: boolean;
+    requireLogin?: boolean;
+    collectEmail?: boolean;
+    allowProgressSaving?: boolean;
   };
-  databaseQuizId: string; // <<<< --- ADD THIS LINE ---
-                          // This MUST be the ID of the corresponding Quiz document
-                          // in your main 'quizzes' Firestore collection (or database table).
-}export interface RichContentItemBlock { id: string; type: 'text' | 'video' | 'quiz'; order?: number; content?: string; videoContent?: VideoBlockContent; quizContent?: QuizBlockContent; }
+  databaseQuizId: string;
+}
+export interface RichContentItemBlock { id: string; type: 'text' | 'video' | 'quiz'; order?: number; content?: string; videoContent?: VideoBlockContent; quizContent?: QuizBlockContent; }
 export interface AssignmentDetails { id: string; weekId: string; title: string; description?: string; instructions?: string; type?: string; points?: number; dueDateOffsetDays?: number | null; order?: number; createdBy?: string; createdAt?: any; updatedAt?: any; weekNumber?: number; courseTitle?: string; courseId?: string; }
 export interface Section { id: string; weekId: string; title: string; description?: string; order: number; content: ContentItem[]; createdAt?: Date; updatedAt?: Date; }
 export interface DiscussionTopic { id: string; courseId: string; weekId?: string; sectionId?: string; title: string; description?: string; content?: string; createdAt?: Date; updatedAt?: Date; }
@@ -43,7 +42,31 @@ export interface AdminStudent extends StudentSummary { email: string; status: 'a
 export interface AdminCourse extends AdminCourseSummary {}
 export interface AdminFullQuiz extends AdminQuizSummary {}
 export interface UserProgress { [sectionId: string]: boolean; }
-export interface GradedItem { id: string; title: string; type: 'section_completion' | 'quiz_score'; status?: 'completed' | 'incomplete' | 'not_started' | 'passed' | 'failed' | 'pending_grade' | 'submitted'; score?: number | null; maxScore?: 100; isGraded?: boolean; }
+
+// MODIFIED GradedItem interface
+export interface GradedItem {
+  id: string;
+  title: string;
+  type: 'section_completion' | 'quiz_score' | string; // Added string for flexibility if other types exist
+  status?:
+    | 'completed'
+    | 'incomplete'
+    | 'not_started'
+    | 'passed'
+    | 'failed'
+    | 'pending_grade'
+    | 'submitted'
+    | 'pending_manual_grading' // Added
+    | 'pending_review'       // Added
+    | 'in_progress'          // Added
+    | string;                // Added string for flexibility
+  score?: number | null;
+  maxScore?: 100;
+  isGraded?: boolean;
+  progressPercent?: number;  // Added
+  passingScore?: number;     // Added
+}
+
 export interface WeekGradeSummary { weekId: string; weekNumber: number; weekTitle: string; items: GradedItem[]; overallWeekProgress?: number; }
 
 export interface ProcessedCourseOverviewItem {
@@ -334,7 +357,7 @@ export const updateQuiz = async (quizId: string, quizData: Partial<Omit<Quiz, 'i
 export const deleteQuiz = async (quizId: string): Promise<void> => {
     await API.delete(`/quizzes/${quizId}`);
 };
-export const submitQuizAttempt = async (quizId: string, submissionData: { answers: UserAnswers }): Promise<{ id: string; score: number | null; status: string; }> => {
+export const submitQuizAttempt = async (quizId: string, submissionData: { answers: UserAnswers; weekId?: string; courseId?: string; }): Promise<{ id: string; score: number | null; status: string; }> => {
     const response = await API.post(`/quizzes/${quizId}/submit`, submissionData);
     return response.data;
 };
