@@ -98,7 +98,7 @@ const RegisterPage: React.FC = () => {
     console.error("RegisterPage.tsx: apiClient or apiClient.defaults is undefined!");
   }
 
-  
+
   const fetchCohorts = async () => {
     try {
       setLoading(true);

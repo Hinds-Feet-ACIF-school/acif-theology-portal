@@ -1,19 +1,32 @@
 // src/services/apiClient.ts
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 
-// Retrieve the backend port from environment variables
-// Vite uses import.meta.env for environment variables
-const backendPort = import.meta.env.VITE_BACKEND_PORT || '5000'; // Default to 8000 if not set
-const baseURL = process.env.NODE_ENV === 'development'
-  ? `http://localhost:${backendPort}/api`
-  : '/api';
+const localBackendPort = import.meta.env.VITE_LOCAL_BACKEND_PORT || '5000'; // Renamed for clarity
+
+// Use VITE_API_BASE_URL for production, fallback to local setup for development
+const productionApiUrl = import.meta.env.VITE_API_BASE_URL; // This should be https://your-render-domain/api
+const developmentApiUrl = `http://localhost:${localBackendPort}/api`;
+
+const determinedBaseURL = process.env.NODE_ENV === 'development'
+  ? developmentApiUrl
+  : productionApiUrl;
+
+// CRITICAL CHECK: Ensure productionApiUrl is actually set in production builds
+if (process.env.NODE_ENV === 'production' && !productionApiUrl) {
+  console.error("CRITICAL ERROR: VITE_API_BASE_URL is not set for production build!");
+  // You might want to throw an error here or have a non-functional default
+  // to make it obvious something is wrong. For now, it will proceed, but calls will likely fail.
+}
+
+console.log(`apiClient.ts: NODE_ENV is '${process.env.NODE_ENV}'`);
+console.log(`apiClient.ts: Determined baseURL: ${determinedBaseURL}`);
 
 const apiClient: AxiosInstance = axios.create({
-  baseURL: baseURL,
+  baseURL: determinedBaseURL, // Use the dynamically determined URL
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Important for sending cookies (like refreshToken)
+  withCredentials: true,
 });
 
 // --- Optional: Request Interceptor (e.g., to add JWT token) ---
