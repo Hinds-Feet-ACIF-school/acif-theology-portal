@@ -258,8 +258,9 @@ export default function CourseDetailPage() {
 
   return (
     <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark}`}>
-      <div className="container mx-auto px-4 py-6 sm:px-6 md:py-8 lg:py-10 xl:py-12">
-        <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
+      {/* MODIFIED LINE BELOW: Removed 'container', 'mx-auto', 'px-4', 'sm:px-6'. Added 'w-full'. */}
+      <div className={`w-full py-6 md:py-8 lg:py-10 xl:py-12`}>
+        <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12 px-4 sm:px-6"> {/* Added padding here for header content */}
          <Button
             variant="link"
             onClick={() => navigate('/dashboard')}
@@ -278,12 +279,12 @@ export default function CourseDetailPage() {
         </div>
 
         <Tabs defaultValue="content" value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className={`grid w-full grid-cols-2 mb-6 sm:mb-8 rounded-lg p-1 sm:p-1.5 ${tabsListBgLight} ${tabsListBgDark} shadow-sm`}>
+          <TabsList className={`grid w-full grid-cols-2 mb-6 sm:mb-8 rounded-lg p-1 sm:p-1.5 ${tabsListBgLight} ${tabsListBgDark} shadow-sm mx-4 sm:mx-6`}> {/* Added margin here for TabsList */}
              <TabsTrigger value="content" className={`px-3 py-2 sm:py-2.5 text-xs sm:text-sm font-medium ${tabsTriggerTextLight} ${tabsTriggerTextDark} ${tabsTriggerHoverBgLight} ${tabsTriggerHoverBgDark} ${tabsTriggerHoverTextLight} ${tabsTriggerHoverTextDark} data-[state=active]:${tabsTriggerActiveBgLight} dark:data-[state=active]:${tabsTriggerActiveBgDark} data-[state=active]:${tabsTriggerActiveTextLight} dark:data-[state=active]:${tabsTriggerActiveTextDark} data-[state=active]:shadow-md rounded-md transition-all duration-200`}>Course Content</TabsTrigger>
              <TabsTrigger value="grades" className={`px-3 py-2 sm:py-2.5 text-xs sm:text-sm font-medium ${tabsTriggerTextLight} ${tabsTriggerTextDark} ${tabsTriggerHoverBgLight} ${tabsTriggerHoverBgDark} ${tabsTriggerHoverTextLight} ${tabsTriggerHoverTextDark} data-[state=active]:${tabsTriggerActiveBgLight} dark:data-[state=active]:${tabsTriggerActiveBgDark} data-[state=active]:${tabsTriggerActiveTextLight} dark:data-[state=active]:${tabsTriggerActiveTextDark} data-[state=active]:shadow-md rounded-md transition-all duration-200`}>Grades & Progress</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="content" className="space-y-4 sm:space-y-6">
+          <TabsContent value="content" className="space-y-4 sm:space-y-6 px-4 sm:px-6"> {/* Added padding here for tab content */}
             {courseData && courseData.weeks && courseData.weeks.length === 0 && (
                 <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder}`}>
                     <CardContent className={`p-6 sm:p-8 text-center ${mutedTextLight} ${mutedTextDark}`}>
@@ -350,7 +351,7 @@ export default function CourseDetailPage() {
             })}
           </TabsContent>
 
-          <TabsContent value="grades" className="space-y-4 sm:space-y-6">
+          <TabsContent value="grades" className="space-y-4 sm:space-y-6 px-4 sm:px-6"> {/* Added padding here for tab content */}
             {isLoadingGrades && <div className="flex justify-center items-center p-8 sm:p-10"><Loader2 className={`h-8 w-8 sm:h-10 sm:w-10 animate-spin ${goldAccent}`} /></div>}
             {gradesError && (
                  <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder}`}>
