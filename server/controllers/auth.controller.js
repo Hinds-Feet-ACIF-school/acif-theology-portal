@@ -2,6 +2,32 @@ import jwt from "jsonwebtoken";
 import { auth } from "../config/firebase.config.js";
 import * as UserModel from "../models/user.model.js";
 
+// Helper function to safely convert various date/timestamp formats to a JS Date object
+function convertToDate(timestampField) {
+    if (!timestampField) return null;
+    // If it's a Firestore Timestamp object (has toDate method)
+    if (typeof timestampField.toDate === 'function') {
+        return timestampField.toDate();
+    }
+    // If it's already a Date object
+    if (timestampField instanceof Date) {
+        return timestampField;
+    }
+    // If it's a string (e.g., ISO 8601, or format parsable by new Date())
+    // Firebase Auth metadata times like creationTime are strings.
+    if (typeof timestampField === 'string') {
+        const date = new Date(timestampField);
+        return isNaN(date.getTime()) ? null : date; // Check if parsing was successful
+    }
+    // If it's a number (Unix timestamp in milliseconds)
+    if (typeof timestampField === 'number') {
+        const date = new Date(timestampField);
+        return isNaN(date.getTime()) ? null : date;
+    }
+    console.warn('Unknown date format encountered:', timestampField);
+    return null;
+}
+
 export const register = async (req, res) => {
   let userRecord = null;
   try {
@@ -30,6 +56,7 @@ export const register = async (req, res) => {
 
     await auth.setCustomUserClaims(userRecord.uid, { role: role });
 
+    // Ensure UserModel.createUser sets createdAt and updatedAt using FieldValue.serverTimestamp()
     const userDataForFirestore = {
         uid: userRecord.uid,
         email: email,
@@ -40,6 +67,8 @@ export const register = async (req, res) => {
         country: country,
         church: church || null,
         enrollment: null,
+        profileComplete: !!(firstName && lastName && country), // Initial completeness
+        // bio and profilePicture can be added here if provided during registration
     };
     await UserModel.createUser(userDataForFirestore);
 
@@ -110,21 +139,34 @@ export const login = async (req, res) => {
                 profileComplete: firestoreUser.profileComplete,
                 profilePicture: firestoreUser.profilePicture,
                 bio: firestoreUser.bio,
-                createdAt: firestoreUser.createdAt,
-                updatedAt: firestoreUser.updatedAt,
+                createdAt: convertToDate(firestoreUser.createdAt), // Use helper
+                updatedAt: convertToDate(firestoreUser.updatedAt), // Use helper
             };
         } else {
-             userProfileData = { enrollment: null };
+             // Fallback if Firestore profile doesn't exist
+             console.warn(`Firestore profile not found for UID ${uid} during login. User exists in Auth.`);
+             userProfileData = { 
+                enrollment: null,
+                firstName: userRecord.displayName?.split(' ')[0] || null,
+                lastName: userRecord.displayName?.split(' ').slice(1).join(' ') || null,
+                createdAt: convertToDate(userRecord.metadata.creationTime),
+                updatedAt: convertToDate(userRecord.metadata.lastSignInTime),
+             };
         }
     } catch(dbError) {
-         userProfileData = { enrollment: null };
+         console.error(`Error fetching Firestore profile for UID ${uid} during login:`, dbError);
+         userProfileData = { 
+            enrollment: null,
+            createdAt: convertToDate(userRecord.metadata.creationTime),
+            updatedAt: convertToDate(userRecord.metadata.lastSignInTime),
+        };
     }
 
     const userRole = userRecord.customClaims?.role || 'student';
     const accessToken = jwt.sign(
         { uid: uid, role: userRole },
         process.env.JWT_SECRET,
-        { expiresIn: "15m" }
+        { expiresIn: "2h" }
     );
     const refreshToken = jwt.sign(
         { uid: uid },
@@ -137,7 +179,7 @@ export const login = async (req, res) => {
         httpOnly: true,
         secure: secureFlag,
         sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: 7 * 24 * 60 * 60 * 1000, 
         path: '/'
     });
 
@@ -147,9 +189,9 @@ export const login = async (req, res) => {
       user: {
         uid: userRecord.uid,
         email: userRecord.email,
-        displayName: userRecord.displayName,
+        displayName: userProfileData?.displayName || userRecord.displayName, // Prefer profile displayName
         role: userRole,
-        ...userProfileData
+        ...userProfileData // Spreads firstName, lastName, country, etc., including converted dates
       },
     });
   } catch (error) {
@@ -179,12 +221,12 @@ export const login = async (req, res) => {
                 }
                 break;
             default:
-                responseMessage = `Login failed: ${error.message}`;
+                responseMessage = error.message?.startsWith('Firebase:') || error.code?.startsWith('auth/') ? error.message : `Login failed: ${error.message}`;
         }
     } else {
         responseMessage = error.message || responseMessage;
     }
-    res.status(statusCode).json({ message: responseMessage, detail: error.message });
+    res.status(statusCode).json({ message: responseMessage, detail: process.env.NODE_ENV !== 'production' ? error.message : undefined });
   }
 };
 
@@ -208,7 +250,7 @@ export const refreshToken = async (req, res) => {
         const newAccessToken = jwt.sign(
             { uid: userId, role: userRecord.customClaims?.role || 'student' },
             process.env.JWT_SECRET,
-            { expiresIn: "15m" }
+            { expiresIn: "2h" } 
         );
         res.status(200).json({
             message: "Token refreshed successfully",
@@ -222,7 +264,7 @@ export const refreshToken = async (req, res) => {
         if (error.code === 'auth/user-not-found') {
             return res.status(401).json({ message: "User account associated with this session no longer exists." });
         }
-        return res.status(500).json({ message: "Failed to refresh session due to a server error." });
+        return res.status(500).json({ message: "Failed to refresh session due to a server error.", detail: process.env.NODE_ENV !== 'production' ? error.message : undefined });
     }
 };
 
@@ -246,34 +288,50 @@ export const getCurrentUser = async (req, res) => {
             return res.status(401).json({ message: "Unauthorized: Invalid authentication token." });
         }
         const userId = req.user.uid;
-        const userRoleFromToken = req.user.role;
-        const userRecord = await auth.getUser(userId);
+        const userRoleFromToken = req.user.role; 
+        
+        const userRecord = await auth.getUser(userId); 
+
         if (userRecord.disabled) {
              return res.status(403).json({ message: "Account is disabled." });
         }
+
+        const authoritativeRole = userRecord.customClaims?.role || 'student';
+        if (userRoleFromToken !== authoritativeRole) {
+            console.warn(`Role mismatch for UID ${userId}: Token role "${userRoleFromToken}", Firebase Auth role "${authoritativeRole}". Using Firebase Auth role.`);
+        }
+
         let userProfileData = null;
         try {
             userProfileData = await UserModel.getUserById(userId);
             if (!userProfileData) {
-                 userProfileData = { enrollment: null };
+                 console.warn(`Firestore profile not found for UID ${userId}. User exists in Auth. Will use Auth data as fallback.`);
+                 userProfileData = { 
+                    firstName: userRecord.displayName?.split(' ')[0] || null,
+                    lastName: userRecord.displayName?.split(' ').slice(1).join(' ') || null,
+                    displayName: userRecord.displayName,
+                    // other fields might be null or default
+                 }; 
             }
         } catch (dbError) {
+            console.error(`Error fetching Firestore profile for UID ${userId}:`, dbError);
             return res.status(500).json({ message: "Failed to retrieve user profile data." });
         }
+
         const responseUserData = {
             uid: userRecord.uid,
             email: userRecord.email,
-            displayName: userProfileData?.displayName || userRecord.displayName || `${userProfileData?.firstName} ${userProfileData?.lastName}`.trim() || 'N/A',
-            firstName: userProfileData?.firstName || userRecord.displayName?.split(' ')[0] || null,
-            lastName: userProfileData?.lastName || userRecord.displayName?.split(' ').slice(1).join(' ') || null,
-            role: userRoleFromToken,
-            country: userProfileData?.country || null,
-            church: userProfileData?.church || null,
-            enrollment: userProfileData?.enrollment || null,
-            createdAt: userProfileData?.createdAt || null,
-            updatedAt: userProfileData?.updatedAt || null,
+            displayName: userProfileData?.displayName || userRecord.displayName,
+            firstName: userProfileData?.firstName,
+            lastName: userProfileData?.lastName,
+            role: authoritativeRole, 
+            country: userProfileData?.country,
+            church: userProfileData?.church,
+            enrollment: userProfileData?.enrollment,
+            createdAt: convertToDate(userProfileData?.createdAt) || convertToDate(userRecord.metadata.creationTime),
+            updatedAt: convertToDate(userProfileData?.updatedAt) || convertToDate(userRecord.metadata.lastSignInTime),
             profileComplete: userProfileData?.profileComplete,
-            profilePicture: userProfileData?.profilePicture,
+            profilePicture: userProfileData?.profilePicture || userRecord.photoURL, // Prefer Firestore, fallback to Auth
             bio: userProfileData?.bio,
         };
         res.status(200).json(responseUserData);
@@ -281,9 +339,11 @@ export const getCurrentUser = async (req, res) => {
         if (error.code === 'auth/user-not-found') {
             return res.status(404).json({ message: "User account not found." });
         }
-        res.status(500).json({ message: "Failed to fetch user details due to a server error." });
+        console.error("Error in getCurrentUser:", error); // Log the actual error object
+        res.status(500).json({ message: "Failed to fetch user details due to a server error.", detail: process.env.NODE_ENV !== 'production' ? error.message : undefined });
     }
 };
+
 
 export const resetPassword = async (req, res) => {
     try {
@@ -293,7 +353,7 @@ export const resetPassword = async (req, res) => {
         }
         const actionCodeSettings = {
             url: process.env.PASSWORD_RESET_REDIRECT_URL || 'http://localhost:5173/login?reset=true',
-            handleCodeInApp: false
+            handleCodeInApp: false 
         };
         await auth.sendPasswordResetEmail(email, actionCodeSettings);
         res.status(200).json({
@@ -306,9 +366,11 @@ export const resetPassword = async (req, res) => {
         if (error.code === 'auth/user-not-found') {
             return res.status(200).json({ message: "If an account with that email exists, a password reset email has been sent." });
         }
-        res.status(500).json({ message: "Failed to send password reset email due to a server error.", detail: error.message });
+        console.error("Error in resetPassword:", error);
+        res.status(500).json({ message: "Failed to send password reset email due to a server error.", detail: process.env.NODE_ENV !== 'production' ? error.message : undefined });
     }
 };
+
 
 export const updateUserProfile = async (req, res) => {
     try {
@@ -316,48 +378,106 @@ export const updateUserProfile = async (req, res) => {
             return res.status(401).json({ message: "Unauthorized: No user identification found." });
         }
         const { uid } = req.user;
-        const { firstName, lastName, country, church } = req.body;
+        const { firstName, lastName, country, church, bio, profilePicture } = req.body;
+        
         const updatedFirebaseAuthData = {};
         const updatedFirestoreData = {};
+        let existingProfile = null; // To store fetched profile for reuse
+
+        // Fetch existing profile once if any profile-completeness-related fields are changing
+        if (firstName !== undefined || lastName !== undefined || country !== undefined || 
+            church !== undefined || bio !== undefined || profilePicture !== undefined) {
+             existingProfile = await UserModel.getUserById(uid);
+             if (!existingProfile) {
+                 // This case should ideally not happen if user exists in Auth.
+                 // If it does, it means Firestore profile is missing. We might need to create it.
+                 // For now, let's assume it might be created by UserModel.updateUser if it handles upsert logic.
+                 // Or, we can simply proceed, and if UserModel.updateUser fails, it will be caught.
+                 console.warn(`Firestore profile for user ${uid} not found during update. Update might partially fail or create a new profile entry.`);
+             }
+        }
+
 
         if (firstName !== undefined || lastName !== undefined) {
-            const currentUserRecord = await auth.getUser(uid);
-            const currentFirstName = currentUserRecord.displayName?.split(' ')[0] || '';
-            const currentLastName = currentUserRecord.displayName?.split(' ').slice(1).join(' ') || '';
-            const newFirstName = firstName !== undefined ? firstName : currentFirstName;
-            const newLastName = lastName !== undefined ? lastName : currentLastName;
-            const newDisplayName = `${newFirstName} ${newLastName}`.trim();
-            if (newDisplayName) {
+            const currentAuthUserRecord = await auth.getUser(uid); // Get current Firebase Auth user for displayName reference
+            const currentFirstName = firstName !== undefined ? firstName : (existingProfile?.firstName || currentAuthUserRecord.displayName?.split(' ')[0] || '');
+            const currentLastName = lastName !== undefined ? lastName : (existingProfile?.lastName || currentAuthUserRecord.displayName?.split(' ').slice(1).join(' ') || '');
+            
+            const newDisplayName = `${currentFirstName} ${currentLastName}`.trim();
+
+            if (newDisplayName && newDisplayName !== currentAuthUserRecord.displayName) { 
                 updatedFirebaseAuthData.displayName = newDisplayName;
-                if (firstName !== undefined) updatedFirestoreData.firstName = newFirstName;
-                if (lastName !== undefined) updatedFirestoreData.lastName = newLastName;
-                updatedFirestoreData.displayName = newDisplayName;
+            }
+            if (firstName !== undefined) updatedFirestoreData.firstName = firstName;
+            if (lastName !== undefined) updatedFirestoreData.lastName = lastName;
+            if (newDisplayName) updatedFirestoreData.displayName = newDisplayName; // Also update in Firestore
+        }
+
+        if (country !== undefined) updatedFirestoreData.country = country;
+        if (church !== undefined) updatedFirestoreData.church = church || null;
+        if (bio !== undefined) updatedFirestoreData.bio = bio || null;
+        
+        if (profilePicture !== undefined) { 
+            if (profilePicture !== (existingProfile?.profilePicture || (await auth.getUser(uid)).photoURL)) { // Check if it's actually changing
+                updatedFirebaseAuthData.photoURL = profilePicture || null;
+            }
+            updatedFirestoreData.profilePicture = profilePicture || null;
+        }
+        
+        // Logic for profileComplete: update if key fields (firstName, lastName, country) are changing
+        if (firstName !== undefined || lastName !== undefined || country !== undefined) {
+            if(!existingProfile) existingProfile = await UserModel.getUserById(uid); // Fetch if not already done
+
+            const finalFirstName = firstName !== undefined ? firstName : existingProfile?.firstName;
+            const finalLastName = lastName !== undefined ? lastName : existingProfile?.lastName;
+            const finalCountry = country !== undefined ? country : existingProfile?.country;
+            
+            const newProfileCompleteStatus = !!(finalFirstName && finalLastName && finalCountry);
+
+            if (existingProfile?.profileComplete !== newProfileCompleteStatus || existingProfile?.profileComplete === undefined) {
+                updatedFirestoreData.profileComplete = newProfileCompleteStatus;
             }
         }
-        if (country !== undefined) {
-            updatedFirestoreData.country = country;
-        }
-        if (church !== undefined) {
-            updatedFirestoreData.church = church || null;
-        }
+
         const authUpdatesExist = Object.keys(updatedFirebaseAuthData).length > 0;
         const firestoreUpdatesExist = Object.keys(updatedFirestoreData).length > 0;
 
         if (!authUpdatesExist && !firestoreUpdatesExist) {
-             const currentUserData = await UserModel.getUserById(uid);
+             const finalUserRecordForNoChange = await auth.getUser(uid);
+             const finalUserDocForNoChange = existingProfile || await UserModel.getUserById(uid); // Use already fetched if available
              return res.status(200).json({
                 message: "No changes detected in profile data.",
-                user: currentUserData
+                user: {
+                    uid: finalUserRecordForNoChange.uid,
+                    email: finalUserRecordForNoChange.email,
+                    displayName: finalUserDocForNoChange?.displayName || finalUserRecordForNoChange.displayName,
+                    firstName: finalUserDocForNoChange?.firstName,
+                    lastName: finalUserDocForNoChange?.lastName,
+                    role: finalUserRecordForNoChange.customClaims?.role || 'student',
+                    country: finalUserDocForNoChange?.country,
+                    church: finalUserDocForNoChange?.church,
+                    enrollment: finalUserDocForNoChange?.enrollment,
+                    createdAt: convertToDate(finalUserDocForNoChange?.createdAt) || convertToDate(finalUserRecordForNoChange.metadata.creationTime),
+                    updatedAt: convertToDate(finalUserDocForNoChange?.updatedAt) || convertToDate(finalUserRecordForNoChange.metadata.lastModifiedTime || finalUserRecordForNoChange.metadata.lastSignInTime),
+                    profileComplete: finalUserDocForNoChange?.profileComplete,
+                    profilePicture: finalUserDocForNoChange?.profilePicture || finalUserRecordForNoChange.photoURL,
+                    bio: finalUserDocForNoChange?.bio,
+                }
              });
         }
+
         if (authUpdatesExist) {
             await auth.updateUser(uid, updatedFirebaseAuthData);
         }
         if (firestoreUpdatesExist) {
+            // UserModel.updateUser should handle cases where the document might not exist yet (e.g., by using set with merge:true, or specific logic)
+            // It must also ensure `updatedAt` is set to FieldValue.serverTimestamp()
             await UserModel.updateUser(uid, updatedFirestoreData);
         }
+
         const finalUserRecord = await auth.getUser(uid);
-        const finalUserDoc = await UserModel.getUserById(uid);
+        const finalUserDoc = await UserModel.getUserById(uid); // Fetch fresh data
+
         const responseUser = {
             uid: finalUserRecord.uid,
             email: finalUserRecord.email,
@@ -368,26 +488,30 @@ export const updateUserProfile = async (req, res) => {
             country: finalUserDoc?.country,
             church: finalUserDoc?.church,
             enrollment: finalUserDoc?.enrollment,
+            createdAt: convertToDate(finalUserDoc?.createdAt) || convertToDate(finalUserRecord.metadata.creationTime),
+            updatedAt: convertToDate(finalUserDoc?.updatedAt) || convertToDate(finalUserRecord.metadata.lastModifiedTime || finalUserRecord.metadata.lastSignInTime), // Using lastModifiedTime or lastSignInTime as fallback
             profileComplete: finalUserDoc?.profileComplete,
-            profilePicture: finalUserDoc?.profilePicture,
+            profilePicture: finalUserDoc?.profilePicture || finalUserRecord.photoURL,
             bio: finalUserDoc?.bio,
-            createdAt: finalUserDoc?.createdAt,
-            updatedAt: finalUserDoc?.updatedAt,
         };
+
         res.status(200).json({
             message: "User profile updated successfully",
             user: responseUser,
         });
     } catch (error) {
+        console.error("Error in updateUserProfile:", error);
         if (error.code === 'auth/user-not-found') {
             return res.status(404).json({ message: "User not found in Authentication." });
         }
-        if (error.message && error.message.includes("User with ID") && error.message.includes("not found")) {
-             return res.status(404).json({ message: "User profile data not found." });
+        // Check for Firestore-specific "not found" if UserModel.updateUser throws a custom error or a specific Firestore error code
+        if (error.message && error.message.toLowerCase().includes("not found") && (error.message.includes("Firestore") || error.message.includes("database"))) {
+             return res.status(404).json({ message: "User profile data not found in database for update." });
         }
-        res.status(500).json({ message: "Failed to update profile due to a server error.", detail: error.message });
+        res.status(500).json({ message: "Failed to update profile due to a server error.", detail: process.env.NODE_ENV !== 'production' ? error.message : undefined });
     }
 };
+
 
 export const changePassword = async (req, res) => {
     try {
@@ -396,30 +520,35 @@ export const changePassword = async (req, res) => {
         }
         const { uid } = req.user;
         const { newPassword } = req.body;
+
         if (!newPassword || newPassword.length < 6) {
             return res.status(400).json({ message: "New password must be at least 6 characters long." });
         }
+
         await auth.updateUser(uid, {
             password: newPassword,
         });
+
         res.status(200).json({ message: "Password changed successfully" });
     } catch (error) {
+        console.error("Error in changePassword:", error);
         if (error.code === 'auth/requires-recent-login') {
             return res.status(403).json({
                 message: "This operation requires you to have logged in recently. Please log out and log back in to change your password.",
-                code: error.code
+                code: error.code 
             });
         }
         if (error.code === 'auth/user-not-found') {
             return res.status(404).json({ message: "User account not found." });
         }
-        if (error.code === 'auth/weak-password') {
+        if (error.code === 'auth/weak-password') { 
              return res.status(400).json({ message: "Password is too weak. Please choose a stronger password." });
         }
-        res.status(500).json({ message: "Failed to change password due to a server error.", detail: error.message });
+        res.status(500).json({ message: "Failed to change password due to a server error.", detail: process.env.NODE_ENV !== 'production' ? error.message : undefined });
     }
 };
 
+// Admin specific functions
 export const createUserByAdmin = async (req, res) => {
     let userRecord = null;
     try {
@@ -430,7 +559,7 @@ export const createUserByAdmin = async (req, res) => {
             lastName,
             country,
             church,
-            role
+            role 
         } = req.body;
 
         if (!email || !password || !firstName || !lastName || !country || !role) {
@@ -451,23 +580,25 @@ export const createUserByAdmin = async (req, res) => {
 
         await auth.setCustomUserClaims(userRecord.uid, { role: role });
 
+        // UserModel.createUser should set createdAt/updatedAt with FieldValue.serverTimestamp()
         const userDataForFirestore = {
             uid: userRecord.uid,
             email: email,
             firstName: firstName,
             lastName: lastName,
             displayName: `${firstName} ${lastName}`,
-            role: role,
+            role: role, 
             country: country,
             church: church || null,
-            enrollment: null,
+            enrollment: null, 
+            profileComplete: !!(firstName && lastName && country), 
         };
         await UserModel.createUser(userDataForFirestore);
 
         res.status(201).json({
             message: `User '${email}' created successfully with role '${role}'.`,
             userId: userRecord.uid,
-            user: {
+            user: { 
                uid: userRecord.uid,
                email: email,
                displayName: `${firstName} ${lastName}`,
@@ -482,8 +613,9 @@ export const createUserByAdmin = async (req, res) => {
         if (error.message && error.message.includes("Firestore") && userRecord && userRecord.uid) {
             errorMessage = "User creation partially failed (profile storage). Please try again or contact support.";
             try {
-                await auth.deleteUser(userRecord.uid);
+                await auth.deleteUser(userRecord.uid); 
             } catch (deleteError) {
+                console.error(`CRITICAL: Failed to delete Firebase Auth user ${userRecord.uid} after Firestore save error:`, deleteError);
                 errorMessage = "User creation failed critically. Orphaned account may exist. Contact support immediately.";
             }
         }
@@ -496,7 +628,7 @@ export const createUserByAdmin = async (req, res) => {
         } else if (error.code === "auth/invalid-email") {
             errorMessage = "The email address is not valid.";
             statusCode = 400;
-        } else if (error.code?.startsWith('auth/')) {
+        } else if (error.code?.startsWith('auth/')) { 
              errorMessage = `User creation failed: ${error.message}`;
              statusCode = 400;
         }
@@ -504,22 +636,24 @@ export const createUserByAdmin = async (req, res) => {
         const responsePayload = { message: errorMessage };
         if (process.env.NODE_ENV !== 'production' && error.message) {
             responsePayload.detail = error.message;
-            responsePayload.code = error.code;
+            responsePayload.code = error.code; 
         }
+        console.error("Error in createUserByAdmin:", error);
         res.status(statusCode).json(responsePayload);
     }
 };
 
 export const getAllUsersForAdmin = async (req, res) => {
     try {
-        const listUsersResult = await auth.listUsers(1000);
+        const listUsersResult = await auth.listUsers(1000); 
+        
         const usersWithFirestoreData = await Promise.all(
             listUsersResult.users.map(async (userRecord) => {
                 let firestoreData = null;
                 try {
                     firestoreData = await UserModel.getUserById(userRecord.uid);
                 } catch (dbError) {
-                    // Silently ignore if Firestore data is missing for a user for now
+                    console.warn(`Could not fetch Firestore data for user ${userRecord.uid}:`, dbError.message);
                 }
                 return {
                     uid: userRecord.uid,
@@ -527,18 +661,21 @@ export const getAllUsersForAdmin = async (req, res) => {
                     displayName: firestoreData?.displayName || userRecord.displayName,
                     firstName: firestoreData?.firstName,
                     lastName: firestoreData?.lastName,
-                    role: userRecord.customClaims?.role || 'student',
+                    role: userRecord.customClaims?.role || 'student', 
                     country: firestoreData?.country,
                     church: firestoreData?.church,
                     enrollment: firestoreData?.enrollment,
-                    createdAt: firestoreData?.createdAt || userRecord.metadata.creationTime,
+                    createdAt: convertToDate(firestoreData?.createdAt) || convertToDate(userRecord.metadata.creationTime),
+                    lastSignInTime: convertToDate(userRecord.metadata.lastSignInTime),
                     disabled: userRecord.disabled,
+                    emailVerified: userRecord.emailVerified,
                 };
             })
         );
         res.status(200).json(usersWithFirestoreData);
     } catch (error) {
-        res.status(500).json({ message: "Failed to retrieve user list.", detail: error.message });
+        console.error("Error in getAllUsersForAdmin:", error);
+        res.status(500).json({ message: "Failed to retrieve user list.", detail: process.env.NODE_ENV !== 'production' ? error.message : undefined });
     }
 };
 
@@ -548,17 +685,83 @@ export const deleteUserAdmin = async (req, res) => {
         return res.status(400).json({ message: "User ID is required." });
     }
     try {
-        await auth.deleteUser(userId);
+        await auth.deleteUser(userId); 
+        
         try {
-            await UserModel.deleteUser(userId);
+            await UserModel.deleteUser(userId); 
         } catch (dbError) {
-            // Log warning but don't fail the request if Firestore delete fails after Auth delete
+            console.warn(`User ${userId} deleted from Auth, but failed to delete from Firestore:`, dbError.message);
         }
+        
         res.status(200).json({ message: `User ${userId} deleted successfully.` });
     } catch (error) {
+        console.error(`Error deleting user ${userId} by admin:`, error);
         if (error.code === 'auth/user-not-found') {
-            return res.status(404).json({ message: "User not found in Firebase Authentication." });
+             try {
+                await UserModel.deleteUser(userId);
+                return res.status(200).json({ message: `User ${userId} not found in Authentication but was removed from database if present.` });
+             } catch (dbError) {
+                return res.status(404).json({ message: "User not found in Firebase Authentication and database record could not be verified/removed." });
+             }
         }
-        res.status(500).json({ message: "Failed to delete user.", detail: error.message });
+        res.status(500).json({ message: "Failed to delete user.", detail: process.env.NODE_ENV !== 'production' ? error.message : undefined });
+    }
+};
+
+export const updateUserStatusAdmin = async (req, res) => {
+    const { userId } = req.params;
+    const { role, disabled } = req.body;
+
+    if (!userId) {
+        return res.status(400).json({ message: "User ID is required." });
+    }
+    if (role === undefined && disabled === undefined) {
+        return res.status(400).json({ message: "At least one field (role or disabled status) must be provided for update." });
+    }
+
+    const updates = {};
+    const firestoreUpdates = {};
+
+    if (role !== undefined) {
+        if (!['student', 'admin', 'instructor'].includes(role)) {
+            return res.status(400).json({ message: "Invalid role specified. Allowed roles: student, admin, instructor." });
+        }
+        updates.customClaims = { role }; 
+        firestoreUpdates.role = role;     
+    }
+
+    if (disabled !== undefined) {
+        if (typeof disabled !== 'boolean') {
+            return res.status(400).json({ message: "Disabled status must be a boolean." });
+        }
+        updates.disabled = disabled; 
+    }
+
+    try {
+        await auth.updateUser(userId, updates);
+        if (Object.keys(firestoreUpdates).length > 0) {
+            // UserModel.updateUser should also set updatedAt via FieldValue.serverTimestamp()
+            await UserModel.updateUser(userId, firestoreUpdates);
+        }
+        
+        const updatedUserRecord = await auth.getUser(userId);
+        const updatedFirestoreUser = await UserModel.getUserById(userId);
+
+        res.status(200).json({
+            message: `User ${userId} status updated successfully.`,
+            user: {
+                uid: updatedUserRecord.uid,
+                email: updatedUserRecord.email,
+                displayName: updatedFirestoreUser?.displayName || updatedUserRecord.displayName,
+                role: updatedUserRecord.customClaims?.role,
+                disabled: updatedUserRecord.disabled,
+            }
+        });
+    } catch (error) {
+        console.error(`Error updating status for user ${userId} by admin:`, error);
+        if (error.code === 'auth/user-not-found') {
+            return res.status(404).json({ message: "User not found." });
+        }
+        res.status(500).json({ message: "Failed to update user status.", detail: process.env.NODE_ENV !== 'production' ? error.message : undefined });
     }
 };
