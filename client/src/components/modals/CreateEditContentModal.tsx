@@ -388,6 +388,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                             // Keep API URLs if no file, clear if file is set
                             videoUrl: videoFileInstance ? undefined : apiRcBlock.videoContent.videoUrl,
                             thumbnailUrl: thumbnailFileInstance ? undefined : apiRcBlock.videoContent.thumbnailUrl,
+                            isRequired: typeof apiRcBlock.videoContent.isRequired === 'boolean' ? apiRcBlock.videoContent.isRequired : false, // Ensure boolean
                         };
                     }
 
@@ -458,7 +459,9 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         } else if (contentType === 'video') {
             newBlock.videoContent = {
                 id: newBlockId, title: '', description: '', videoFile: undefined, videoUrl: '', videoObjectUrl: undefined,
-                thumbnail: undefined, thumbnailUrl: '', thumbnailObjectUrl: undefined, isRequired: true, drmEnabled: false,
+                thumbnail: undefined, thumbnailUrl: '', thumbnailObjectUrl: undefined,
+                isRequired: false, // MODIFIED: Default to false
+                drmEnabled: false,
                 accessControl: { allowDownload: true, allowSharing: true }, duration: 0
             };
         } else if (contentType === 'quiz') {
@@ -705,8 +708,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         const questionTypes = [
             { value: 'multiple_choice' as const, label: 'Multiple Choice (Single Answer)' },
             { value: 'checkbox' as const, label: 'Checkboxes (Multiple Answers)' },
-            { value: 'short_answer' as const, label: 'Short Answer' },
-            { value: 'paragraph' as const, label: 'Paragraph Answer' },
+           
         ];
 
         return (
@@ -833,6 +835,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                             <div className="not-prose">
                                 <h3 className={`text-lg font-semibold mb-1.5 text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`}>{item.videoContent.title || "Untitled Video"}</h3>
                                 {item.videoContent.description && <p className={`text-sm mb-2 ${midBrown}`}>{item.videoContent.description}</p>}
+                                {item.videoContent.isRequired && <span className="text-xs text-red-500 mb-2 block">(Required Video)</span>} {/* Preview for specific video isRequired */}
                                 {(() => {
                                     const videoSrc = item.videoContent.videoObjectUrl || item.videoContent.videoUrl;
                                     const posterSrc = item.videoContent.thumbnailObjectUrl || item.videoContent.thumbnailUrl;
@@ -886,9 +889,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                                     {(opt.isCorrect ?? false) && <span className="text-xs font-bold text-green-600 dark:text-green-400 ml-2">(Correct)</span>}
                                                 </div>
                                             ))}
-                                            {(q.type === 'short_answer') && <TextInput readOnly placeholder="Short answer preview" size="xs" className="mt-1" styles={mantineInputStyles} /> }
-                                            {(q.type === 'paragraph') && <Textarea readOnly placeholder="Paragraph answer preview" size="xs" minRows={2} className="mt-1" styles={mantineInputStyles} /> }
-                                        </div>
+                                           </div>
                                     ))}
                                 </div>
                             </div>
@@ -1008,6 +1009,22 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                                             }}
                                                             size="sm"
                                                             styles={mantineInputStyles}
+                                                        />
+                                                        {/* MODIFIED: Added Checkbox for individual video's isRequired */}
+                                                        <MantineCheckbox
+                                                            label={<span className={`${midBrown} text-xs font-normal cursor-pointer`}>Mark this specific video as required</span>}
+                                                            checked={item.videoContent.isRequired === true}
+                                                            onChange={(event) => {
+                                                                handleUpdateRichContentItem(item.id, {
+                                                                    videoContent: {
+                                                                        ...item.videoContent!,
+                                                                        isRequired: event.currentTarget.checked
+                                                                    }
+                                                                });
+                                                            }}
+                                                            size="xs"
+                                                            className="mt-3 pt-1" // Added some margin for better spacing
+                                                            disabled={isSaving}
                                                         />
                                                     </div>
                                                 )}

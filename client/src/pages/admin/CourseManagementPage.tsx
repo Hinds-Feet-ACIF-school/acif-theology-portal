@@ -15,7 +15,7 @@
 
   import CreateEditSectionModal from "../../components/modals/CreateEditSectionModal.js";
   import CreateEditContentModal from "../../components/modals/CreateEditContentModal";
-  import SectionPreviewModal from "../../components/modals/SectionPreviewModal.js";
+  import SectionPreviewModal from "../../components/modals/SectionPreviewModal";
   import ConfirmationModal from "../../components/modals/ConfirmationModal.js";
 
 

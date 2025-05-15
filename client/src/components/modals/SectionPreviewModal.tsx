@@ -7,25 +7,21 @@ import { X, FileText, Video as VideoIcon, HelpCircle } from 'lucide-react';
 import { Input } from "../ui/input.js"; 
 import { Textarea } from "../ui/textarea.js";
 
-// Import types from your single source of truth (api.ts)
 import type { Section, ContentItem, RichContentItemBlock, VideoBlockContent, QuizBlockContent, QuizQuestion as ApiQuizQuestion } from '../../services/api';
 
-// --- Styling Constants ---
-const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]'; // Should be light on dark
-const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]';   // Should be light on dark
+const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';
+const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]';
 const goldAccent = 'text-[#C5A467]';
 const lightCardBg = 'bg-white';
-const darkCardBg = 'dark:bg-gray-950'; // Main modal dark background
-const editorCardBg = 'dark:bg-gray-800'; // Slightly lighter for internal cards/blocks if needed
-const themedInputBorder = `border-gray-300 dark:border-gray-600`; // Darker border for dark mode
+const darkCardBg = 'dark:bg-gray-950';
+const editorCardBg = 'dark:bg-gray-800';
+const themedInputBorder = `border-gray-300 dark:border-gray-600`;
 const mutedText = 'text-gray-600 dark:text-gray-400';
-const themedInputBg = `bg-white dark:bg-gray-700`; // Darker input background
+const themedInputBg = `bg-white dark:bg-gray-700`;
 const focusRing = 'focus:ring-2 focus:ring-offset-1 focus:ring-[#C5A467]/80 focus:outline-none';
 const inputClasses = `h-9 rounded-md px-3 text-sm ${themedInputBg} ${themedInputBorder} ${deepBrown} ${focusRing} placeholder:text-gray-500 dark:placeholder:text-gray-400`;
-const defaultDarkTextColor = 'dark:text-gray-200'; // Fallback for text if prose-invert isn't enough
-// --- End of Styling Constants ---
+const defaultDarkTextColor = 'dark:text-gray-200';
 
-// --- ErrorBoundary (Class-based) ---
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallbackMessage?: string;
@@ -74,8 +70,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     return this.props.children;
   }
 }
-// --- End of ErrorBoundary ---
-
 
 interface SectionPreviewModalProps {
     isOpen: boolean;
@@ -90,7 +84,6 @@ const SectionPreviewModalComponent: React.FC<SectionPreviewModalProps> = ({
 }) => {
     if (!isOpen) return null;
 
-    // Log the entire section data when modal opens for debugging
     useEffect(() => {
         if (isOpen) {
             console.log("SectionPreviewModal received section:", JSON.stringify(section, (key, value) => {
@@ -101,8 +94,10 @@ const SectionPreviewModalComponent: React.FC<SectionPreviewModalProps> = ({
     }, [isOpen, section]);
 
     const renderRichContentBlock = (block: RichContentItemBlock, blockIndex: number) => {
+        const blockKey = block.id || `block-${blockIndex}`;
+        
         return (
-            <div key={block.id || `block-${blockIndex}`} className={`mt-3 pt-3 border-t first:mt-0 first:pt-0 first:border-t-0 ${themedInputBorder}`}>
+            <div key={blockKey} className={`mt-3 pt-3 border-t first:mt-0 first:pt-0 first:border-t-0 ${themedInputBorder}`}>
                 {block.type === 'text' && block.content && (
                     <div className={`prose prose-sm dark:prose-invert max-w-none ${defaultDarkTextColor}`} dangerouslySetInnerHTML={{ __html: block.content }} />
                 )}
@@ -116,7 +111,7 @@ const SectionPreviewModalComponent: React.FC<SectionPreviewModalProps> = ({
                             if (block.videoContent?.videoUrl) {
                                 videoSourceUrl = block.videoContent.videoUrl.startsWith('http') 
                                     ? block.videoContent.videoUrl 
-                                    : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}${block.videoContent.videoUrl.startsWith('/') ? '' : '/'}${block.videoContent.videoUrl}`;
+                                    : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000'}${block.videoContent.videoUrl.startsWith('/') ? '' : '/'}${block.videoContent.videoUrl}`;
                             } else if (block.videoContent?.videoFile instanceof File) {
                                 try { videoSourceUrl = URL.createObjectURL(block.videoContent.videoFile); }
                                 catch (e) { console.error("Error creating object URL for videoFile:", e); }
@@ -126,7 +121,7 @@ const SectionPreviewModalComponent: React.FC<SectionPreviewModalProps> = ({
                             if (block.videoContent?.thumbnailUrl) {
                                 thumbnailSourceUrl = block.videoContent.thumbnailUrl.startsWith('http')
                                     ? block.videoContent.thumbnailUrl
-                                    : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}${block.videoContent.thumbnailUrl.startsWith('/') ? '' : '/'}${block.videoContent.thumbnailUrl}`;
+                                    : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000'}${block.videoContent.thumbnailUrl.startsWith('/') ? '' : '/'}${block.videoContent.thumbnailUrl}`;
                             } else if (block.videoContent?.thumbnail instanceof File) {
                                 try { thumbnailSourceUrl = URL.createObjectURL(block.videoContent.thumbnail); }
                                 catch (e) { console.error("Error creating object URL for thumbnail:", e); }
@@ -146,7 +141,7 @@ const SectionPreviewModalComponent: React.FC<SectionPreviewModalProps> = ({
                                 );
                             }
                         })()}
-                        {block.videoContent.isRequired && <span className="text-xs text-red-500">(Required Video)</span>}
+                        {block.videoContent.isRequired === true && <span className="text-xs text-red-500">(Required Video)</span>}
                     </div>
                 )}
                 {block.type === 'quiz' && block.quizContent && (
@@ -169,7 +164,7 @@ const SectionPreviewModalComponent: React.FC<SectionPreviewModalProps> = ({
                                                 <label className="flex items-center gap-2 cursor-default">
                                                     <input 
                                                         type={q.type === 'multiple_choice' ? 'radio' : 'checkbox'} 
-                                                        name={`preview-q-${q.id}`} // Unique name for radio group
+                                                        name={`preview-q-${q.id}`}
                                                         disabled
                                                         className="shrink-0 accent-amber-600 dark:accent-amber-500"
                                                     /> 
@@ -177,9 +172,7 @@ const SectionPreviewModalComponent: React.FC<SectionPreviewModalProps> = ({
                                                 </label>
                                             </div>
                                         ))}
-                                        {(q.type === 'short_answer') && <Input type="text" placeholder="Short answer (preview)" disabled className={`${inputClasses} text-sm mt-1`} /> }
-                                        {(q.type === 'paragraph') && <Textarea placeholder="Paragraph answer (preview)" disabled className={`${inputClasses} text-sm mt-1 min-h-[60px]`} /> }
-                                    </div>
+                                       </div>
                                 ))}
                             </div>
                         ) : (
@@ -197,7 +190,7 @@ const SectionPreviewModalComponent: React.FC<SectionPreviewModalProps> = ({
         return (
             <div key={item.id || `item-${index}`} className={`p-4 my-4 border rounded-lg ${themedInputBorder} ${lightCardBg} ${darkCardBg}`}>
                 <h3 className={`text-xl font-semibold mb-2 ${deepBrown}`}>{item.title || `Content Item ${index + 1}`}</h3>
-                {item.isRequired && <p className="text-sm text-red-500 dark:text-red-400 mb-2">(Required)</p>}
+                {item.isRequired === true && <p className="text-sm text-red-500 dark:text-red-400 mb-2">(Required)</p>}
 
                 {item.type === 'text' && item.content && (!item.richContent || item.richContent.length === 0) && (
                      <div className={`prose prose-sm dark:prose-invert max-w-none ${defaultDarkTextColor}`} dangerouslySetInnerHTML={{ __html: item.content }} />
@@ -236,7 +229,6 @@ const SectionPreviewModalComponent: React.FC<SectionPreviewModalProps> = ({
                     </Button>
                 </CardHeader>
 
-                {/* The CardContent now has prose styling for the entire scrollable area */}
                 <CardContent className={`flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 prose prose-sm sm:prose dark:prose-invert max-w-none ${defaultDarkTextColor}`}>
                     <h2 className={`text-2xl font-bold font-serif mb-2 ${deepBrown}`}>{section.title || 'Untitled Section'}</h2>
                     {section.description && (
