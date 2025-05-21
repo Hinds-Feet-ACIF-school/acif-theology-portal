@@ -80,14 +80,64 @@ export default function CourseDetailPage() {
     setGradesError(null);
     try {
       const response = await apiService.getMyCourseGrades(routeCourseId);
-      if (response && response.weeklyGrades && response.monthlyProgress) {
-        setGradesData(response.weeklyGrades);
+      
+      // --- THIS IS THE MOST IMPORTANT LOG. WE NEED ITS FULL OUTPUT ---
+      console.log("CourseDetailPage (fetchGrades): FULL Raw API Response:", JSON.stringify(response, null, 2));
+
+      if (response && response.weeklyGrades && Array.isArray(response.weeklyGrades) && response.monthlyProgress) {
+        console.log("CourseDetailPage (fetchGrades): response.weeklyGrades IS an array. Length:", response.weeklyGrades.length);
+
+        const sanitizedWeeklyGrades = response.weeklyGrades.map((wg: any, index: number) => {
+          // Log each original weekGrade object before any sanitization
+          console.log(`CourseDetailPage (fetchGrades - PRE-SANITIZATION): Processing weeklyGrade index ${index}:`, JSON.stringify(wg, null, 2));
+
+          if (!wg) { // Handles if an element in weeklyGrades is null/undefined
+            console.warn(`CourseDetailPage (fetchGrades - SANITIZING): weeklyGrade at index ${index} is null/undefined. Replacing with default.`);
+            // Provide a default structure that matches WeekGradeSummary as much as possible
+            return { 
+              items: [], 
+              weekId: `unknown_week_${Date.now()}_${index}`, 
+              weekTitle: "Unknown Week", 
+              weekNumber: 0, 
+              overallWeekProgress: 0 // Ensure all expected fields are present
+            };
+          }
+
+          const currentItems = wg.items;
+          if (!Array.isArray(currentItems)) {
+            // --- THIS IS THE CRITICAL WARNING. IF THIS APPEARS, WE'VE FOUND THE PROBLEM DATA ---
+            console.warn(`CourseDetailPage (fetchGrades - SANITIZING): weeklyGrade.items for weekId '${wg.weekId}' (index ${index}) was NOT an array. Type: ${typeof currentItems}. Value:`, JSON.stringify(currentItems, null, 2), ". Replacing with empty array.");
+            return {
+              ...wg,
+              items: [] // Replace non-array 'items' with an empty array
+            };
+          }
+          
+          console.log(`CourseDetailPage (fetchGrades - SANITIZING): weeklyGrade.items for weekId '${wg.weekId}' (index ${index}) IS an array. Length: ${currentItems.length}`);
+          return wg; // If items is already an array, return as is
+        });
+
+        console.log("CourseDetailPage (fetchGrades - POST-SANITIZATION): Sanitized weeklyGrades:", JSON.stringify(sanitizedWeeklyGrades, null, 2));
+        setGradesData(sanitizedWeeklyGrades);
         setMonthlyProgress(response.monthlyProgress);
       } else {
-        throw new Error("Invalid response format from server");
+        let errorMsg = "Failed to fetch grades: Invalid data format from server.";
+        if (!response) {
+            errorMsg = "Failed to fetch grades: No response from server.";
+        } else if (!response.weeklyGrades || !Array.isArray(response.weeklyGrades)) {
+            errorMsg = "Failed to fetch grades: Invalid weekly grades data structure.";
+            console.error("CourseDetailPage (fetchGrades): weeklyGrades is missing or not an array. Full response:", response);
+        } else if (!response.monthlyProgress) {
+            errorMsg = "Failed to fetch grades: Invalid monthly progress data structure.";
+            console.error("CourseDetailPage (fetchGrades): monthlyProgress is missing. Full response:", response);
+        }
+        console.error("CourseDetailPage (fetchGrades): Problem with API response structure. Full response:", JSON.stringify(response, null, 2));
+        setGradesError(errorMsg);
+        setGradesData([]); 
+        setMonthlyProgress(null);
       }
     } catch (err: any) {
-      console.error("CourseDetailPage: Failed to load grades:", err);
+      console.error("CourseDetailPage (fetchGrades): Exception during fetch or processing:", err);
       setGradesError(err.response?.data?.message || err.message || "Failed to load grades.");
       setGradesData([]);
       setMonthlyProgress(null);
