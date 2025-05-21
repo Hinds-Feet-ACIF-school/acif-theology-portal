@@ -247,31 +247,73 @@ export const getSystemStats = async (req, res) => {
     const courses = await CourseModel.getAllCourses();
     const cohorts = await CohortModel.getAllCohorts();
 
-    const totalUsers = users.length;
-    const totalStudents = users.filter((user) => user.role === "student").length;
-    const totalInstructors = users.filter((user) => user.role === "instructor").length;
-    const totalAdmins = users.filter((user) => user.role === "admin").length;
+    // Get current date to determine which cohort is active
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1; // 1-12
+    const currentYear = currentDate.getFullYear();
+    
+    // Determine if this is a January or July cohort
+    const isJanuaryCohort = currentMonth <= 6; // January-June registrations go to January cohort
+    const cohortStartDate = isJanuaryCohort 
+        ? new Date(currentYear, 0, 1) // January 1st
+        : new Date(currentYear, 6, 1); // July 1st
 
+    // Find the current cohort
+    const currentCohort = cohorts.find(c => {
+        const cohortDate = c.startDate.toDate ? c.startDate.toDate() : new Date(c.startDate);
+        return cohortDate.getTime() === cohortStartDate.getTime();
+    });
+
+    if (!currentCohort) {
+        return res.status(404).json({ message: "No active cohort found" });
+    }
+
+    // Filter users for current cohort
+    const currentCohortUsers = users.filter(user => 
+        user.enrollment && 
+        user.enrollment.cohortId === currentCohort.id
+    );
+
+    // Calculate user statistics for current cohort
+    const totalUsers = currentCohortUsers.length;
+    const totalStudents = currentCohortUsers.filter((user) => user.role === "student").length;
+    const totalInstructors = currentCohortUsers.filter((user) => user.role === "instructor").length;
+    const totalAdmins = currentCohortUsers.filter((user) => user.role === "admin").length;
+
+    // Calculate course statistics for current cohort
     const totalCourses = courses.length;
+    const activeCourses = courses.filter(course => course.status === "active").length;
 
-
-    const totalEnrollments = users.filter(user => user.enrollment && user.enrollment.cohortId).length;
+    // Calculate enrollment statistics for current cohort
+    const totalEnrollments = currentCohortUsers.filter(user => user.enrollment && user.enrollment.cohortId).length;
+    const activeEnrollments = currentCohortUsers.filter(user => 
+        user.enrollment && 
+        user.enrollment.cohortId && 
+        user.status === "active"
+    ).length;
 
     const stats = {
-      users: {
-        total: totalUsers,
-        students: totalStudents,
-        instructors: totalInstructors,
-        admins: totalAdmins,
-      },
-      program: {
-        totalCourses: totalCourses,
-        totalCohorts: cohorts.length,
-      },
-      enrollments: {
-        totalActiveStudents: totalEnrollments,
-
-      },
+        users: {
+            total: totalUsers,
+            students: totalStudents,
+            instructors: totalInstructors,
+            admins: totalAdmins,
+        },
+        program: {
+            totalCourses: totalCourses,
+            activeCourses: activeCourses,
+            totalCohorts: cohorts.length,
+            currentCohort: {
+                id: currentCohort.id,
+                name: currentCohort.name,
+                startDate: currentCohort.startDate,
+                isJanuaryCohort
+            }
+        },
+        enrollments: {
+            totalActiveStudents: totalEnrollments,
+            activeEnrollments: activeEnrollments,
+        },
     };
 
     res.status(200).json(stats);

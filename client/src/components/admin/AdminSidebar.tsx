@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, BookOpen, Users, FileText, Settings, BarChart3, Sun, Moon } from 'lucide-react';
-import { useTheme } from '../theme-provider.js';
+import { useTheme } from '../theme-provider';
 import { Button } from '../ui/button.js'; // Adjust path if needed
 
 const adminLinks = [

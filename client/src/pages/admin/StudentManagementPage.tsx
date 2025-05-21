@@ -10,9 +10,9 @@ import { Label } from "../../components/ui/label.js";
 import { Progress } from "../../components/ui/progress.js";
 import { Users, PlusCircle, Search, Edit, Eye, Trash2, ArrowLeft, Mail, Save, ChevronLeft, UserCircle, FileText, BarChart, UserPlus, Download, HelpCircle, Loader2, AlertCircle, X } from 'lucide-react';
 import * as apiService from "../../services/api"; // Assuming you have this service file
-import ConfirmationModal from "../../components/modals/ConfirmationModal.js";
-import StudentDetailsModal from "../../components/modals/StudentDetailsModal.js";
-import AddUserModal from "../../components/modals/AddUserModal.js"; 
+import ConfirmationModal from "../../components/modals/ConfirmationModal";
+import StudentDetailsModal from "../../components/modals/StudentDetailsModal";
+import AddUserModal from "../../components/modals/AddUserModal"; 
 
 // --- Interfaces ---
 export interface AdminManagedUser {

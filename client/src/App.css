@@ -40,3 +40,48 @@
 .read-the-docs {
   color: #888;
 } */
+/* For react-pdf pages */
+.react-pdf__Page__canvas,
+.react-pdf__Page__svg {
+  max-width: 100%; /* Ensure PDF page scales down if container is smaller */
+  height: auto !important; /* Maintain aspect ratio */
+  display: block; /* Remove extra space below canvas */
+  margin: 0 auto; /* Center the page canvas if its width is less than container */
+  border: 1px solid #e0e0e0; /* Optional: subtle border around the page */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* Optional: subtle shadow */
+}
+
+/* Dark mode for PDF page (optional) */
+.dark .react-pdf__Page__canvas,
+.dark .react-pdf__Page__svg {
+  border-color: #4a4a4a;
+  /* You might need more specific dark mode styles if PDF content itself doesn't adapt */
+}
+
+
+/* For pptx-preview slides (if using .viewer-pptx-slide class) */
+.viewer-pptx-slide {
+  width: 100% !important; /* Override potential fixed widths from pptx-preview */
+  height: auto !important; /* Maintain aspect ratio */
+  margin: 0 auto; /* Center slide */
+  box-sizing: border-box;
+  /* border: 1px solid #e0e0e0; Optional: subtle border */
+  /* box-shadow: 0 2px 8px rgba(0,0,0,0.1); Optional: subtle shadow */
+}
+
+.viewer-pptx-slide img,
+.viewer-pptx-slide svg {
+  max-width: 100%;
+  height: auto !important; /* Maintain aspect ratio for images/svg within slides */
+  display: block; /* Remove extra space */
+  margin: 0 auto; /* Center content within slide if it's smaller */
+}
+
+/* Dark mode for PPTX slides (optional) */
+/* .dark .viewer-pptx-slide { border-color: #4a4a4a; } */
+
+/* Ensure the container for the viewer content allows scrolling if content overflows */
+.viewer-content {
+  /* max-height: 60vh; /* Example max height, adjust as needed */
+  /* overflow-y: auto; /* This is already on CardContent, but good to keep in mind */
+}

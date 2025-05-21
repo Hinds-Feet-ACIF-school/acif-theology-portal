@@ -4,7 +4,7 @@ import { Button } from "./ui/button.js";
 import { Menu, X, LogOut, UserCircle2 as UserIcon, Sun, Moon } from "lucide-react";
 import logo from "../assets/logo.jpg";
 import { useAuth } from "../context/AuthContext.js";
-import { useTheme } from "./theme-provider.js";
+import { useTheme } from "./theme-provider";
 
 interface NavItem {
   name: string;
@@ -75,7 +75,7 @@ export default function Header() {
               to={item.href}
               className={`font-serif text-sm md:text-xs lg:text-sm xl:text-base font-medium transition-colors hover:text-[#C5A467] whitespace-nowrap ${
                 pathname === item.href
-                  ? "text-[#2A0F0F] dark:text-white"
+                  ? "text-[#C5A467]" // Changed: Active color now matches hover color
                   : "text-[#4A1F1F] dark:text-[#E0D6C3]/80"
               }`}
             >
@@ -87,7 +87,7 @@ export default function Header() {
               to="/dashboard"
               className={`font-serif text-sm md:text-xs lg:text-sm xl:text-base font-medium transition-colors hover:text-[#C5A467] whitespace-nowrap ${
                 pathname === "/dashboard"
-                  ? "text-[#2A0F0F] dark:text-white"
+                  ? "text-[#C5A467]" // Changed: Active color now matches hover color
                   : "text-[#4A1F1F] dark:text-[#E0D6C3]/80"
               }`}
             >
@@ -179,7 +179,7 @@ export default function Header() {
                 to={item.href}
                 className={`block py-2.5 px-3 rounded-md font-serif text-base font-medium ${
                   pathname === item.href
-                    ? "text-[#2A0F0F] dark:text-white bg-[#C5A467]/20"
+                    ? "text-[#C5A467] bg-[#C5A467]/20" // Changed: Active text color now matches hover color
                     : "text-[#4A1F1F] dark:text-[#E0D6C3]/80 hover:text-[#C5A467] hover:bg-[#C5A467]/10"
                 }`}
                 onClick={() => setIsMenuOpen(false)}
@@ -193,7 +193,7 @@ export default function Header() {
                   to="/dashboard"
                   className={`block py-2.5 px-3 rounded-md font-serif text-base font-medium ${
                     pathname === "/dashboard"
-                      ? "text-[#2A0F0F] dark:text-white bg-[#C5A467]/20"
+                      ? "text-[#C5A467] bg-[#C5A467]/20" // Changed: Active text color now matches hover color
                       : "text-[#4A1F1F] dark:text-[#E0D6C3]/80 hover:text-[#C5A467] hover:bg-[#C5A467]/10"
                   }`}
                   onClick={() => setIsMenuOpen(false)}
@@ -204,7 +204,7 @@ export default function Header() {
                   to="/profile"
                   className={`block py-2.5 px-3 rounded-md font-serif text-base font-medium ${
                     pathname === "/profile"
-                      ? "text-[#2A0F0F] dark:text-white bg-[#C5A467]/20"
+                      ? "text-[#C5A467] bg-[#C5A467]/20" // Changed: Active text color now matches hover color
                       : "text-[#4A1F1F] dark:text-[#E0D6C3]/80 hover:text-[#C5A467] hover:bg-[#C5A467]/10"
                   }`}
                   onClick={() => setIsMenuOpen(false)}

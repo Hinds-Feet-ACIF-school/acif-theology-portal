@@ -1,9 +1,9 @@
 // src/App.tsx
 import { Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "./components/theme-provider.js";
+import { ThemeProvider } from "./components/theme-provider";
 
 import UserLayout from "./components/UserLayout";
-import AdminLayout from "./components/admin/AdminLayout.js";
+import AdminLayout from "./components/admin/AdminLayout";
 import WeekContentPage from './pages/WeekContentPage';
 
 import HomePage from "./pages/Home";
@@ -11,27 +11,29 @@ import ProgramOverviewPage from "./pages/ProgramOverView";
 import CoursesPage from "./pages/CoursesPage";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import RegisterPage from "./pages/RegisterPage";
-import LoginPage from "./pages/LoginPage.js";
+import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/Dashboard";
-import DiscussionForumPage from "./pages/DiscussionForumPage.js";
+import DiscussionForumPage from "./pages/DiscussionForumPage";
 import UserProfilePage from "./pages/UserProfilePage";
-import PrivacyPolicyPage from "./pages/PrivacyPolicyPage.js"; 
-import TermsOfUsePage from "./pages/TermsOfUsePage.js";    
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage"; 
+import TermsOfUsePage from "./pages/TermsOfUsePage";   
 import RegistrationStatusPage from './pages/RegistrationStatusPage';
 
-import AdminPage from "./pages/AdminPage.js";
+import AdminPage from "./pages/AdminPage";
 import AdminCourseManagementPage from "./pages/admin/CourseManagementPage";
 import AdminStudentManagementPage from "./pages/admin/StudentManagementPage";
-import AdminReportsPage from "./pages/admin/ReportsPage.js";
-import AdminSettingsPage from "./pages/admin/SettingsPage.js";
+import AdminReportsPage from "./pages/admin/ReportsPage";
+import AdminSettingsPage from "./pages/admin/SettingsPage";
 import AboutUsPage from "./pages/AboutUsPage";
 import ContactUsPage from "./pages/ContactUsPage";
+import ForgotPasswordPage from './pages/ForgotPasswordPage'; 
+import ResetPasswordConfirmPage from './pages/ResetPasswordConfirmPage';
 
 console.log("VITE_API_BASE_URL from env:", import.meta.env.VITE_API_BASE_URL);
 
 
 
-import ProtectedRoute from "./components/ProtectedRoute.js";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import "./App.css";
 
@@ -46,6 +48,8 @@ function App() {
           <Route path="/contact" element={<ContactUsPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password-confirm" element={<ResetPasswordConfirmPage />} /> 
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfUsePage />} />
           <Route path="/registration-status" element={<RegistrationStatusPage />} />

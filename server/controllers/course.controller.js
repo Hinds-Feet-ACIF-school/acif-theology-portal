@@ -231,137 +231,178 @@ export const getAccessibleContent = async (req, res) => {
 
 
 export const getUserCourseGrades = async (req, res) => {
-    try {
-        const { courseId } = req.params;
-        const userId = req.user?.uid;
+  try {
+      const { courseId } = req.params;
+      const userId = req.user?.uid;
 
-        if (!courseId) {
-            return res.status(400).json({ message: "courseId parameter is required." });
-        }
-        if (!userId) {
-            return res.status(401).json({ message: "Authentication required." });
-        }
+      if (!courseId) {
+          return res.status(400).json({ message: "courseId parameter is required." });
+      }
+      if (!userId) {
+          return res.status(401).json({ message: "Authentication required." });
+      }
 
-        const course = await CourseModel.getCourseById(courseId);
-        if (!course) {
-            return res.status(404).json({ message: "Course not found." });
-        }
+      const course = await CourseModel.getCourseById(courseId);
+      if (!course) {
+          return res.status(404).json({ message: "Course not found." });
+      }
 
-        const weeks = await WeekModel.getWeeksByCourseId(courseId);
-        if (!weeks || weeks.length === 0) {
-            return res.status(200).json([]);
-        }
+      const weeks = await WeekModel.getWeeksByCourseId(courseId);
+      const initialMonthlyProgress = {
+          totalItems: 0,
+          completedItems: 0,
+          overallProgress: 0,
+          quizScores: []
+      };
 
-        const courseGradesSummary = [];
+      if (!weeks || weeks.length === 0) {
+          return res.status(200).json({
+              weeklyGrades: [],
+              monthlyProgress: initialMonthlyProgress
+          });
+      }
 
-        for (const week of weeks) {
-            const gradedItems = [];
-            let completedItemsInWeek = 0;
-            let totalGradableItemsInWeek = 0;
+      const courseGradesSummary = [];
+      let overallCourseTotalRelevantItems = 0;
+      let overallCourseCompletedRelevantItems = 0;
+      const allQuizScoresForMonthly = [];
 
-            const sections = await SectionModel.getSectionsByWeekId(week.id); 
-            const sectionProgress = await WeekModel.getUserProgressForWeek(userId, week.id);
+      for (const week of weeks) {
+          const gradedItemsForDisplay = []; // Items to return in the API for UI display
+          let weekTotalRelevantItemsForProgress = 0;
+          let weekCompletedRelevantItemsForProgress = 0;
 
-            for (const section of sections) {
-                const sectionData = typeof section.data === 'function' ? section.data() : section;
-                const currentSectionId = section.id?.toString() || section._id?.toString() || sectionData.id;
-                const isSectionCompleted = sectionProgress[currentSectionId] === true;
-                
-                totalGradableItemsInWeek++;
-                gradedItems.push({
-                    id: currentSectionId,
-                    title: sectionData.title,
-                    type: 'section_completion',
-                    status: isSectionCompleted ? 'completed' : (sectionProgress[currentSectionId] !== undefined ? 'incomplete' : 'not_started'),
-                    isGraded: sectionProgress[currentSectionId] !== undefined, // Section is "graded" if progress exists
-                    progressPercent: isSectionCompleted ? 100 : (sectionProgress[currentSectionId] !== undefined ? 50 : 0), // Example progress
-                });
-                if (isSectionCompleted) {
-                    completedItemsInWeek++;
-                }
+          const sections = await SectionModel.getSectionsByWeekId(week.id);
+          const sectionProgress = await WeekModel.getUserProgressForWeek(userId, week.id); // Fetches user's completion status for sections
 
-                if (sectionData.content && Array.isArray(sectionData.content)) {
-                    for (const contentItem of sectionData.content) {
-                        const contentItemData = typeof contentItem.data === 'function' ? contentItem.data() : contentItem;
-                        if (contentItemData.richContent && Array.isArray(contentItemData.richContent)) {
-                            for (const richBlock of contentItemData.richContent) {
-                                const richBlockData = typeof richBlock.data === 'function' ? richBlock.data() : richBlock;
-                                
-                                if (richBlockData.type === 'quiz' && richBlockData.quizContent && richBlockData.quizContent.databaseQuizId) {
-                                    const quizContent = richBlockData.quizContent;
-                                    const actualDatabaseQuizId = quizContent.databaseQuizId;
+          for (const section of sections) {
+              const sectionData = typeof section.data === 'function' ? section.data() : section;
+              const currentSectionId = section.id?.toString() || section._id?.toString() || sectionData.id;
+              const isSectionMarkedComplete = sectionProgress[currentSectionId] === true;
 
-                                    console.log(`[getUserCourseGrades] User: ${userId}, Processing Quiz ID: ${actualDatabaseQuizId}, Title: ${quizContent.title}`); // DEBUG LOG
+              // --- Section Completion (Type 1 for Progress) ---
+              weekTotalRelevantItemsForProgress++;
+              overallCourseTotalRelevantItems++;
+              if (isSectionMarkedComplete) {
+                  weekCompletedRelevantItemsForProgress++;
+                  overallCourseCompletedRelevantItems++;
+              }
+              gradedItemsForDisplay.push({
+                  id: currentSectionId,
+                  title: sectionData.title || "Unnamed Section",
+                  type: 'section_completion',
+                  status: isSectionMarkedComplete ? 'completed' : (sectionProgress[currentSectionId] !== undefined ? 'incomplete' : 'not_started'),
+                  isGraded: true, // Per new rule, section_completion is considered for grading/progress
+                  progressPercent: isSectionMarkedComplete ? 100 : 0, // Simplified progress for sections
+              });
 
-                                    totalGradableItemsInWeek++;
+              // Iterate through content items within the section (primarily for quizzes now)
+              if (sectionData.content && Array.isArray(sectionData.content)) {
+                  for (const contentItem of sectionData.content) {
+                      const contentItemData = typeof contentItem.data === 'function' ? contentItem.data() : contentItem;
+                      
+                      // Handle rich content blocks
+                      if (contentItemData.richContent && Array.isArray(contentItemData.richContent)) {
+                          for (const richBlock of contentItemData.richContent) {
+                              const richBlockData = typeof richBlock.data === 'function' ? richBlock.data() : richBlock;
 
-                                    const submission = await QuizSubmissionModel.getSubmissionForQuizBlock(userId, actualDatabaseQuizId);
-                                    
-                                    // DEBUG LOG to see if submission is found by this controller
-                                    if (!submission) {
-                                        console.log(`[getUserCourseGrades] User: ${userId}, Submission NOT FOUND by getSubmissionForQuizBlock for Quiz ID: ${actualDatabaseQuizId}`);
-                                    } else {
-                                        console.log(`[getUserCourseGrades] User: ${userId}, Submission FOUND for Quiz ID: ${actualDatabaseQuizId}. DB Score: ${submission.score}`);
-                                    }
+                              if (richBlockData.type === 'quiz' && richBlockData.quizContent && richBlockData.quizContent.databaseQuizId) {
+                                  const quizContent = richBlockData.quizContent;
+                                  const actualDatabaseQuizId = quizContent.databaseQuizId;
 
-                                    const mainQuizDetails = await QuizModel.getQuizById(actualDatabaseQuizId);
-                                    const mainQuizSettings = mainQuizDetails?.settings || {};
-                                    
-                                    let defaultPassingScore = 70; // Default course passing score
-                                    if (course && course.settings && typeof course.settings.defaultPassingScore === 'number') {
-                                        defaultPassingScore = course.settings.defaultPassingScore;
-                                    }
-                                    // Order of precedence for passing score: Quiz specific settings > Quiz content settings > Course default
-                                    const quizPassingScore = mainQuizSettings?.passingScore ?? quizContent.settings?.passingScore ?? defaultPassingScore;
+                                  // --- Quiz Score (Type 2 for Progress) ---
+                                  weekTotalRelevantItemsForProgress++;
+                                  overallCourseTotalRelevantItems++;
 
-                                    if (submission && typeof submission.score === 'number') {
-                                        const passed = submission.score >= quizPassingScore;
-                                        gradedItems.push({
-                                            id: actualDatabaseQuizId,
-                                            title: quizContent.title || mainQuizDetails?.title || "Untitled Quiz",
-                                            type: 'quiz_score',
-                                            score: submission.score,
-                                            maxScore: 100,
-                                            isGraded: true, 
-                                            status: passed ? 'passed' : 'failed',
-                                            passingScore: quizPassingScore // Include passing score
-                                        });
-                                        if (passed) { // Only count as completed if passed
-                                            completedItemsInWeek++;
-                                        }
-                                    } else {
-                                        // Submission might exist but score is null (pending), or submission is null (not started)
-                                        gradedItems.push({
-                                            id: actualDatabaseQuizId,
-                                            title: quizContent.title || mainQuizDetails?.title || "Untitled Quiz",
-                                            type: 'quiz_score',
-                                            score: null,
-                                            maxScore: 100,
-                                            isGraded: !!submission, // True if submission object exists, false if submission is null
-                                            status: submission ? 'pending_grade' : 'not_started', 
-                                            passingScore: quizPassingScore // Include passing score
-                                        });
-                                        // Do not increment completedItemsInWeek if not_started or pending_grade
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            const overallWeekProgress = totalGradableItemsInWeek > 0 ? Math.round((completedItemsInWeek / totalGradableItemsInWeek) * 100) : 0;
+                                  const submission = await QuizModel.getUserSubmissionForQuiz(userId, actualDatabaseQuizId);
+                                  const mainQuizDetails = await QuizModel.getQuizById(actualDatabaseQuizId);
+                                  const mainQuizSettings = mainQuizDetails?.settings || {};
+                                  
+                                  let defaultPassingScore = 70; // Global default
+                                  if (course && course.settings && typeof course.settings.defaultPassingScore === 'number') {
+                                      defaultPassingScore = course.settings.defaultPassingScore;
+                                  }
+                                  const quizPassingScore = mainQuizSettings?.passingScore ?? quizContent.settings?.passingScore ?? defaultPassingScore;
 
-            courseGradesSummary.push({
-                weekId: week.id?.toString() || week._id?.toString() || week.id,
-                weekNumber: week.weekNumber,
-                weekTitle: week.title,
-                items: gradedItems,
-                overallWeekProgress: overallWeekProgress,
-            });
-        }
-        res.status(200).json(courseGradesSummary);
-    } catch (error) {
-        console.error(`[getUserCourseGrades] Error for course ${req.params.courseId}, user ${userId}:`, error);
-        res.status(500).json({ message: "Failed to get course grades. " + (error.message || "Unknown error") });
-    }
+                                  let quizStatus = 'not_started';
+                                  let quizScore = null;
+                                  let quizIsGraded = false; // Will be true if submitted
+
+                                  if (submission && typeof submission.score === 'number') {
+                                      const passed = submission.score >= quizPassingScore;
+                                      quizStatus = passed ? 'passed' : 'failed';
+                                      quizScore = submission.score;
+                                      quizIsGraded = true; // A submitted quiz is part of the grading display
+
+                                      // Add to monthly quiz scores
+                                      allQuizScoresForMonthly.push({
+                                          quizId: actualDatabaseQuizId,
+                                          title: quizContent.title || mainQuizDetails?.title || "Untitled Quiz",
+                                          score: submission.score,
+                                          passingScore: quizPassingScore,
+                                          passed: passed,
+                                          submittedAt: submission.submittedAt
+                                      });
+                                      
+                                      // For progress calculation: an *attempted* quiz counts as "completed" for its slot
+                                      weekCompletedRelevantItemsForProgress++;
+                                      overallCourseCompletedRelevantItems++;
+
+                                  } else if (submission) { // Submitted but pending grade (e.g., manual)
+                                      quizStatus = submission.status || 'pending_grade'; // Use submission status if available
+                                      quizIsGraded = true; // It's submitted, so show it in grades
+                                      // Does not count towards 'completedRelevantItemsForProgress' until scored.
+                                  }
+                                  
+                                  gradedItemsForDisplay.push({
+                                      id: actualDatabaseQuizId,
+                                      title: quizContent.title || mainQuizDetails?.title || "Untitled Quiz",
+                                      type: 'quiz_score',
+                                      score: quizScore,
+                                      maxScore: 100, // Assuming max score is 100 for quizzes
+                                      isGraded: quizIsGraded,
+                                      status: quizStatus,
+                                      passingScore: quizPassingScore
+                                  });
+                              }
+                              // Note: We are NO LONGER adding 'note_completion' or text blocks to gradedItemsForDisplay
+                              // or counting them towards weekTotalRelevantItemsForProgress / weekCompletedRelevantItemsForProgress
+                              // unless they are explicitly part of the `isGraded: true` items in the UI list.
+                              // The `gradedItemsForDisplay` will only contain `section_completion` and `quiz_score` if `isGraded` is true for them.
+                          }
+                      }
+                  }
+              }
+          }
+
+          const overallWeekProgress = weekTotalRelevantItemsForProgress > 0 
+              ? Math.round((weekCompletedRelevantItemsForProgress / weekTotalRelevantItemsForProgress) * 100) 
+              : 0;
+
+          courseGradesSummary.push({
+              weekId: week.id?.toString() || week._id?.toString() || week.id,
+              weekNumber: week.weekNumber,
+              weekTitle: week.title,
+              items: gradedItemsForDisplay, // This list will be filtered by UI based on isGraded again
+              overallWeekProgress: overallWeekProgress,
+          });
+      }
+
+      const overallCourseProgress = overallCourseTotalRelevantItems > 0 
+          ? Math.round((overallCourseCompletedRelevantItems / overallCourseTotalRelevantItems) * 100) 
+          : 0;
+
+      res.status(200).json({
+          weeklyGrades: courseGradesSummary,
+          monthlyProgress: {
+              totalItems: overallCourseTotalRelevantItems, // Total based on relevant types
+              completedItems: overallCourseCompletedRelevantItems, // Completed based on relevant types
+              overallProgress: overallCourseProgress,
+              quizScores: allQuizScoresForMonthly
+          }
+      });
+  } catch (error) {
+      console.error(`[getUserCourseGrades] Error for course ${req.params.courseId}, user ${req.user?.uid}:`, error);
+      res.status(500).json({ message: "Failed to get course grades. " + (error.message || "Unknown error") });
+  }
 };

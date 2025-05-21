@@ -9,7 +9,7 @@ import { Input } from "./ui/input.js";
 import { Textarea } from "./ui/textarea.js";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert.js";
 import { Loader2, CheckCircle2, XCircle, Timer, RotateCcw, PlayCircle, ListChecks } from 'lucide-react';
-import { cn } from "../lib/utils.js";
+import { cn } from "../lib/utils";
 import * as apiService from '../services/api';
 
 const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';

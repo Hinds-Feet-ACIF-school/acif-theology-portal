@@ -345,7 +345,7 @@ export const getCurrentUser = async (req, res) => {
 };
 
 
-export const resetPassword = async (req, res) => {
+export const requestPasswordReset = async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) {
@@ -357,20 +357,69 @@ export const resetPassword = async (req, res) => {
         };
         await auth.sendPasswordResetEmail(email, actionCodeSettings);
         res.status(200).json({
-            message: "If an account with that email exists, a password reset email has been sent.",
+            message: "A a password reset email has been sent.",
         });
     } catch (error) {
         if (error.code === 'auth/invalid-email') {
             return res.status(400).json({ message: "Invalid email format provided." });
         }
         if (error.code === 'auth/user-not-found') {
-            return res.status(200).json({ message: "If an account with that email exists, a password reset email has been sent." });
+            return res.status(200).json({ message: "A password reset email has been sent." });
         }
         console.error("Error in resetPassword:", error);
         res.status(500).json({ message: "Failed to send password reset email due to a server error.", detail: process.env.NODE_ENV !== 'production' ? error.message : undefined });
     }
 };
 
+export const confirmPasswordReset = async (req, res) => {
+    try {
+        const { oobCode, newPassword } = req.body;
+
+        if (!oobCode || !newPassword) {
+            return res.status(400).json({ message: "Reset code and new password are required." });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: "Password must be at least 6 characters long." });
+        }
+
+        // Verify the password reset code.
+        const email = await auth.verifyPasswordResetCode(oobCode);
+
+        // If the code is valid, update the user's password.
+        await auth.confirmPasswordReset(oobCode, newPassword);
+
+        // Optionally, you might want to get the user and update their Firestore record
+        // if you store any password-related metadata there (though typically not needed for just password reset).
+        // const userRecord = await auth.getUserByEmail(email);
+        // await UserModel.updateUser(userRecord.uid, { /* some_field_if_needed: true */ });
+
+        res.status(200).json({ message: "Password has been reset successfully. You can now log in with your new password." });
+
+    } catch (error) {
+        console.error("Error in confirmPasswordReset:", error);
+        let errorMessage = "Failed to reset password. The link may be invalid or expired.";
+        let statusCode = 400; // Default for invalid code type errors
+
+        if (error.code === 'auth/expired-action-code') {
+            errorMessage = "The password reset link has expired. Please request a new one.";
+        } else if (error.code === 'auth/invalid-action-code') {
+            errorMessage = "The password reset link is invalid. It may have already been used or malformed. Please request a new one.";
+        } else if (error.code === 'auth/user-disabled') {
+            errorMessage = "Your account has been disabled.";
+            statusCode = 403;
+        } else if (error.code === 'auth/user-not-found') {
+            errorMessage = "User not found. The account may have been deleted.";
+            statusCode = 404;
+        } else if (error.code === 'auth/weak-password') {
+            errorMessage = "The new password is too weak.";
+        } else {
+            // Generic server error
+            errorMessage = "An unexpected error occurred while resetting your password.";
+            statusCode = 500;
+        }
+        res.status(statusCode).json({ message: errorMessage, detail: process.env.NODE_ENV !== 'production' ? error.message : undefined });
+    }
+};
 
 export const updateUserProfile = async (req, res) => {
     try {

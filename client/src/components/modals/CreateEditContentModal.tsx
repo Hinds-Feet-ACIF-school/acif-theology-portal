@@ -1,51 +1,41 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Button } from "../ui/button.js";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card.js";
-import { Label as ShadcnLabel } from "../ui/label.js";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.js";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
+import { Label as ShadcnLabel } from "../ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import {
     X, Save, Loader2, AlertCircle, Plus, Trash2, Video as VideoIcon, FileText as FileTextIcon, HelpCircle,
-    ChevronDown, ChevronUp, Eye, Edit3, Image as ImageIcon, Table as TableIconLucide
+    ChevronDown, ChevronUp, Eye, Edit3, Image as ImageIcon, Download,
+    CheckCircle
 } from 'lucide-react';
-import { MantineProvider, TextInput, Textarea, Checkbox as MantineCheckbox, Radio, Tooltip as MantineTooltip, Group, FileInput } from '@mantine/core';
-import { RichTextEditor as MantineRTE, Link as TiptapLinkExtension } from '@mantine/tiptap';
-import { useEditor } from '@tiptap/react';
+import { MantineProvider, TextInput, Textarea, Checkbox as MantineCheckbox, Group, FileInput } from '@mantine/core';
 import { type MantineTheme } from '@mantine/core';
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import TextAlign from '@tiptap/extension-text-align';
-import Superscript from '@tiptap/extension-superscript';
-import SubScript from '@tiptap/extension-subscript';
-import Highlight from '@tiptap/extension-highlight';
-import Placeholder from '@tiptap/extension-placeholder';
-import ImageTiptapExtension from '@tiptap/extension-image';
-import TableTiptapExtension from '@tiptap/extension-table';
-import TableRowTiptapExtension from '@tiptap/extension-table-row';
-import TableCellTiptapExtension from '@tiptap/extension-table-cell';
-import TableHeaderTiptapExtension from '@tiptap/extension-table-header';
 import ReactPlayer from 'react-player';
 
-// MODIFIED: Import createMaterial for file uploads
 import {
     createMaterial,
-    type ContentItem as ApiContentItem,
-    type RichContentItemBlock as ApiRichContentItemBlock,
-    type QuizBlockContent as ApiQuizBlockContent,
-    type VideoBlockContent as ApiVideoBlockContent,
-    type QuizQuestion as ApiQuizQuestion,
-    type QuizQuestionOption as ApiQuizQuestionOption,
-    type Material as ApiMaterial, // Type for the response from createMaterial
-} from '../../services/api'; // Adjust path as necessary
+    type ContentItem as ApiContentItemFromApi,
+    type RichContentItemBlock as ApiRichContentItemBlockFromApi,
+    type QuizBlockContent as ApiQuizBlockContentFromApi,
+    type VideoBlockContent as ApiVideoBlockContentFromApi,
+    type QuizQuestion as ApiQuizQuestionFromApi,
+    type QuizQuestionOption as ApiQuizQuestionOptionFromApi,
+    type Material as ApiMaterial,
+    type ApiDocumentBlockContentForSave,
+} from '../../services/api';
 
-// --- Style Constants (no changes from your original) ---
+// Import extracted components (ADJUST PATHS AS NEEDED)
+import DocumentViewer from '../DocumentViewer';
+import QuizQuestionEditor, { type ModalQuizQuestion, type ModalQuizQuestionOption } from '../QuizQuestionEditor'; // Assuming types are exported or defined centrally
+import IntegratedRichTextEditor from '../IntegratedRichTextEditor';
+
+
 const deepBrownLightHex = '#2A0F0F';
 const deepBrownDarkHex = '#FFF8F0';
 const goldAccent = 'text-[#C5A467]';
 const goldAccentHex = '#C5A467';
 const editorDarkBgHex = '#1f2937';
-const toolbarDarkBgHex = '#111827';
 const editorLightBgHex = '#ffffff';
-const toolbarLightBgHex = '#f9fafb';
 const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]';
 const midBrownLightHex = '#4A1F1F';
 const midBrownDarkHex = '#E0D6C3';
@@ -58,8 +48,6 @@ const themedInputBorder = `border-gray-300 dark:border-gray-700`;
 const themedInputBg = `bg-white dark:bg-gray-800`;
 const primaryButtonClasses = `${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold`;
 const outlineButtonClasses = `${goldBorder} ${goldAccent} hover:bg-[#C5A467]/10 dark:hover:bg-[#C5A467]/15 hover:text-[#A07F44] dark:hover:text-[#E0D6C3]`;
-const selectTriggerClasses = `h-9 rounded-md px-3 py-2 text-sm w-full ${themedInputBg} ${themedInputBorder} text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] flex items-center justify-between`;
-const selectContentClasses = `border ${themedInputBorder} ${themedInputBg} text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] z-[110] shadow-lg`;
 const mutedText = 'text-gray-600 dark:text-gray-400';
 const editorCardBgMantine = 'dark:bg-gray-900';
 const editorToolbarBgMantine = 'bg-gray-100 dark:bg-gray-800';
@@ -78,187 +66,133 @@ const mantineInputStyles = (theme: MantineTheme) => {
             color: isDarkMode ? deepBrownDarkHex : deepBrownLightHex,
             fontSize: theme.fontSizes.xs, fontWeight: 500, marginBottom: '4px',
         },
-        placeholder: { color: isDarkMode ? theme.colors.dark[3] : theme.colors.gray[6] }
     };
 };
 
-// --- Modal-specific types (no changes from your original) ---
-interface ModalQuizQuestionOption extends ApiQuizQuestionOption {}
-interface ModalQuizQuestion extends ApiQuizQuestion { options?: ModalQuizQuestionOption[]; }
-interface ModalVideoContentData extends Omit<ApiVideoBlockContent, 'videoFile' | 'thumbnail'> {
+interface ModalVideoContentData extends Omit<ApiVideoBlockContentFromApi, 'videoFile' | 'thumbnail' | 'id'> {
+    id: string;
     videoFile?: File | undefined;
     thumbnail?: File | undefined;
     videoObjectUrl?: string;
     thumbnailObjectUrl?: string;
+    title: string;
+    isRequired: boolean;
 }
-interface ModalQuizContentData extends Omit<ApiQuizBlockContent, 'settings' | 'questions'> {
+interface ModalQuizContentData extends Omit<ApiQuizBlockContentFromApi, 'settings' | 'questions' | 'id'> {
+    id: string;
     questions: ModalQuizQuestion[];
-    settings: Omit<ApiQuizBlockContent['settings'], 'requireLogin' | 'showPoints'> & {
+    settings: Omit<ApiQuizBlockContentFromApi['settings'], 'requireLogin' | 'showPoints'> & {
         requireLogin?: boolean; showPoints?: boolean;
     };
 }
-interface ModalRichContentItem extends Omit<ApiRichContentItemBlock, 'videoContent' | 'quizContent'> {
+interface ModalDocumentContentData extends ApiDocumentBlockContentForSave {
+    documentFile?: File | undefined;
+    documentObjectUrl?: string;
+}
+
+interface ModalRichContentItem {
+    id: string;
+    type: 'text' | 'video' | 'quiz' | 'document';
+    order: number;
+    content?: string;
     videoContent?: ModalVideoContentData;
     quizContent?: ModalQuizContentData;
+    documentContent?: ModalDocumentContentData;
 }
+
 interface CreateEditContentModalProps {
     isOpen: boolean;
     onClose: () => void;
-    content: ApiContentItem | null;
-    sectionId: string; // Used for context if createMaterial needs weekId or similar
-    onSave: (contentData: ApiContentItem) => Promise<void>;
+    content: ApiContentItemFromApi | null;
+    onSave: (contentData: ApiContentItemFromApi) => Promise<ApiContentItemFromApi | void>;
+    sectionId: string;
+    weekIdForFileUploads: string;
 }
 
-// --- IntegratedRichTextEditor (no changes from your original) ---
-interface IntegratedRichTextEditorProps { value: string; onChange: (html: string) => void; placeholder?: string; }
-const IntegratedRichTextEditor: React.FC<IntegratedRichTextEditorProps> = React.memo(({ value, onChange, placeholder }) => {
-    const editor = useEditor({
-        extensions: [
-            StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }), Underline,
-            TiptapLinkExtension.configure({ openOnClick: true, autolink: true, linkOnPaste: true }),
-            Superscript, SubScript, Highlight, TextAlign.configure({ types: ['heading', 'paragraph'] }),
-            Placeholder.configure({ placeholder: placeholder || 'Start writing your text content here...' }),
-            ImageTiptapExtension.configure({ inline: false }), TableTiptapExtension.configure({ resizable: true }),
-            TableRowTiptapExtension, TableHeaderTiptapExtension, TableCellTiptapExtension,
-        ],
-        content: value,
-        onUpdate: ({ editor: currentEditor }) => { onChange(currentEditor.getHTML()); },
-    });
-    useEffect(() => {
-        if (editor && value !== editor.getHTML()) {
-            const handle = setTimeout(() => { if (editor && !editor.isDestroyed) editor.commands.setContent(value, false); }, 0);
-            return () => clearTimeout(handle);
-        }
-    }, [value, editor]);
-    const addImage = useCallback(() => {
-        const url = window.prompt('Enter image URL:');
-        if (url && editor && !editor.isDestroyed) editor.chain().focus().setImage({ src: url }).run();
-    }, [editor]);
-    const addTable = useCallback(() => {
-        if (editor && !editor.isDestroyed) {
-            const rows = parseInt(prompt("Enter number of rows:", "3") || "3", 10);
-            const cols = parseInt(prompt("Enter number of columns:", "3") || "3", 10);
-            if (!isNaN(rows) && !isNaN(cols) && rows > 0 && cols > 0) editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
-        }
-    }, [editor]);
-    if (!editor) return <div className={`p-3 min-h-[150px] border rounded-lg flex items-center justify-center ${mutedText}`}>Editor loading...</div>;
-    return (
-        <MantineRTE editor={editor} styles={(theme: MantineTheme) => {
-            const isDarkMode = document.documentElement.classList.contains('dark');
-            return {
-                root: { borderColor: isDarkMode ? '#4b5563' : '#d1d5db', borderRadius: '0.375rem' },
-                content: { backgroundColor: isDarkMode ? editorDarkBgHex : editorLightBgHex, color: isDarkMode ? deepBrownDarkHex : deepBrownLightHex, minHeight: '150px', padding: '0.75rem', '&:focus': { outline: 'none' }, '& .ProseMirror': { outline: 'none' }, '& p.is-editor-empty:first-of-type::before': { color: isDarkMode ? theme.colors.dark[3] : theme.colors.gray[5], content: 'attr(data-placeholder)', float: 'left', height: 0, pointerEvents: 'none', }, },
-                toolbar: { backgroundColor: isDarkMode ? toolbarDarkBgHex : toolbarLightBgHex, borderColor: isDarkMode ? '#4b5563' : '#d1d5db', borderRadius: '0.375rem 0.375rem 0 0', padding: '0.375rem', },
-                control: { backgroundColor: isDarkMode ? toolbarDarkBgHex : toolbarLightBgHex, borderColor: isDarkMode ? '#4b5563' : '#d1d5db', color: isDarkMode ? theme.colors.dark[0] : theme.colors.gray[7], '&[data-active="true"]': { backgroundColor: isDarkMode ? goldAccentHex : goldAccentHex, color: deepBrownLightHex, }, '&:hover': { backgroundColor: isDarkMode ? '#374151' : '#f3f4f6', } },
-            };
-        }}>
-            <MantineRTE.Toolbar sticky stickyOffset={60}>
-                <MantineRTE.ControlsGroup> <MantineRTE.Bold /> <MantineRTE.Italic /> <MantineRTE.Underline /> <MantineRTE.Strikethrough /> <MantineRTE.ClearFormatting /> <MantineRTE.Highlight /> <MantineRTE.Code /> </MantineRTE.ControlsGroup>
-                <MantineRTE.ControlsGroup> <MantineRTE.H1 /> <MantineRTE.H2 /> <MantineRTE.H3 /> <MantineRTE.H4 /> </MantineRTE.ControlsGroup>
-                <MantineRTE.ControlsGroup> <MantineRTE.Blockquote /> <MantineRTE.Hr /> <MantineRTE.BulletList /> <MantineRTE.OrderedList /> <MantineRTE.Subscript /> <MantineRTE.Superscript /> </MantineRTE.ControlsGroup>
-                <MantineRTE.ControlsGroup> <MantineRTE.Link /> <MantineRTE.Unlink /> </MantineRTE.ControlsGroup>
-                <MantineRTE.ControlsGroup> <MantineRTE.Control onClick={addImage} aria-label="Insert image" title="Insert image"> <ImageIcon size={16} /> </MantineRTE.Control> <MantineRTE.Control onClick={addTable} aria-label="Insert table" title="Insert table"> <TableIconLucide size={16} /> </MantineRTE.Control> </MantineRTE.ControlsGroup>
-                <MantineRTE.ControlsGroup> <MantineRTE.AlignLeft /> <MantineRTE.AlignCenter /> <MantineRTE.AlignJustify /> <MantineRTE.AlignRight /> </MantineRTE.ControlsGroup>
-                <MantineRTE.ControlsGroup> <MantineRTE.Undo /> <MantineRTE.Redo /> </MantineRTE.ControlsGroup>
-            </MantineRTE.Toolbar>
-            <MantineRTE.Content className={`prose prose-sm sm:prose dark:prose-invert max-w-none prose-headings:font-serif prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-blockquote:my-2 prose-a:text-[${goldAccentHex}] hover:prose-a:underline dark:prose-headings:text-gray-200 dark:prose-p:text-gray-300 dark:prose-strong:text-gray-100 dark:prose-li:text-gray-300 dark:prose-blockquote:text-gray-400`} />
-        </MantineRTE>
-    );
-});
-IntegratedRichTextEditor.displayName = 'IntegratedRichTextEditor';
-
-// --- OptionInput (no changes from your original) ---
-interface OptionInputProps { optionId: string; initialText: string; placeholder: string; onTextChange: (text: string) => void; questionType: 'multiple_choice' | 'checkbox'; isCorrect: boolean; onCorrectChange: (isCorrect: boolean) => void; onRemove: () => void; canRemove: boolean; }
-const OptionInput: React.FC<OptionInputProps> = React.memo(({ optionId, initialText, placeholder, onTextChange, questionType, isCorrect, onCorrectChange, onRemove, canRemove }) => {
-    const [localText, setLocalText] = useState(initialText);
-    useEffect(() => { if (initialText !== localText) setLocalText(initialText); }, [initialText]);
-    const handleBlur = () => { if (localText !== initialText) onTextChange(localText); };
-    return (
-        <div key={optionId} className="flex items-center gap-2">
-            {questionType === 'multiple_choice' ? (<MantineTooltip label="Mark as correct" position="top" withArrow><Radio checked={isCorrect} onChange={(event) => onCorrectChange(event.currentTarget.checked)} name={`correct-opt-${optionId.split('_')[0]}`} aria-label={`Mark option as correct`} size="xs" /></MantineTooltip>) : (<MantineTooltip label="Mark as correct" position="top" withArrow><MantineCheckbox checked={isCorrect} onChange={(event) => onCorrectChange(event.currentTarget.checked)} aria-label={`Mark option as correct`} size="xs" /></MantineTooltip>)}
-            <div className="flex-grow"><ShadcnLabel htmlFor={`option-input-${optionId}`} className="sr-only">{placeholder}</ShadcnLabel><TextInput id={`option-input-${optionId}`} value={localText} onChange={(event) => setLocalText(event.currentTarget.value)} onBlur={handleBlur} placeholder={placeholder} size="xs" className="w-full" styles={mantineInputStyles} /></div>
-            {canRemove && (<Button variant="ghost" size="icon" onClick={onRemove} className={`text-red-500 hover:text-red-600 h-7 w-7 p-0 shrink-0`} aria-label={`Remove option`}><X className="h-3.5 w-3.5"/></Button>)}
-        </div>
-    );
-});
-OptionInput.displayName = 'OptionInput';
-
-// --- CreateEditContentModal Component ---
 const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
-    isOpen, onClose, content: apiContentProp, onSave, sectionId,
+    isOpen, onClose, content: apiContentPropFromParent, onSave,
+    sectionId,
+    weekIdForFileUploads,
 }) => {
-    const [title, setTitle] = useState(''); // This is the overall content item title
+    const [currentContentItem, setCurrentContentItem] = useState<ApiContentItemFromApi | null>(apiContentPropFromParent);
+    const [title, setTitle] = useState('');
     const [isRequired, setIsRequired] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setErrorModal] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [richContent, setRichContent] = useState<ModalRichContentItem[]>([]);
     const [expandedContentIndex, setExpandedContentIndex] = useState<number | null>(null);
     const [isPreviewMode, setIsPreviewMode] = useState(false);
     const richContentRef = useRef(richContent);
 
-    const isEditing = !!apiContentProp;
+    const isEditingLocally = !!currentContentItem?.id;
     const generateId = useCallback(() => `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, []);
 
     useEffect(() => { richContentRef.current = richContent; }, [richContent]);
 
+    const mapApiBlockToModalBlock = useCallback((apiRcBlock: ApiRichContentItemBlockFromApi, index: number): ModalRichContentItem => {
+        const blockId = apiRcBlock.id || generateId();
+        const blockType = apiRcBlock.type as ModalRichContentItem['type'];
+        const modalBlockBase: Pick<ModalRichContentItem, 'id' | 'type' | 'order'> = {
+            id: blockId, type: blockType, order: apiRcBlock.order ?? index,
+        };
+        if (blockType === 'text') return { ...modalBlockBase, type: 'text', content: apiRcBlock.content || '<p></p>' };
+        if (blockType === 'video' && apiRcBlock.videoContent) return { ...modalBlockBase, type: 'video', videoContent: { ...(apiRcBlock.videoContent as ApiVideoBlockContentFromApi), id: apiRcBlock.videoContent.id || blockId, videoFile: undefined, thumbnail: undefined, videoObjectUrl: undefined, thumbnailObjectUrl: undefined, isRequired: apiRcBlock.videoContent.isRequired ?? false } };
+        if (blockType === 'quiz' && apiRcBlock.quizContent) {
+            const qc = apiRcBlock.quizContent as ApiQuizBlockContentFromApi;
+            return {
+                ...modalBlockBase, type: 'quiz', quizContent: {
+                    ...qc,
+                    id: qc.id || blockId,
+                    questions: (qc.questions as ApiQuizQuestionFromApi[] || []).map(q => ({ ...q, id: q.id || generateId(), options: q.options ? (q.options as ApiQuizQuestionOptionFromApi[]).map(opt => ({ ...opt, id: opt.id || generateId() })) : [] })),
+                    settings: { ...(qc.settings as ApiQuizBlockContentFromApi['settings']), requireLogin: qc.settings.requireLogin ?? false, showPoints: qc.settings.showPoints ?? false }
+                }
+            };
+        }
+        if (blockType === 'document' && apiRcBlock.documentContent) return { ...modalBlockBase, type: 'document', documentContent: { ...(apiRcBlock.documentContent as ApiDocumentBlockContentForSave), id: apiRcBlock.documentContent.id || blockId, documentFile: undefined, documentObjectUrl: undefined, } };
+        console.warn("Mapping warning: Unrecognized rich content block:", apiRcBlock);
+        return { ...modalBlockBase, type: 'text', content: '<p>Corrupted block.</p>' };
+    }, [generateId]);
+
     useEffect(() => {
         if (isOpen) {
-            setError(null);
+            setErrorModal(null);
+            setSuccessMessage(null);
             setIsPreviewMode(false);
-            let currentRichContentState: ModalRichContentItem[] = [];
-
-            if (isEditing && apiContentProp && apiContentProp.richContent) {
-                setTitle(apiContentProp.title);
-                setIsRequired(apiContentProp.isRequired || false);
-                currentRichContentState = apiContentProp.richContent.map((apiRcBlock) => {
-                    const blockId = apiRcBlock.id || generateId();
-                    let modalVideoContent: ModalVideoContentData | undefined = undefined;
-                    if (apiRcBlock.videoContent) {
-                        modalVideoContent = {
-                            ...apiRcBlock.videoContent, id: apiRcBlock.videoContent.id || blockId,
-                            videoFile: undefined, // Reset file on open, user must re-select if editing
-                            thumbnail: undefined, // Reset file on open
-                            videoObjectUrl: undefined, 
-                            thumbnailObjectUrl: undefined,
-                            isRequired: typeof apiRcBlock.videoContent.isRequired === 'boolean' ? apiRcBlock.videoContent.isRequired : false,
-                        };
-                    }
-                    let modalQuizContent: ModalQuizContentData | undefined = undefined;
-                    if (apiRcBlock.quizContent) {
-                        modalQuizContent = {
-                            ...apiRcBlock.quizContent,
-                            questions: apiRcBlock.quizContent.questions.map(q => ({ ...q, options: q.options ? q.options.map(opt => ({ ...opt })) : undefined })),
-                            settings: { ...apiRcBlock.quizContent.settings }
-                        };
-                    }
-                    return { ...apiRcBlock, id: blockId, videoContent: modalVideoContent, quizContent: modalQuizContent, content: apiRcBlock.content || '<p></p>', };
-                });
-            } else {
-                setTitle('');
-                setIsRequired(false);
-                currentRichContentState = []; // Ensure richContent is empty for new content
-            }
-            setRichContent(currentRichContentState);
-            setExpandedContentIndex(currentRichContentState.length > 0 ? 0 : null);
-        } else {
-            // Cleanup Object URLs and file states on close
-            richContentRef.current.forEach(item => {
-                if (item.videoContent) {
-                    if (item.videoContent.videoObjectUrl) URL.revokeObjectURL(item.videoContent.videoObjectUrl);
-                    if (item.videoContent.thumbnailObjectUrl) URL.revokeObjectURL(item.videoContent.thumbnailObjectUrl);
+            const initialContentToLoad = currentContentItem || apiContentPropFromParent;
+            if (initialContentToLoad) {
+                setTitle(initialContentToLoad.title);
+                setIsRequired(initialContentToLoad.isRequired || false);
+                const mappedRichContent = (initialContentToLoad.richContent as ApiRichContentItemBlockFromApi[] || []).map(mapApiBlockToModalBlock);
+                setRichContent(mappedRichContent);
+                setExpandedContentIndex(mappedRichContent.length > 0 ? 0 : null);
+                 if (!currentContentItem && apiContentPropFromParent) {
+                    setCurrentContentItem(apiContentPropFromParent);
                 }
+            } else {
+                setTitle(''); setIsRequired(false); setRichContent([]); setExpandedContentIndex(null); setCurrentContentItem(null);
+            }
+        } else {
+            richContentRef.current.forEach(item => {
+                if (item.videoContent?.videoObjectUrl) URL.revokeObjectURL(item.videoContent.videoObjectUrl);
+                if (item.videoContent?.thumbnailObjectUrl) URL.revokeObjectURL(item.videoContent.thumbnailObjectUrl);
+                if (item.documentContent?.documentObjectUrl) URL.revokeObjectURL(item.documentContent.documentObjectUrl);
             });
-            setRichContent(prev => prev.map(item => item.videoContent ? { ...item, videoContent: { ...item.videoContent, videoFile: undefined, thumbnail: undefined, videoObjectUrl: undefined, thumbnailObjectUrl: undefined } } : item));
-            setExpandedContentIndex(null);
         }
-    }, [isOpen, apiContentProp, isEditing, generateId]);
+    }, [isOpen, apiContentPropFromParent, mapApiBlockToModalBlock, currentContentItem]);
 
     useEffect(() => {
-        // General cleanup for object URLs when component unmounts
+        if (apiContentPropFromParent && apiContentPropFromParent !== currentContentItem) {
+             setCurrentContentItem(apiContentPropFromParent);
+        }
+    }, [apiContentPropFromParent, currentContentItem]);
+
+    useEffect(() => {
         return () => {
             richContentRef.current.forEach(item => {
                 if (item.videoContent?.videoObjectUrl) URL.revokeObjectURL(item.videoContent.videoObjectUrl);
                 if (item.videoContent?.thumbnailObjectUrl) URL.revokeObjectURL(item.videoContent.thumbnailObjectUrl);
+                if (item.documentContent?.documentObjectUrl) URL.revokeObjectURL(item.documentContent.documentObjectUrl);
             });
         };
     }, []);
@@ -267,217 +201,242 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         const newBlockId = generateId();
         let newBlock: ModalRichContentItem = { id: newBlockId, type: contentType, order: richContent.length };
         if (contentType === 'text') newBlock.content = '<p></p>';
-        else if (contentType === 'video') newBlock.videoContent = { id: newBlockId, title: '', description: '', videoFile: undefined, videoUrl: '', videoObjectUrl: undefined, thumbnail: undefined, thumbnailUrl: '', thumbnailObjectUrl: undefined, isRequired: false, drmEnabled: false, accessControl: { allowDownload: true, allowSharing: true }, duration: 0 };
-        else if (contentType === 'quiz') newBlock.quizContent = { id: newBlockId, databaseQuizId: newBlockId, title: '', description: '', questions: [], settings: { shuffleQuestions: false, timeLimit: undefined, passingScore: undefined, showResults: true, allowRetake: true, maxAttempts: undefined, showCorrectAnswers: true, showPoints: false, requireLogin: false, collectEmail: false, allowProgressSaving: true } };
-        setRichContent(prev => { const updated = [...prev, newBlock]; setExpandedContentIndex(updated.length - 1); return updated; });
+        else if (contentType === 'video') newBlock.videoContent = { id: newBlockId, title: '', description: '', videoUrl: '', thumbnailUrl: '', duration: 0, isRequired: false, drmEnabled: false, accessControl: { allowDownload: true, allowSharing: true }};
+        else if (contentType === 'quiz') newBlock.quizContent = { id: newBlockId, databaseQuizId: newBlockId, title: '', description: '', questions: [], settings: { shuffleQuestions: false, showResults: true, allowRetake: true, showCorrectAnswers: true }};
+        else if (contentType === 'document') newBlock.documentContent = { id: newBlockId, title: '', description: '', documentUrl: '', originalFileName: '' };
+        setRichContent(prev => { const updated = [...prev, newBlock].map((b,i) => ({...b, order: i})); setExpandedContentIndex(updated.length - 1); return updated; });
+        setSuccessMessage(null); setErrorModal(null);
     };
 
     const handleRemoveRichContent = (idToRemove: string) => {
-        const indexToRemove = richContent.findIndex(item => item.id === idToRemove);
-        const itemToRemove = richContent[indexToRemove];
+        const itemToRemove = richContentRef.current.find(item => item.id === idToRemove);
         if (itemToRemove?.videoContent?.videoObjectUrl) URL.revokeObjectURL(itemToRemove.videoContent.videoObjectUrl);
         if (itemToRemove?.videoContent?.thumbnailObjectUrl) URL.revokeObjectURL(itemToRemove.videoContent.thumbnailObjectUrl);
+        if (itemToRemove?.documentContent?.documentObjectUrl) URL.revokeObjectURL(itemToRemove.documentContent.documentObjectUrl);
+        const indexToRemove = richContent.findIndex(item => item.id === idToRemove);
         setRichContent(prev => {
-            const newRichContent = prev.filter(item => item.id !== idToRemove);
-            if (expandedContentIndex === indexToRemove) {
-                setExpandedContentIndex(newRichContent.length > 0 ? Math.max(0, indexToRemove -1) : null);
-            } else if (expandedContentIndex !== null && expandedContentIndex > indexToRemove) {
-                setExpandedContentIndex(prevIdx => prevIdx !== null ? prevIdx - 1 : null);
-            }
+            const newRichContent = prev.filter(item => item.id !== idToRemove).map((item, idx) => ({ ...item, order: idx }));
+            if (expandedContentIndex === indexToRemove) setExpandedContentIndex(newRichContent.length > 0 ? Math.max(0, indexToRemove -1) : null);
+            else if (expandedContentIndex !== null && expandedContentIndex > indexToRemove) setExpandedContentIndex(prevIdx => prevIdx !== null ? prevIdx - 1 : null);
             return newRichContent;
         });
+        setSuccessMessage(null); setErrorModal(null);
     };
 
-    const handleUpdateRichContentItem = useCallback((itemId: string, updatedData: Partial<Omit<ModalRichContentItem, 'id' | 'type'>>) => {
-        setRichContent(prev => prev.map(item => {
-            if (item.id === itemId) {
-                const newUpdate = { ...updatedData };
-                if (newUpdate.videoContent && item.videoContent) newUpdate.videoContent = { ...item.videoContent, ...newUpdate.videoContent };
-                if (newUpdate.quizContent && item.quizContent) newUpdate.quizContent = { ...item.quizContent, ...newUpdate.quizContent };
-                return { ...item, ...newUpdate };
-            }
-            return item;
-        }));
+    const handleUpdateRichContentItem = useCallback((itemId: string, updatedFields: Partial<Omit<ModalRichContentItem, 'id' | 'type' | 'order'>>) => {
+        setRichContent(prevRichContent =>
+            prevRichContent.map(item => {
+                if (item.id === itemId) {
+                    const newItem = { ...item };
+                    if (updatedFields.content !== undefined && item.type === 'text') newItem.content = updatedFields.content;
+                    if (updatedFields.videoContent && item.type === 'video' && newItem.videoContent) newItem.videoContent = { ...newItem.videoContent, ...updatedFields.videoContent };
+                    if (updatedFields.quizContent && item.type === 'quiz' && newItem.quizContent) {
+                        const newQuizSettings = updatedFields.quizContent.settings ? { ...newItem.quizContent.settings, ...updatedFields.quizContent.settings } : newItem.quizContent.settings;
+                        newItem.quizContent = { ...newItem.quizContent, ...updatedFields.quizContent, settings: newQuizSettings };
+                    }
+                    if (updatedFields.documentContent && item.type === 'document' && newItem.documentContent) newItem.documentContent = { ...newItem.documentContent, ...updatedFields.documentContent };
+                    return newItem;
+                }
+                return item;
+            })
+        );
+        setSuccessMessage(null); setErrorModal(null);
     }, []);
 
     const handleSaveClick = async () => {
-        setError(null);
-        if (!title.trim()) { setError("Overall content title is required."); return; }
-        if (richContent.length === 0) { setError("Content must have at least one block (Text, Video, or Quiz)."); return; }
-
-        for (const item of richContent) {
-            const isEmptyText = !item.content || item.content.trim() === '<p></p>' || item.content.trim() === '<p><br></p>' || item.content.trim() === '';
-            if (item.type === 'text' && isEmptyText) { setError("Text content blocks cannot be empty. Please add text or remove the empty block."); return; }
-            if (item.type === 'video' && item.videoContent) {
-                if (!item.videoContent.title.trim()) { setError("Video blocks must have a title."); return; }
-                if (!item.videoContent.videoFile && !item.videoContent.videoUrl?.trim()) { setError(`Video block "${item.videoContent.title || 'Untitled'}" must have a video file or URL.`); return; }
-            }
-            if (item.type === 'quiz' && item.quizContent) {
-                if (!item.quizContent.title.trim()) { setError("Quiz blocks must have a title."); return; }
-                if (!item.quizContent.questions || item.quizContent.questions.length === 0) { setError(`Quiz "${item.quizContent.title || 'Untitled'}" must have at least one question.`); return; }
-                if (item.quizContent.questions.some(q => !q.question.trim())) { setError(`All questions in quiz "${item.quizContent.title || 'Untitled'}" must have text.`); return; }
-                for (const q of item.quizContent.questions) {
-                    if ((q.type === 'multiple_choice' || q.type === 'checkbox') && (!q.options || q.options.length === 0)) { setError(`Question "${q.question.substring(0, 20)}..." in quiz "${item.quizContent.title || 'Untitled'}" requires at least one option.`); return; }
-                    if ((q.type === 'multiple_choice' || q.type === 'checkbox') && q.options?.some(opt => !opt.text.trim())) { setError(`All options for question "${q.question.substring(0, 20)}..." in quiz "${item.quizContent.title || 'Untitled'}" must have text.`); return; }
-                    if (q.type === 'multiple_choice' && !(q.options?.some(opt => opt.isCorrect))) { setError(`Multiple choice question "${q.question.substring(0, 20)}..." in quiz "${item.quizContent.title || 'Untitled'}" must have one correct answer selected.`); return; }
-                }
-            }
+        setErrorModal(null); setSuccessMessage(null);
+        if (!title.trim()) { setErrorModal("Overall content title is required."); return; }
+        if (richContent.length === 0) { setErrorModal("Content must have at least one block."); return; }
+        if (!weekIdForFileUploads && richContent.some(item => (item.type === 'video' && item.videoContent?.videoFile) || (item.type === 'document' && item.documentContent?.documentFile) || (item.type === 'video' && item.videoContent?.thumbnail))) {
+            setErrorModal("Cannot upload files: Week context is missing."); setIsSaving(false); return;
         }
         setIsSaving(true);
         try {
-            const finalRichContentForApi: ApiRichContentItemBlock[] = await Promise.all(
-                richContent.map(async (modalRcBlock, index): Promise<ApiRichContentItemBlock> => {
-                    let apiVideoContent: ApiVideoBlockContent | undefined = undefined;
+            const finalRichContentForApi: ApiRichContentItemBlockFromApi[] = await Promise.all(
+                richContent.map(async (modalRcBlock, index): Promise<ApiRichContentItemBlockFromApi> => {
+                    const baseBlock: Pick<ApiRichContentItemBlockFromApi, 'id' | 'type' | 'order'> = { id: modalRcBlock.id, type: modalRcBlock.type, order: modalRcBlock.order ?? index };
+                    if (modalRcBlock.type === 'text') return { ...baseBlock, content: modalRcBlock.content || '<p></p>' };
                     if (modalRcBlock.type === 'video' && modalRcBlock.videoContent) {
                         const { videoFile, thumbnail, videoObjectUrl, thumbnailObjectUrl, ...restVideo } = modalRcBlock.videoContent;
-                        let finalVideoUrl = restVideo.videoUrl;
-                        let finalThumbnailUrl = restVideo.thumbnailUrl;
-
-                        if (videoFile instanceof File) {
-                            const formData = new FormData();
-                            formData.append('file', videoFile);
-                            // MODIFIED: Add required fields (weekId, title, type)
-                            formData.append('weekId', sectionId); // Or derive/pass the correct weekId
-                            formData.append('title', restVideo.title || `Video for content: ${apiContentProp?.title || title}`); // Use video block's title or a fallback
-                            formData.append('type', 'video_asset'); // Example type, ensure this matches backend expectations
-
-                            const uploadedMaterial: ApiMaterial = await createMaterial(formData);
-                            if (!uploadedMaterial.contentUrl) {
-                                throw new Error(`Video upload for "${restVideo.title || 'video'}" succeeded but the server did not return a content URL.`);
-                            }
+                        let finalVideoUrl = restVideo.videoUrl; let finalThumbnailUrl = restVideo.thumbnailUrl;
+                        if (videoFile) {
+                            const formData = new FormData(); formData.append('file', videoFile); formData.append('weekId', weekIdForFileUploads); formData.append('title', restVideo.title || `Video: ${title}`); formData.append('type', 'video_asset');
+                            const uploadedMaterial = await createMaterial(formData);
+                            if (!uploadedMaterial?.contentUrl) throw new Error(`Video upload failed.`);
                             finalVideoUrl = uploadedMaterial.contentUrl;
                         }
-                        if (thumbnail instanceof File) {
-                            try {
-                                const formData = new FormData();
-                                formData.append('file', thumbnail);
-                                // MODIFIED: Add required fields (weekId, title, type)
-                                formData.append('weekId', sectionId); // Or derive/pass the correct weekId
-                                formData.append('title', `Thumbnail for ${restVideo.title || `content: ${apiContentProp?.title || title}`}`);
-                                formData.append('type', 'image_asset'); // Example type
-
-                                const uploadedThumbnail: ApiMaterial = await createMaterial(formData);
-                                if (!uploadedThumbnail.contentUrl) {
-                                    console.error("Thumbnail upload succeeded but server did not return a content URL. Using original or no thumbnail.");
-                                    finalThumbnailUrl = restVideo.thumbnailUrl || ''; 
-                                } else {
-                                    finalThumbnailUrl = uploadedThumbnail.contentUrl;
-                                }
-                            } catch (e: any) {
-                                console.error("Thumbnail upload error for video:", restVideo.title, e.message || e);
-                                finalThumbnailUrl = restVideo.thumbnailUrl || ''; // Revert to original on error
-                            }
+                        if (thumbnail) {
+                            const formData = new FormData(); formData.append('file', thumbnail); formData.append('weekId', weekIdForFileUploads); formData.append('title', `Thumbnail for ${restVideo.title || title}`); formData.append('type', 'image_asset');
+                            try { const uploadedThumbnail = await createMaterial(formData); finalThumbnailUrl = uploadedThumbnail?.contentUrl || finalThumbnailUrl; } catch (e) { console.error("Thumbnail upload error:", e); }
                         }
-                        apiVideoContent = { ...restVideo, videoUrl: finalVideoUrl, thumbnailUrl: finalThumbnailUrl };
+                        return { ...baseBlock, videoContent: { ...restVideo, videoUrl: finalVideoUrl, thumbnailUrl: finalThumbnailUrl } as ApiVideoBlockContentFromApi };
                     }
-
-                    let apiQuizContent: ApiQuizBlockContent | undefined = undefined;
                     if (modalRcBlock.type === 'quiz' && modalRcBlock.quizContent) {
-                        const dbQuizId = modalRcBlock.quizContent.databaseQuizId || modalRcBlock.quizContent.id;
-                        apiQuizContent = { ...modalRcBlock.quizContent, databaseQuizId: dbQuizId, questions: modalRcBlock.quizContent.questions.map(q => ({ ...q, options: q.options ? q.options.map(opt => ({ ...opt })) : undefined, })), settings: { ...modalRcBlock.quizContent.settings } };
+                        const { questions, id: quizContentId, ...restQuiz } = modalRcBlock.quizContent;
+                        const questionsWithIds = questions.map(q => ({ ...q, id: q.id || generateId(), options: q.options?.map(opt => ({ ...opt, id: opt.id || generateId() })) }));
+                        return { ...baseBlock, quizContent: { ...restQuiz, id: quizContentId, questions: questionsWithIds as ApiQuizQuestionFromApi[] } as ApiQuizBlockContentFromApi };
                     }
-                    return { 
-                        id: modalRcBlock.id, 
-                        type: modalRcBlock.type, 
-                        order: modalRcBlock.order ?? index, 
-                        content: modalRcBlock.content, 
-                        videoContent: apiVideoContent, 
-                        quizContent: apiQuizContent, 
-                    };
+                    if (modalRcBlock.type === 'document' && modalRcBlock.documentContent) {
+                        const { documentFile, documentObjectUrl, ...restDoc } = modalRcBlock.documentContent;
+                        let { documentUrl: finalDocumentUrl, originalFileName, fileSize, fileType } = restDoc;
+                        if (documentFile) {
+                            const formData = new FormData(); formData.append('file', documentFile); formData.append('weekId', weekIdForFileUploads); formData.append('title', restDoc.title || `Document: ${title}`); formData.append('type', 'document_asset');
+                            const uploadedMaterial = await createMaterial(formData);
+                            if (!uploadedMaterial?.contentUrl) throw new Error(`Document upload failed.`);
+                            finalDocumentUrl = uploadedMaterial.contentUrl; originalFileName = documentFile.name; fileSize = documentFile.size; fileType = documentFile.type;
+                        }
+                        return { ...baseBlock, documentContent: { ...restDoc, id: restDoc.id, documentUrl: finalDocumentUrl || '', originalFileName, fileSize, fileType } as ApiDocumentBlockContentForSave };
+                    }
+                    throw new Error(`Unhandled block type: ${modalRcBlock.type}`);
                 })
             );
-
-            let determinedType: ApiContentItem['type'];
-            const hasQuiz = finalRichContentForApi.some(item => item.type === 'quiz');
-            const hasVideo = finalRichContentForApi.some(item => item.type === 'video');
-            if (hasQuiz) determinedType = 'quiz_link';
-            else if (hasVideo) determinedType = 'video';
-            else determinedType = 'text';
-
-            const payload: ApiContentItem = {
-                ...(isEditing && apiContentProp?.id && { id: apiContentProp.id }),
-                title, isRequired, richContent: finalRichContentForApi,
-                type: determinedType, order: apiContentProp?.order ?? 0,
-            };
-            await onSave(payload);
-
+            let determinedType: ApiContentItemFromApi['type'] = 'text';
+            if (finalRichContentForApi.some(item => item.type === 'quiz')) determinedType = 'quiz_link';
+            else if (finalRichContentForApi.some(item => item.type === 'video')) determinedType = 'video';
+            else if (finalRichContentForApi.length === 1 && finalRichContentForApi[0].type === 'document') determinedType = 'document';
+            const payload: ApiContentItemFromApi = { ...(currentContentItem?.id && { id: currentContentItem.id }), title, isRequired, richContent: finalRichContentForApi, type: determinedType, order: currentContentItem?.order ?? 0 };
+            const savedOrUpdatedContent = await onSave(payload);
+            if (savedOrUpdatedContent && 'id' in savedOrUpdatedContent) {
+                setCurrentContentItem(savedOrUpdatedContent as ApiContentItemFromApi);
+                setTitle(savedOrUpdatedContent.title);
+                setIsRequired(savedOrUpdatedContent.isRequired || false);
+                const mappedRichContent = (savedOrUpdatedContent.richContent as ApiRichContentItemBlockFromApi[] || []).map(mapApiBlockToModalBlock);
+                setRichContent(mappedRichContent);
+                setSuccessMessage(isEditingLocally ? "Changes saved successfully!" : "Content created successfully!");
+                if (!isEditingLocally) setExpandedContentIndex(mappedRichContent.length > 0 ? 0 : null);
+            } else if (!isEditingLocally) {
+                setTitle(''); setIsRequired(false); setRichContent([]); setExpandedContentIndex(null); setCurrentContentItem(null);
+                setSuccessMessage("Content created successfully! Add another or close.");
+            } else {
+                 setSuccessMessage("Changes saved successfully!");
+            }
         } catch (err: any) {
-            const message = err.response?.data?.message || err.message || "An unexpected error occurred during save.";
-            if (!error) setError(message); 
-            console.error("Save Error Details:", err.response?.data || err.message || err);
+            setErrorModal(err.response?.data?.message || err.message || "Save error.");
+            console.error("Save Error:", err.response?.data || err);
         } finally {
             setIsSaving(false);
         }
     };
 
-    // --- QuizQuestionEditor (no changes from your original) ---
-    const QuizQuestionEditor: React.FC<{ question: ModalQuizQuestion; onUpdate: (updatedQuestion: ModalQuizQuestion) => void; onRemove: () => void; }> = React.memo(({ question, onUpdate, onRemove }) => {
-        const [localQuestionText, setLocalQuestionText] = useState(question.question);
-        const [localDescription, setLocalDescription] = useState(question.description || '');
-        const cardRef = useRef<HTMLDivElement>(null);
-        const prevOptionsLength = useRef<number | undefined>(question.options?.length);
-        useEffect(() => { if (question.question !== localQuestionText) setLocalQuestionText(question.question); const desc = question.description || ''; if (desc !== localDescription) setLocalDescription(desc); }, [question.question, question.description]);
-        useEffect(() => { const currentLength = question.options?.length ?? 0; const previousLength = prevOptionsLength.current ?? 0; if (currentLength > previousLength && cardRef.current) { setTimeout(() => { cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 0); } prevOptionsLength.current = currentLength; }, [question.options?.length]);
-        const handleQuestionBlur = () => { if (localQuestionText.trim() !== question.question) onUpdate({ ...question, question: localQuestionText.trim() }); };
-        const handleDescriptionBlur = () => { const currentDesc = question.description || ''; if (localDescription.trim() !== currentDesc) { const updatedDesc = localDescription.trim() ? localDescription.trim() : undefined; onUpdate({ ...question, description: updatedDesc }); } };
-        const handleOptionTextChange = (optIndex: number, newText: string) => { const newOptions = [...(question.options || [])]; if (newOptions[optIndex]) { newOptions[optIndex] = { ...newOptions[optIndex], text: newText }; onUpdate({ ...question, options: newOptions }); } };
-        const handleOptionCorrectChange = (optIndex: number, isCorrect: boolean) => { const newOptions = [...(question.options || [])]; if (!newOptions[optIndex]) return; const updatedOption = { ...newOptions[optIndex], isCorrect }; if (isCorrect && question.type === 'multiple_choice') { newOptions.forEach((opt, i) => { if (i !== optIndex) opt.isCorrect = false; }); } newOptions[optIndex] = updatedOption; onUpdate({ ...question, options: newOptions }); };
-        const addOption = () => { const newOption: ModalQuizQuestionOption = { id: generateId(), text: '', isCorrect: false }; onUpdate({ ...question, options: [...(question.options || []), newOption] }); };
-        const removeOption = (optIndex: number) => { onUpdate({ ...question, options: question.options?.filter((_, i) => i !== optIndex) }); };
-        const questionTypes = [ { value: 'multiple_choice' as const, label: 'Multiple Choice (Single Answer)' }, { value: 'checkbox' as const, label: 'Checkboxes (Multiple Answers)' }, /* { value: 'short_answer' as const, label: 'Short Answer' }, { value: 'paragraph' as const, label: 'Paragraph Answer' },*/ ];
-        return (
-            <Card ref={cardRef} className={`p-3 space-y-3 ${editorCardBgMantine} border ${themedInputBorder}`}>
-                <div className="flex justify-between items-start gap-2">
-                    <div className="flex-grow space-y-1"><TextInput label={<span className={`${midBrown} text-xs font-medium`}>Question Text <span className="text-red-500">*</span></span>} id={`question-${question.id}`} value={localQuestionText} onChange={(event) => setLocalQuestionText(event.currentTarget.value)} onBlur={handleQuestionBlur} placeholder="Enter question text" required size="sm" className="font-medium w-full" styles={mantineInputStyles} /></div>
-                    <Button variant="ghost" size="icon" onClick={onRemove} className={`text-red-500 hover:text-red-600 h-8 w-8 p-0 shrink-0 mt-5`} aria-label="Remove question"><Trash2 className="h-4 w-4"/></Button>
-                </div>
-                <div className="space-y-1"><Textarea label={<span className={`${midBrown} text-xs font-medium`}>Description (Optional)</span>} id={`description-${question.id}`} value={localDescription} onChange={(event) => setLocalDescription(event.currentTarget.value)} onBlur={handleDescriptionBlur} placeholder="Optional: Add more details or instructions" autosize minRows={2} size="sm" className="text-xs" styles={mantineInputStyles} /></div>
-                <Select value={question.type} onValueChange={(type: ApiQuizQuestion['type']) => { const needsOptions = type === 'multiple_choice' || type === 'checkbox'; const currentOptions = question.options; let resetOptions: ModalQuizQuestionOption[] | undefined; if (!needsOptions) resetOptions = undefined; else if (needsOptions && currentOptions && (question.type === 'multiple_choice' || question.type === 'checkbox')) { if (type === 'multiple_choice') { let foundFirstCorrect = false; resetOptions = currentOptions.map(opt => { if (opt.isCorrect && !foundFirstCorrect) { foundFirstCorrect = true; return opt; } return {...opt, isCorrect: false}; }); } else resetOptions = currentOptions; } else resetOptions = [{ id: generateId(), text: '', isCorrect: false }]; onUpdate({...question, type, options: resetOptions }); }}>
-                    <SelectTrigger className={selectTriggerClasses}><SelectValue placeholder="Select Question Type" /></SelectTrigger>
-                    <SelectContent className={selectContentClasses}>{questionTypes.map(qt => <SelectItem key={qt.value} value={qt.value} className="text-sm">{qt.label}</SelectItem>)}</SelectContent>
-                </Select>
-                {(question.type === 'multiple_choice' || question.type === 'checkbox') && (
-                    <div className="space-y-2 pl-1">
-                        <ShadcnLabel className={`${midBrown} text-xs font-medium`}>Options {question.type === 'multiple_choice' ? '(select one correct)' : '(select one or more correct)'}: <span className="text-red-500">*</span></ShadcnLabel>
-                        {question.options?.map((opt, optIndex) => (<OptionInput key={opt.id} optionId={opt.id} initialText={opt.text} placeholder={`Option ${optIndex + 1}`} onTextChange={(newText) => handleOptionTextChange(optIndex, newText)} questionType={question.type as 'multiple_choice' | 'checkbox'} isCorrect={opt.isCorrect ?? false} onCorrectChange={(isCorrect) => handleOptionCorrectChange(optIndex, isCorrect)} onRemove={() => removeOption(optIndex)} canRemove={(question.options?.length ?? 0) > 1} />))}
-                        <Button variant="outline" size="sm" onClick={addOption} className={`${outlineButtonClasses} text-xs mt-1 h-8`}><Plus className="h-3.5 w-3.5 mr-1"/>Add Option</Button>
-                    </div>
-                )}
-                <Group mt="xs"><MantineCheckbox id={`q-req-${question.id}`} checked={question.required} onChange={(event) => onUpdate({...question, required: event.currentTarget.checked})} label={<span className={`${midBrown} text-xs font-normal cursor-pointer`}>Required Question</span>} size="xs" /></Group>
-            </Card>
-        );
-    });
-    QuizQuestionEditor.displayName = 'QuizQuestionEditor';
-
-    // --- renderPreview (no changes from your original) ---
     const renderPreview = () => {
         return (
-            <div className={`p-3 sm:p-4 space-y-5 prose prose-sm sm:prose dark:prose-invert max-w-none prose-headings:font-serif prose-headings:text-[${deepBrownLightHex}] dark:prose-headings:text-[${deepBrownDarkHex}] prose-p:text-[${midBrownLightHex}] dark:prose-p:text-[${midBrownDarkHex}] prose-a:text-[${goldAccentHex}] hover:prose-a:underline prose-table:w-full prose-td:border prose-td:border-gray-300 dark:prose-td:border-gray-600 prose-td:p-1.5 prose-th:border prose-th:border-gray-300 dark:prose-th:border-gray-600 prose-th:p-1.5 prose-th:bg-gray-50 dark:prose-th:bg-gray-800 prose-blockquote:border-l-4 prose-blockquote:border-gray-400 dark:prose-blockquote:border-gray-600 prose-blockquote:pl-3 prose-blockquote:italic prose-blockquote:text-gray-600 dark:prose-blockquote:text-gray-400 prose-pre:bg-gray-100 dark:prose-pre:bg-gray-800 prose-pre:p-3 prose-pre:rounded-md prose-pre:text-xs prose-pre:overflow-x-auto`}>
-                <h1 className="text-2xl font-bold font-serif mb-3">{title || "Untitled Content"}</h1> {isRequired && <span className="block text-xs text-red-600 dark:text-red-400 font-semibold mb-3">(Required)</span>}
+             <div className={`p-3 sm:p-4 space-y-5 prose prose-sm sm:prose dark:prose-invert max-w-none prose-headings:font-serif prose-headings:text-[${deepBrownLightHex}] dark:prose-headings:text-[${deepBrownDarkHex}] prose-p:text-[${midBrownLightHex}] dark:prose-p:text-[${midBrownDarkHex}] prose-a:text-[${goldAccentHex}] hover:prose-a:underline prose-ul:list-disc prose-ul:pl-5 prose-ol:list-decimal prose-ol:pl-5`}>
+                <h1 className="text-2xl font-bold font-serif mb-3">{title || "Untitled Content"}</h1>
+                {isRequired && <span className="block text-xs text-red-600 dark:text-red-400 font-semibold mb-3">(Required)</span>}
                 {richContent.length === 0 && <p className={mutedText}>No content blocks to preview.</p>}
                 {richContent.map((item, index) => (
                     <div key={`preview-${item.id}`} className={`mt-4 pt-4 border-t first:mt-0 first:pt-0 first:border-t-0 border-gray-200 dark:border-gray-700 ${index > 0 ? 'mt-6 pt-6' : ''}`}>
-                        {item.type === 'text' && item.content && (<div dangerouslySetInnerHTML={{ __html: item.content || '<p class="text-gray-500 italic">Empty text block</p>' }} />)}
+                        {item.type === 'text' && item.content && (<div dangerouslySetInnerHTML={{ __html: item.content || '' }} />)}
                         {item.type === 'video' && item.videoContent && (
                             <div className="not-prose">
-                                <h3 className={`text-lg font-semibold mb-1.5 text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`}>{item.videoContent.title || "Untitled Video"}</h3>
-                                {item.videoContent.description && <p className={`text-sm mb-2 ${midBrown}`}>{item.videoContent.description}</p>}
+                                <h3 className={`text-lg font-semibold mb-1.5 text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`}>{item.videoContent.title || "Video"}</h3>
+                                {item.videoContent.description && <p className={`text-sm mb-2 text-[${midBrownLightHex}] dark:text-[${midBrownDarkHex}]`}>{item.videoContent.description}</p>}
                                 {item.videoContent.isRequired && <span className="text-xs text-red-500 mb-2 block">(Required Video)</span>}
-                                {(() => { const videoSrc = item.videoContent.videoObjectUrl || item.videoContent.videoUrl; const posterSrc = item.videoContent.thumbnailObjectUrl || item.videoContent.thumbnailUrl; if (videoSrc) { return (<div className="aspect-video w-full max-w-xl bg-black rounded-md overflow-hidden mx-auto my-2 player-wrapper"><ReactPlayer className="react-player" url={videoSrc} controls={true} width='100%' height='100%' light={posterSrc || false} playing={false} config={{ file: { attributes: { controlsList: 'nodownload', disablePictureInPicture: true, }, forceVideo: true } }} onError={(e: any) => console.error('ReactPlayer Error', e)} /></div>); } else { return ( <div className={`p-4 ${editorCardBgMantine} rounded text-center text-sm ${mutedText} border ${themedInputBorder}`}> Video source not available for preview. If you selected a file, it will be uploaded on save. </div> ); } })()}
+                                {(() => {
+                                    const videoSrc = item.videoContent.videoObjectUrl || item.videoContent.videoUrl;
+                                    const posterSrc = item.videoContent.thumbnailObjectUrl || item.videoContent.thumbnailUrl;
+                                    if (videoSrc) return (<div className="aspect-video w-full max-w-xl bg-black rounded-md overflow-hidden mx-auto my-2"><ReactPlayer className="react-player" url={videoSrc} controls width='100%' height='100%' light={posterSrc || false} config={{ file: { attributes: { controlsList: 'nodownload', disablePictureInPicture: true }}}} /></div>);
+                                    return (<div className={`p-4 ${editorCardBgMantine} rounded text-center text-sm ${mutedText} border ${themedInputBorder}`}>Video source missing.</div>);
+                                })()}
+                            </div>
+                        )}
+                                                {item.type === 'document' && item.documentContent && (
+                             <div className="not-prose document-block-preview space-y-2">
+                                <h3 className={`text-lg font-medium mb-1 text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`}>{item.documentContent.title || "Untitled Document"}</h3>
+                                {item.documentContent.description && <p className={`text-xs mb-1 text-[${midBrownLightHex}] dark:text-[${midBrownDarkHex}]`}>{item.documentContent.description}</p>}
+                                
+                                {(() => {
+                                    const docUrl = item.documentContent.documentObjectUrl || item.documentContent.documentUrl;
+                                    const fileName = item.documentContent.originalFileName;
+                                    const fileTypeFromContent = item.documentContent.fileType;
+
+                                    console.log('[Modal Preview] Evaluating Document Block. ID:', item.id, {
+                                        docUrl: docUrl ? `present: ${docUrl.substring(0, 50)}...` : 'absent', // Log only start of URL
+                                        isDocUrlValid: !!docUrl,
+                                        fileName,
+                                        fileTypeFromContent,
+                                    });
+
+                                    let isViewableType = false;
+                                    const lowerFileName = fileName?.toLowerCase();
+                                    if (fileTypeFromContent) {
+                                        isViewableType = fileTypeFromContent === 'application/pdf' ||
+                                                       fileTypeFromContent === 'application/vnd.ms-powerpoint' ||
+                                                       fileTypeFromContent === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+                                    } else if (lowerFileName) {
+                                        isViewableType = lowerFileName.endsWith('.pdf') ||
+                                                       lowerFileName.endsWith('.ppt') ||
+                                                       lowerFileName.endsWith('.pptx');
+                                    }
+                                    console.log('[Modal Preview] Document Block. ID:', item.id, 'isViewableType:', isViewableType);
+
+
+                                    if (docUrl && isViewableType) {
+                                        console.log('[Modal Preview] RENDERING DocumentViewer for ID:', item.id, 'with URL starting:', docUrl ? docUrl.substring(0,50) + '...' : 'N/A');
+                                        return (
+                                            <div className="mt-2 mb-3">
+                                                <DocumentViewer
+                                                    fileUrl={docUrl}
+                                                    fileType={fileTypeFromContent}
+                                                    originalFileName={fileName}
+                                                    themedInputBorder={themedInputBorder}
+                                                    mutedText={mutedText}
+                                                />
+                                            </div>
+                                        );
+                                    } else if (docUrl) {
+                                        console.log('[Modal Preview] Document Block (Fallback). ID:', item.id, 'docUrl present, but not viewable type or viewer failed. isViewableType:', isViewableType);
+                                        return (
+                                            <div className="my-2">
+                                                <p className={`text-sm ${mutedText} mb-2`}>
+                                                    {isViewableType ? "Preview loading or an issue occurred processing this file." : "Slide-by-slide preview is not available for this file type."}
+                                                </p>
+                                            </div>
+                                        );
+                                    } else {
+                                        console.log('[Modal Preview] Document Block (No URL/File). ID:', item.id);
+                                        return (
+                                            <div className={`my-2 p-3 ${editorCardBgMantine} rounded text-sm ${mutedText} border ${themedInputBorder}`}>
+                                                Document file not yet selected or URL is missing.
+                                            </div>
+                                        );
+                                    }
+                                })()}
+                                
+                                {(item.documentContent.documentUrl || item.documentContent.documentObjectUrl) && (
+                                    <div>
+                                        <a 
+                                            href={item.documentContent.documentObjectUrl || item.documentContent.documentUrl!} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            download={item.documentContent.originalFileName || 'document'}
+                                            className={`${primaryButtonClasses} inline-flex items-center text-xs px-2.5 py-1.5 rounded`}
+                                        >
+                                            <Download className="h-3.5 w-3.5 mr-1.5"/>
+                                            Download {item.documentContent.originalFileName || 'Document'}
+                                        </a>
+                                    </div>
+                                )}
                             </div>
                         )}
                         {item.type === 'quiz' && item.quizContent && (
-                            <div className="not-prose">
-                                <h3 className={`text-lg font-semibold mb-1.5 text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`}>{item.quizContent.title || "Untitled Quiz"}</h3>
-                                {item.quizContent.description && <p className={`text-sm mb-2 ${midBrown}`}>{item.quizContent.description}</p>}
+                             <div className="not-prose">
+                                <h3 className={`text-lg font-semibold mb-1.5 text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`}>{item.quizContent.title || "Quiz"}</h3>
+                                {item.quizContent.description && <p className={`text-sm mb-2 text-[${midBrownLightHex}] dark:text-[${midBrownDarkHex}]`}>{item.quizContent.description}</p>}
                                 {(item.quizContent.settings?.timeLimit != null) && <p className={`text-xs mb-2 ${mutedText}`}>Time Limit: {item.quizContent.settings.timeLimit} min</p>}
-                                {(!item.quizContent.questions || item.quizContent.questions.length === 0) && <p className={`${mutedText} text-sm`}>No questions in this quiz preview.</p>}
+                                {(!item.quizContent.questions || item.quizContent.questions.length === 0) && <p className={`${mutedText} text-sm`}>No questions.</p>}
                                 <div className="space-y-3 mt-2">
                                     {item.quizContent.questions?.map((q, qIdx) => (
                                         <div key={q.id} className={`p-3 border rounded ${editorCardBgMantine} ${themedInputBorder}`}>
                                             <p className={`font-medium text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] mb-1`}>{qIdx + 1}. {q.question} {q.required && <span className="text-red-500 text-xs">*</span>}</p>
                                             {q.description && <p className={`text-xs ${mutedText} mb-1.5`}>{q.description}</p>}
-                                            {(q.type === 'multiple_choice' || q.type === 'checkbox') && q.options?.map(opt => (<div key={opt.id} className={`ml-4 text-sm flex items-center gap-2 text-[${midBrownLightHex}] dark:text-[${midBrownDarkHex}] my-1`}><div className={`w-4 h-4 border rounded-${q.type === 'multiple_choice' ? 'full' : 'sm'} border-gray-400 dark:border-gray-500 shrink-0`}></div><span>{opt.text}</span>{(opt.isCorrect ?? false) && <span className="text-xs font-bold text-green-600 dark:text-green-400 ml-2">(Correct)</span>}</div>))}
+                                            {(q.type === 'multiple_choice' || q.type === 'checkbox') && q.options?.map(opt => (
+                                                <div key={opt.id} className={`ml-4 text-sm flex items-center gap-2 text-[${midBrownLightHex}] dark:text-[${midBrownDarkHex}] my-1`}>
+                                                    <div className={`w-4 h-4 border rounded-${q.type === 'multiple_choice' ? 'full' : 'sm'} border-gray-400 dark:border-gray-500 shrink-0`}></div>
+                                                    <span>{opt.text}</span>
+                                                    {(opt.isCorrect ?? false) && <span className="text-xs font-bold text-green-600 dark:text-green-400 ml-2">(Correct)</span>}
+                                                </div>
+                                            ))}
                                         </div>
                                     ))}
                                 </div>
@@ -490,107 +449,166 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
     };
 
     if (!isOpen) return null;
+    const documentFileAcceptTypes = ".pdf,.doc,.docx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-            <MantineProvider 
-                // These props are usually set at the root MantineProvider of your app.
-                // If this modal is truly standalone and needs them, ensure they are correct for your Mantine version.
-                // For simplicity and to avoid further TS errors if your local setup differs, 
-                // we assume a root provider handles these or styles are self-sufficient.
-                // withGlobalStyles 
-                // withNormalizeCSS
-                // theme={{}} // You can pass theme overrides here if needed
-            >
+            <MantineProvider theme={{ colorScheme: document.documentElement.classList.contains('dark') ? 'dark' : 'light' }}>
                 <Card className={`w-full max-w-3xl ${lightCardBg} ${darkCardBg} border ${themedInputBorder} shadow-xl flex flex-col max-h-[90vh] rounded-lg overflow-hidden`}>
                     <CardHeader className={`flex flex-row items-center justify-between pb-3 pt-4 px-4 border-b ${themedInputBorder} sticky top-0 z-10 ${lightCardBg} ${darkCardBg}`}>
-                        <div id="modal-title"> <CardTitle className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] font-serif text-xl`}>{isEditing ? "Edit Content" : "Add New Content"}</CardTitle> </div>
+                        <div id="modal-title"> <CardTitle className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] font-serif text-xl`}>{isEditingLocally ? "Edit Content" : "Add New Content"}</CardTitle> </div>
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="sm" onClick={() => setIsPreviewMode(!isPreviewMode)} className={`${outlineButtonClasses} text-xs h-8 px-2.5`} aria-label={isPreviewMode ? "Switch to Edit Mode" : "Switch to Preview Mode"}> {isPreviewMode ? <><Edit3 className="h-3.5 w-3.5 mr-1.5"/>Edit</> : <><Eye className="h-3.5 w-3.5 mr-1.5"/>Preview</>} </Button>
                             <Button variant="ghost" size="icon" onClick={onClose} className={`${midBrown} hover:bg-gray-200 dark:hover:bg-gray-700 h-8 w-8 rounded-full`} aria-label="Close modal"><X className="h-4 w-4"/></Button>
                         </div>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
+                        {successMessage && ( <div role="alert" className="p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-300 dark:border-green-700 rounded-md text-sm flex items-center gap-2"> <CheckCircle className="h-4 w-4 shrink-0"/> <span>{successMessage}</span> </div> )}
                         {error && ( <div role="alert" className="p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-700 rounded-md text-sm flex items-center gap-2"> <AlertCircle className="h-4 w-4 shrink-0"/> <span>{error}</span> </div> )}
+                        
                         {isPreviewMode ? ( renderPreview() ) : (
                             <>
                                 <TextInput
                                     label={<span className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-medium`}>Overall Content Title <span className="text-red-500">*</span></span>}
-                                    id="content-title" value={title} onChange={(event) => setTitle(event.currentTarget.value)}
+                                    id="content-title" value={title} onChange={(event) => { setTitle(event.currentTarget.value); setSuccessMessage(null); setErrorModal(null);}}
                                     placeholder="E.g., Week 1: Introduction" disabled={isSaving} required size="sm" styles={mantineInputStyles}
                                 />
                                 <div className="space-y-3 pt-3">
                                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                                         <ShadcnLabel className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-medium mb-1 sm:mb-0`}>Content Blocks</ShadcnLabel>
-                                        <div className="flex flex-wrap gap-1.5 sm:gap-2"> {[ { type: 'text', Icon: FileTextIcon, label: 'Text' }, { type: 'video', Icon: VideoIcon, label: 'Video' }, { type: 'quiz', Icon: HelpCircle, label: 'Quiz' } ].map(btn => ( <Button key={btn.type} variant="outline" size="sm" onClick={() => handleAddRichContent(btn.type as ApiRichContentItemBlock['type'])} className={`${outlineButtonClasses} text-xs h-8 px-2.5`} disabled={isSaving}> <btn.Icon className="h-3.5 w-3.5 mr-1.5"/> Add {btn.label} </Button> ))} </div>
+                                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                            {[
+                                                { type: 'text' as ModalRichContentItem['type'], Icon: FileTextIcon, label: 'Text' },
+                                                { type: 'video' as ModalRichContentItem['type'], Icon: VideoIcon, label: 'Video' },
+                                                { type: 'quiz' as ModalRichContentItem['type'], Icon: HelpCircle, label: 'Quiz' },
+                                                { type: 'document' as ModalRichContentItem['type'], Icon: FileTextIcon, label: 'Document' }
+                                            ].map(btn => (
+                                                <Button key={btn.type} variant="outline" size="sm"
+                                                        onClick={() => handleAddRichContent(btn.type)}
+                                                        className={`${outlineButtonClasses} text-xs h-8 px-2.5`} disabled={isSaving}>
+                                                    <btn.Icon className="h-3.5 w-3.5 mr-1.5"/> Add {btn.label}
+                                                </Button>
+                                            ))}
+                                        </div>
                                     </div>
                                     {richContent.length === 0 && ( <div className={`text-center p-6 border-2 border-dashed ${themedInputBorder} rounded-md ${mutedText} text-sm`}> No content blocks added yet. Click a button above. </div> )}
+
                                     {richContent.map((item, index) => (
                                         <Card key={item.id} className={`overflow-hidden border ${themedInputBorder} ${editorCardBgMantine} ${darkCardBg}`}>
                                             <CardHeader className={`flex flex-row items-center justify-between p-2 sm:p-3 border-b ${themedInputBorder} ${editorToolbarBgMantine} cursor-pointer`} onClick={() => setExpandedContentIndex(expandedContentIndex === index ? null : index)} >
-                                                <div className="flex items-center gap-2 min-w-0"> {item.type === 'text' && <FileTextIcon className={`h-4 w-4 ${goldAccent} shrink-0`} />} {item.type === 'video' && <VideoIcon className={`h-4 w-4 ${goldAccent} shrink-0`} />} {item.type === 'quiz' && <HelpCircle className={`h-4 w-4 ${goldAccent} shrink-0`} />} <ShadcnLabel className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-medium truncate cursor-pointer`}> {item.type === 'text' && 'Text Block'} {item.type === 'video' && (item.videoContent?.title || 'Video Block')} {item.type === 'quiz' && (item.quizContent?.title || 'Quiz Block')} </ShadcnLabel> </div>
-                                                <div className="flex items-center shrink-0"> <Button variant="ghost" size="icon" className={`h-7 w-7 ${midBrown}`} aria-label={expandedContentIndex === index ? "Collapse block" : "Expand block"}> {expandedContentIndex === index ? <ChevronUp className="h-4 w-4"/> : <ChevronDown className="h-4 w-4"/>} </Button> <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleRemoveRichContent(item.id); }} className={`h-7 w-7 text-red-500 hover:text-red-600`} aria-label="Remove block" disabled={isSaving}><Trash2 className="h-4 w-4"/></Button> </div>
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    {item.type === 'text' && <FileTextIcon className={`h-4 w-4 ${goldAccent} shrink-0`} />}
+                                                    {item.type === 'video' && <VideoIcon className={`h-4 w-4 ${goldAccent} shrink-0`} />}
+                                                    {item.type === 'quiz' && <HelpCircle className={`h-4 w-4 ${goldAccent} shrink-0`} />}
+                                                    {item.type === 'document' && <FileTextIcon className={`h-4 w-4 ${goldAccent} shrink-0`} />}
+                                                    <ShadcnLabel className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-medium truncate cursor-pointer`}>
+                                                        {item.type === 'text' && 'Text Block'}
+                                                        {item.type === 'video' && (item.videoContent?.title || 'Video Block')}
+                                                        {item.type === 'quiz' && (item.quizContent?.title || 'Quiz Block')}
+                                                        {item.type === 'document' && (item.documentContent?.title || 'Document Block')}
+                                                    </ShadcnLabel>
+                                                </div>
+                                                <div className="flex items-center shrink-0">
+                                                    <Button variant="ghost" size="icon" className={`h-7 w-7 ${midBrown}`} aria-label={expandedContentIndex === index ? "Collapse block" : "Expand block"}> {expandedContentIndex === index ? <ChevronUp className="h-4 w-4"/> : <ChevronDown className="h-4 w-4"/>} </Button>
+                                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleRemoveRichContent(item.id); }} className={`h-7 w-7 text-red-500 hover:text-red-600`} aria-label="Remove block" disabled={isSaving}><Trash2 className="h-4 w-4"/></Button>
+                                                </div>
                                             </CardHeader>
                                             {expandedContentIndex === index && (
                                                 <CardContent className="p-2 sm:p-3 space-y-3">
-                                                    {item.type === 'text' && ( <IntegratedRichTextEditor value={item.content || '<p></p>'} onChange={html => handleUpdateRichContentItem(item.id, { content: html })} placeholder="Start writing your text content here..." /> )}
+                                                    {item.type === 'text' && ( <IntegratedRichTextEditor value={item.content || '<p></p>'} onChange={html => {handleUpdateRichContentItem(item.id, { content: html }); setSuccessMessage(null); setErrorModal(null);}} placeholder="Start writing text..." weekIdForImageUploads={weekIdForFileUploads} mutedTextClass={mutedText} /> )}
+
                                                     {item.type === 'video' && item.videoContent && (
                                                         <div className="space-y-3">
-                                                            <TextInput label={<>Video Title <span className="text-red-500">*</span></>} placeholder="Enter video title" size="sm" value={item.videoContent.title} onChange={e => handleUpdateRichContentItem(item.id, {videoContent: {...item.videoContent!, title: e.target.value}})} styles={mantineInputStyles}/>
-                                                            <Textarea label="Video Description (Optional)" placeholder="Add a description..." size="sm" minRows={2} autosize value={item.videoContent.description || ''} onChange={e => handleUpdateRichContentItem(item.id, {videoContent: {...item.videoContent!, description: e.target.value}})} styles={mantineInputStyles}/>
-                                                            <FileInput label="Video File" placeholder="Select video file" accept="video/*" value={item.videoContent.videoFile || null}
+                                                            <TextInput label={<><span className={`${midBrown} text-xs font-medium`}>Video Title</span> <span className="text-red-500">*</span></>} placeholder="Enter video title" size="sm" value={item.videoContent.title} onChange={e => {handleUpdateRichContentItem(item.id, {videoContent: { ...item.videoContent!, title: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}} styles={mantineInputStyles}/>
+                                                            <Textarea label={<span className={`${midBrown} text-xs font-medium`}>Video Description(Optional)</span>} placeholder="Add a description..." size="sm" minRows={2} autosize value={item.videoContent.description || ''} onChange={e => {handleUpdateRichContentItem(item.id, {videoContent: { ...item.videoContent!, description: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}} styles={mantineInputStyles}/>
+                                                            <FileInput label={<span className={`${midBrown} text-xs font-medium`}>Video File</span>} placeholder="Select video file" accept="video/*" value={item.videoContent.videoFile || null}
                                                                 onChange={(file: File | null) => {
                                                                     const current = richContent.find(rc => rc.id === item.id); const oldUrl = current?.videoContent?.videoObjectUrl;
-                                                                    let newUrl: string | undefined = undefined; if (file) newUrl = URL.createObjectURL(file);
+                                                                    let newUrl = file ? URL.createObjectURL(file) : undefined;
                                                                     handleUpdateRichContentItem(item.id, { videoContent: { ...item.videoContent!, videoFile: file || undefined, videoUrl: '', videoObjectUrl: newUrl } });
                                                                     if (oldUrl && oldUrl !== newUrl) URL.revokeObjectURL(oldUrl);
+                                                                    setSuccessMessage(null); setErrorModal(null);
                                                                 }} clearable size="sm" styles={mantineInputStyles} />
                                                             {item.videoContent.videoFile && <p className="text-xs mt-1 text-green-600 dark:text-green-400">Selected: {item.videoContent.videoFile.name}</p>}
-                                                            <TextInput label="Or Video URL" placeholder="https://..." value={item.videoContent.videoUrl || ''}
+                                                            <TextInput label={<span className={`${midBrown} text-xs font-medium`}>Or Video URL</span>} placeholder="https://..." value={item.videoContent.videoUrl || ''}
                                                                 onChange={(event) => {
                                                                     const url = event.currentTarget.value; const current = richContent.find(rc => rc.id === item.id); const oldUrl = current?.videoContent?.videoObjectUrl;
                                                                     handleUpdateRichContentItem(item.id, { videoContent: { ...item.videoContent!, videoUrl: url, videoFile: undefined, videoObjectUrl: undefined } });
                                                                     if (oldUrl) URL.revokeObjectURL(oldUrl);
+                                                                    setSuccessMessage(null); setErrorModal(null);
                                                                 }} size="sm" styles={mantineInputStyles} />
-                                                            <FileInput label="Video Thumbnail (Optional)" placeholder="Select image file" accept="image/*" value={item.videoContent.thumbnail || null}
+                                                            <FileInput label={<span className={`${midBrown} text-xs font-medium`}>Thumbnail (Optional)</span>} placeholder="Select image" accept="image/*" value={item.videoContent.thumbnail || null}
                                                                 onChange={(file: File | null) => {
                                                                      const current = richContent.find(rc => rc.id === item.id); const oldUrl = current?.videoContent?.thumbnailObjectUrl;
-                                                                     let newUrl: string | undefined = undefined; if (file) newUrl = URL.createObjectURL(file);
+                                                                     let newUrl = file ? URL.createObjectURL(file) : undefined;
                                                                      handleUpdateRichContentItem(item.id, { videoContent: { ...item.videoContent!, thumbnail: file || undefined, thumbnailUrl: '', thumbnailObjectUrl: newUrl } });
                                                                      if (oldUrl && oldUrl !== newUrl) URL.revokeObjectURL(oldUrl);
+                                                                     setSuccessMessage(null); setErrorModal(null);
                                                                 }} clearable size="sm" styles={mantineInputStyles} />
                                                             {item.videoContent.thumbnail && <p className="text-xs mt-1 text-green-600 dark:text-green-400">Selected: {item.videoContent.thumbnail.name}</p>}
-                                                            <TextInput label="Or Thumbnail URL (Optional)" placeholder="https://..." value={item.videoContent.thumbnailUrl || ''}
+                                                            <TextInput label={<span className={`${midBrown} text-xs font-medium`}>Or Thumbnail URL</span>} placeholder="https://..." value={item.videoContent.thumbnailUrl || ''}
                                                                 onChange={(event) => {
                                                                     const url = event.currentTarget.value; const current = richContent.find(rc => rc.id === item.id); const oldUrl = current?.videoContent?.thumbnailObjectUrl;
                                                                     handleUpdateRichContentItem(item.id, { videoContent: { ...item.videoContent!, thumbnailUrl: url, thumbnail: undefined, thumbnailObjectUrl: undefined } });
                                                                     if (oldUrl) URL.revokeObjectURL(oldUrl);
+                                                                    setSuccessMessage(null); setErrorModal(null);
                                                                 }} size="sm" styles={mantineInputStyles} />
-                                                            <MantineCheckbox label={<span className={`${midBrown} text-xs font-normal cursor-pointer`}>Mark this specific video as required</span>} checked={item.videoContent.isRequired === true} onChange={(event) => handleUpdateRichContentItem(item.id, { videoContent: { ...item.videoContent!, isRequired: event.currentTarget.checked }})} size="xs" className="mt-3 pt-1" disabled={isSaving} />
+                                                            <MantineCheckbox label={<span className={`${midBrown} text-xs`}>Video required</span>} checked={item.videoContent.isRequired === true} onChange={(event) => {handleUpdateRichContentItem(item.id, { videoContent: { ...item.videoContent!, isRequired: event.currentTarget.checked }}); setSuccessMessage(null); setErrorModal(null);}} size="xs" className="mt-3 pt-1" disabled={isSaving} />
                                                         </div>
                                                     )}
+
                                                     {item.type === 'quiz' && item.quizContent && (
                                                          <div className="space-y-3">
-                                                            <TextInput label={<>Quiz Title <span className="text-red-500">*</span></>} placeholder="Enter quiz title" size="sm" value={item.quizContent.title} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, title: e.target.value}})} styles={mantineInputStyles} />
-                                                            <Textarea label="Quiz Description (Optional)" placeholder="Instructions..." size="sm" minRows={2} autosize value={item.quizContent.description || ''} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, description: e.target.value}})} styles={mantineInputStyles} />
+                                                            <TextInput label={<><span className={`${midBrown} text-xs font-medium`}>Quiz Title</span> <span className="text-red-500">*</span></>} placeholder="Enter quiz title" size="sm" value={item.quizContent.title} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, title: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}} styles={mantineInputStyles} />
+                                                            <Textarea label={<span className={`${midBrown} text-xs font-medium`}>Quiz Description</span>} placeholder="Instructions..." size="sm" minRows={2} autosize value={item.quizContent.description || ''} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, description: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}} styles={mantineInputStyles} />
                                                             <details className="group">
                                                                 <summary className={`list-none flex items-center justify-between cursor-pointer p-2 border rounded-md ${themedInputBorder} ${editorToolbarBgMantine}`}> <span className={`${midBrown} text-sm font-medium`}>Quiz Settings</span> <ChevronDown className="h-4 w-4 text-gray-500 group-open:rotate-180 transition-transform"/> </summary>
                                                                 <div className={`mt-2 p-3 border rounded-md border-t-0 rounded-t-none ${themedInputBorder} space-y-3 bg-white dark:bg-gray-800/30`}>
                                                                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                                                                        <div className="flex items-center gap-1"><ShadcnLabel htmlFor={`timeLimit-${item.id}`} className={`${midBrown} text-xs`}>Time Limit (min):</ShadcnLabel><TextInput id={`timeLimit-${item.id}`} type="number" min="1" value={item.quizContent.settings?.timeLimit ?? ''} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent!.settings, timeLimit: e.currentTarget.value ? Math.max(1, parseInt(e.currentTarget.value)) : undefined }}})} placeholder="None" size="xs" className="w-20" styles={mantineInputStyles}/></div>
-                                                                        <div className="flex items-center gap-1"><ShadcnLabel htmlFor={`passScore-${item.id}`} className={`${midBrown} text-xs`}>Pass Score (%):</ShadcnLabel><TextInput id={`passScore-${item.id}`} type="number" min="0" max="100" value={item.quizContent.settings?.passingScore ?? ''} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent!.settings, passingScore: e.currentTarget.value ? Math.max(0, Math.min(100, parseInt(e.currentTarget.value))) : undefined }}})} placeholder="None" size="xs" className="w-20" styles={mantineInputStyles}/></div>
+                                                                        <div className="flex items-center gap-1"><ShadcnLabel htmlFor={`timeLimit-${item.id}`} className={`${midBrown} text-xs`}>Time Limit (min):</ShadcnLabel><TextInput id={`timeLimit-${item.id}`} type="number" min="1" value={item.quizContent.settings?.timeLimit ?? ''} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent?.settings, timeLimit: e.currentTarget.value ? Math.max(1, parseInt(e.currentTarget.value)) : undefined }}}); setSuccessMessage(null); setErrorModal(null);}} placeholder="None" size="xs" className="w-20" styles={mantineInputStyles}/></div>
+                                                                        <div className="flex items-center gap-1"><ShadcnLabel htmlFor={`passScore-${item.id}`} className={`${midBrown} text-xs`}>Pass Score (%):</ShadcnLabel><TextInput id={`passScore-${item.id}`} type="number" min="0" max="100" value={item.quizContent.settings?.passingScore ?? ''} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent?.settings, passingScore: e.currentTarget.value ? Math.max(0, Math.min(100, parseInt(e.currentTarget.value))) : undefined }}}); setSuccessMessage(null); setErrorModal(null);}} placeholder="None" size="xs" className="w-20" styles={mantineInputStyles}/></div>
                                                                         <Group>
-                                                                            <MantineCheckbox id={`shuffle-${item.id}`} checked={item.quizContent.settings?.shuffleQuestions ?? false} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent!.settings, shuffleQuestions: e.currentTarget.checked }}})} label={<span className={midBrown}>Shuffle Qs</span>} size="xs"/>
-                                                                            <MantineCheckbox id={`retake-${item.id}`} checked={item.quizContent.settings?.allowRetake ?? false} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent!.settings, allowRetake: e.currentTarget.checked }}})} label={<span className={midBrown}>Allow Retakes</span>} size="xs"/>
-                                                                            <MantineCheckbox id={`showPoints-${item.id}`} checked={item.quizContent.settings?.showPoints ?? false} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent!.settings, showPoints: e.currentTarget.checked }}})} label={<span className={midBrown}>Show Points</span>} size="xs"/>
-                                                                            <MantineCheckbox id={`requireLogin-${item.id}`} checked={item.quizContent.settings?.requireLogin ?? false} onChange={e => handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent!.settings, requireLogin: e.currentTarget.checked }}})} label={<span className={midBrown}>Require Login</span>} size="xs"/>
+                                                                            <MantineCheckbox id={`shuffle-${item.id}`} checked={item.quizContent.settings?.shuffleQuestions ?? false} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent?.settings, shuffleQuestions: e.currentTarget.checked }}}); setSuccessMessage(null); setErrorModal(null);}} label={<span className={midBrown}>Shuffle Qs</span>} size="xs"/>
+                                                                            <MantineCheckbox id={`retake-${item.id}`} checked={item.quizContent.settings?.allowRetake ?? true} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent?.settings, allowRetake: e.currentTarget.checked }}}); setSuccessMessage(null); setErrorModal(null);}} label={<span className={midBrown}>Allow Retakes</span>} size="xs"/>
+
                                                                         </Group>
                                                                      </div>
                                                                 </div>
                                                             </details>
                                                             <ShadcnLabel className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-medium block pt-2`}>Questions: <span className="text-red-500">*</span></ShadcnLabel>
-                                                            {(item.quizContent.questions || []).map((q) => ( <QuizQuestionEditor key={q.id} question={q} onUpdate={updatedQ => { if (!item.quizContent?.questions) return; const newQs = item.quizContent.questions.map(oldQ => oldQ.id === q.id ? updatedQ : oldQ); handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: newQs } }); }} onRemove={() => { if (!item.quizContent?.questions) return; handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: item.quizContent.questions.filter(oldQ => oldQ.id !== q.id) } }); }} /> ))}
-                                                            <Button variant="outline" size="sm" onClick={() => { const newQ: ModalQuizQuestion = {id: generateId(), type: 'multiple_choice', question: '', required: false, options: [{id: generateId(), text:'', isCorrect:false}]}; handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: [...(item.quizContent!.questions || []), newQ] } }); }} className={`${outlineButtonClasses} text-xs h-8`}><Plus className="h-3.5 w-3.5 mr-1.5"/>Add Question</Button>
+                                                            {(item.quizContent.questions || []).map((q) => ( <QuizQuestionEditor key={q.id} question={q as ModalQuizQuestion} generateId={generateId} onUpdate={updatedQ => { if (!item.quizContent?.questions) return; const newQs = item.quizContent.questions.map(oldQ => oldQ.id === q.id ? updatedQ : oldQ); handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: newQs as ModalQuizQuestion[] } }); setSuccessMessage(null); setErrorModal(null);}} onRemove={() => { if (!item.quizContent?.questions) return; handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: item.quizContent.questions.filter(oldQ => oldQ.id !== q.id) } }); setSuccessMessage(null); setErrorModal(null);}} /> ))}
+                                                            <Button variant="outline" size="sm" onClick={() => { const newQ: ModalQuizQuestion = {id: generateId(), type: 'multiple_choice', question: '', required: false, options: [{id: generateId(), text:'', isCorrect:false}]}; handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: [...(item.quizContent!.questions || []), newQ] } }); setSuccessMessage(null); setErrorModal(null);}} className={`${outlineButtonClasses} text-xs h-8`}><Plus className="h-3.5 w-3.5 mr-1.5"/>Add Question</Button>
+                                                        </div>
+                                                    )}
+
+                                                    {item.type === 'document' && item.documentContent && (
+                                                        <div className="space-y-3">
+                                                            <TextInput label={<><span className={`${midBrown} text-xs font-medium`}>Document Title</span> <span className="text-red-500">*</span></>} placeholder="Enter document title" size="sm"
+                                                                value={item.documentContent.title}
+                                                                onChange={e => {handleUpdateRichContentItem(item.id, {documentContent: {...item.documentContent!, title: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}}
+                                                                styles={mantineInputStyles}
+                                                            />
+                                                            <Textarea label={<span className={`${midBrown} text-xs font-medium`}>Document Description</span>} placeholder="Add a description..." size="sm" minRows={2} autosize
+                                                                value={item.documentContent.description || ''}
+                                                                onChange={e => {handleUpdateRichContentItem(item.id, {documentContent: {...item.documentContent!, description: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}}
+                                                                styles={mantineInputStyles}
+                                                            />
+                                                            <FileInput
+                                                                label={<span className={`${midBrown} text-xs font-medium`}>Document File</span>}
+                                                                placeholder="Select PDF, DOC(X), PPT(X) file"
+                                                                accept={documentFileAcceptTypes}
+                                                                value={item.documentContent.documentFile || null}
+                                                                onChange={(file: File | null) => {
+                                                                    const current = richContent.find(rc => rc.id === item.id);
+                                                                    const oldUrl = current?.documentContent?.documentObjectUrl;
+                                                                    let newUrl = file ? URL.createObjectURL(file) : undefined;
+                                                                    handleUpdateRichContentItem(item.id, { documentContent: { ...item.documentContent!, documentFile: file || undefined, documentUrl: '', documentObjectUrl: newUrl, originalFileName: file?.name || item.documentContent?.originalFileName } });
+                                                                    if (oldUrl && oldUrl !== newUrl) URL.revokeObjectURL(oldUrl);
+                                                                    setSuccessMessage(null); setErrorModal(null);
+                                                                }}
+                                                                clearable size="sm" styles={mantineInputStyles}
+                                                            />
+                                                            {item.documentContent.documentFile && <p className="text-xs mt-1 text-green-600 dark:text-green-400">Selected: {item.documentContent.documentFile.name}</p>}
                                                         </div>
                                                     )}
                                                 </CardContent>
@@ -598,13 +616,13 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                         </Card>
                                     ))}
                                 </div>
-                                <Group mt="lg"> <MantineCheckbox id="content-required" checked={isRequired} onChange={(event) => setIsRequired(event.currentTarget.checked)} disabled={isSaving} label={<span className={`${midBrown} text-sm font-normal cursor-pointer`}>Mark this entire content item as required</span>} size="sm" /> </Group>
+                                <Group mt="lg"> <MantineCheckbox id="content-required" checked={isRequired} onChange={(event) => {setIsRequired(event.currentTarget.checked); setSuccessMessage(null); setErrorModal(null);}} disabled={isSaving} label={<span className={`${midBrown} text-sm font-normal cursor-pointer`}>Mark this entire content item as required</span>} size="sm" /> </Group>
                             </>
                         )}
                     </CardContent>
                     <CardFooter className={`flex justify-end gap-2 pt-3 pb-3 px-4 border-t ${themedInputBorder} sticky bottom-0 z-10 ${lightCardBg} ${darkCardBg}`}>
                         <Button variant="outline" onClick={onClose} disabled={isSaving} className={`${outlineButtonClasses} h-9`}>Cancel</Button>
-                        {!isPreviewMode && ( <Button onClick={handleSaveClick} disabled={isSaving || !title.trim() || richContent.length === 0} className={`${primaryButtonClasses} h-9`}> {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Saving...</> : <><Save className="mr-2 h-4 w-4"/>{isEditing ? "Save Changes" : "Create Content"}</>} </Button> )}
+                        {!isPreviewMode && ( <Button onClick={handleSaveClick} disabled={isSaving || !title.trim() || richContent.length === 0} className={`${primaryButtonClasses} h-9`}> {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Saving...</> : <><Save className="mr-2 h-4 w-4"/>{isEditingLocally ? "Save Changes" : "Create Content"}</>} </Button> )}
                     </CardFooter>
                 </Card>
             </MantineProvider>

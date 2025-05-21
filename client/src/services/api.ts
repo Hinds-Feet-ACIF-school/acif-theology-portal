@@ -22,17 +22,43 @@ export interface QuizBlockContent {
     allowProgressSaving?: boolean;
   };
   databaseQuizId: string;
+
 }
-export interface RichContentItemBlock { id: string; type: 'text' | 'video' | 'quiz'; order?: number; content?: string; videoContent?: VideoBlockContent; quizContent?: QuizBlockContent; }
+export interface RichContentItemBlock {
+  id: string;
+  type: 'text' | 'video' | 'quiz' | 'document'; // <<< 1. ADD 'document' TO THIS UNION
+  order?: number;
+  content?: string;
+  videoContent?: VideoBlockContent;
+  quizContent?: QuizBlockContent;
+  documentContent?: ApiDocumentBlockContentForSave; // <<< 2. ADD THIS OPTIONAL PROPERTY
+}
 export interface AssignmentDetails { id: string; weekId: string; title: string; description?: string; instructions?: string; type?: string; points?: number; dueDateOffsetDays?: number | null; order?: number; createdBy?: string; createdAt?: any; updatedAt?: any; weekNumber?: number; courseTitle?: string; courseId?: string; }
 export interface Section { id: string; weekId: string; title: string; description?: string; order: number; content: ContentItem[]; createdAt?: Date; updatedAt?: Date; }
 export interface DiscussionTopic { id: string; courseId: string; weekId?: string; sectionId?: string; title: string; description?: string; content?: string; createdAt?: Date; updatedAt?: Date; }
-export interface ContentItem { id?: string; type: 'text' | 'video' | 'quiz_link'; title: string; isRequired: boolean; content?: string; url?: string; richContent: RichContentItemBlock[]; order?: number; createdAt?: Date; updatedAt?: Date; }
+export interface ContentItem { 
+  id?: string;
+  type: 'text' | 'video' | 'quiz_link' | 'document'; // <<< 3. ADD 'document' TO THIS UNION
+  title: string;
+  isRequired: boolean;
+  content?: string;
+  url?: string;
+  richContent: RichContentItemBlock[]; // This will now use the updated RichContentItemBlock
+  order?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+interface CreateMaterialResponse {
+    message: string;
+    material: Material; // Using your existing Material type
+}
+
 export interface SectionData { weekId: string; title: string; description?: string; order: number; }
 export interface ContentData { type: ContentItem['type']; title: string; isRequired: boolean; content?: string; url?: string; richContent?: RichContentItemBlock[]; order: number; }
 export interface Course { id: string; title: string; description?: string; monthOrder: number; instructor?: string; instructorName?: string; ects?: number; settings?: { defaultPassingScore?: number; }; }
 export interface Week { id: string; courseId: string; weekNumber: number; title: string; description?: string; sections?: Section[]; }
-export interface Material { id: string; weekId: string; title: string; type: 'video' | 'reading' | 'resource'; contentUrl?: string; details?: string; }
+export interface Material { id: string; weekId: string; title: string; type: 'video' | 'reading' | 'resource' | 'document_asset' | 'video_asset' | 'image_asset'; contentUrl?: string; details?: string; storagePath?: string; /* Add storagePath if you save it */ } // Added asset types to Material type if createMaterial is generic
 export interface Quiz { id: string; weekId: string; title: string; description?: string; instructions?: string; quizUrl?: string; points?: number; dueDateOffsetDays?: number | null; isGraded?: boolean; passingScore?: number; }
 export interface DashboardStat { id: string | number; title: string; value: string | number; iconName: string; change?: string; }
 export interface StudentSummary { id: string; name: string; courseName: string; progress: number; }
@@ -68,6 +94,24 @@ export interface GradedItem {
 }
 
 export interface WeekGradeSummary { weekId: string; weekNumber: number; weekTitle: string; items: GradedItem[]; overallWeekProgress?: number; }
+
+export interface MonthlyProgress {
+  totalItems: number;
+  completedItems: number;
+  overallProgress: number;
+  quizScores: {
+    quizId: string;
+    title: string;
+    score: number;
+    passed: boolean;
+    submittedAt: string;
+  }[];
+}
+
+export interface CourseGradesResponse {
+  weeklyGrades: WeekGradeSummary[];
+  monthlyProgress: MonthlyProgress;
+}
 
 export interface ProcessedCourseOverviewItem {
     id: string;
@@ -115,6 +159,16 @@ const API = axios.create({
 });
 
 console.log("api.ts: Actual Axios baseURL after create:", API.defaults.baseURL);
+
+export interface ApiDocumentBlockContentForSave { // This definition is good
+  id: string;
+  title: string;
+  description?: string;
+  documentUrl: string;
+  originalFileName?: string;
+  fileSize?: number;
+  fileType?: string;
+}
 
 export const getToken = (): string | null => {
     try {
@@ -302,7 +356,29 @@ export interface AccessibleContentCourse {
 }
 export const getAccessibleContent = async (): Promise<AccessibleContentCourse[]> => {
    const response = await API.get('/courses/content/my-program');
-   return response.data;
+   const courses = response.data;
+   
+   // Fetch progress for each course
+   const coursesWithProgress = await Promise.all(
+     courses.map(async (course: AccessibleContentCourse) => {
+       try {
+         const gradesResponse = await API.get(`/courses/${course.id}/grades`);
+         const progress = gradesResponse.data.monthlyProgress;
+         return {
+           ...course,
+           progress: progress ? progress.overallProgress : 0
+         };
+       } catch (error) {
+         console.error(`Error fetching progress for course ${course.id}:`, error);
+         return {
+           ...course,
+           progress: 0
+         };
+       }
+     })
+   );
+   
+   return coursesWithProgress;
 };
 
 export const getWeeksByCourse = async (courseId: string): Promise<Week[]> => {
@@ -330,10 +406,26 @@ export const getMaterialsByWeek = async (weekId: string): Promise<Material[]> =>
     const response = await API.get(`/materials/by-week/${weekId}`);
     return response.data;
 };
-export const createMaterial = async (materialData: FormData | Omit<Material, 'id'>): Promise<Material> => {
+export const createMaterial = async (
+    materialData: FormData | Omit<Material, 'id' | 'contentUrl' | 'storagePath' | 'weekId' | 'title' | 'type'> & { weekId: string; title: string; type: string; contentUrl?:string; storagePath?:string; }
+): Promise<Material> => { // The function still promises to return a Material object
     const config = materialData instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
-    const response = await API.post('/materials', materialData, config );
-    return response.data;
+    try {
+        const response = await API.post<CreateMaterialResponse>('/materials/', materialData, config );
+        // Log for debugging what the backend actually sent
+        console.log("API Service: createMaterial raw response.data:", response.data);
+        
+        if (response.data && response.data.material) {
+            return response.data.material; // <<< ====== CORRECTED: Return the nested material object ======
+        } else {
+            // This case should ideally not happen if backend is consistent
+            console.error("API Service: createMaterial response did not contain a 'material' object:", response.data);
+            throw new Error("Failed to create material: Invalid response structure from server.");
+        }
+    } catch (error) {
+        console.error("API Service: Error in createMaterial API call:", getErrorMessage(error));
+        throw error; // Re-throw the original error or a processed one
+    }
 };
 export const updateMaterial = async (materialId: string, materialData: FormData | Partial<Omit<Material, 'id'>>): Promise<Material> => {
     const config = materialData instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
@@ -515,14 +607,84 @@ export async function getCourseById(courseId: string): Promise<Course | null> {
 }
 
 export async function getAdminDashboardStats(): Promise<DashboardStat[]> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const simulatedData: DashboardStat[] = [
-        { id: 'totalStudents', title: "Total Students", value: "150", iconName: "Users", change: "+10 since last week" },
-        { id: 'activeCourses', title: "Active Courses", value: "5", iconName: "BookOpen", change: "1 new" },
-        { id: 'completionRate', title: "Completion Rate", value: "75%", iconName: "CheckCircle2", change: "-2%" },
-        { id: 'avgGrade', title: "Avg. Grade", value: "B+", iconName: "FileText", change: "Stable" },
-    ];
-    return simulatedData;
+    try {
+        const response = await API.get("/admin/stats");
+        const stats = response.data || {};
+        
+        // Ensure we have default values for all stats
+        const userStats = stats.users || { students: 0, instructors: 0, admins: 0 };
+        const programStats = stats.program || { totalCourses: 0, activeCourses: 0, currentCohort: null };
+        const enrollmentStats = stats.enrollments || { activeEnrollments: 0 };
+
+        // Get cohort name for display
+        const cohortName = programStats.currentCohort 
+            ? `${programStats.currentCohort.isJanuaryCohort ? 'January' : 'July'} ${new Date(programStats.currentCohort.startDate).getFullYear()}`
+            : 'Current';
+        
+        return [
+            { 
+                id: 'totalStudents', 
+                title: "Total Students", 
+                value: (userStats.students || 0).toString(), 
+                iconName: "Users", 
+                change: `${enrollmentStats.activeEnrollments || 0} active in ${cohortName} cohort` 
+            },
+            { 
+                id: 'activeCourses', 
+                title: "Active Courses", 
+                value: (programStats.activeCourses || 0).toString(), 
+                iconName: "BookOpen", 
+                change: `${programStats.totalCourses || 0} total for ${cohortName} cohort` 
+            },
+            { 
+                id: 'completionRate', 
+                title: "Completion Rate", 
+                value: "75%", 
+                iconName: "CheckCircle2", 
+                change: "-2%" 
+            },
+            { 
+                id: 'avgGrade', 
+                title: "Avg. Grade", 
+                value: "B+", 
+                iconName: "FileText", 
+                change: "Stable" 
+            },
+        ];
+    } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+        // Return default values in case of error
+        return [
+            { 
+                id: 'totalStudents', 
+                title: "Total Students", 
+                value: "0", 
+                iconName: "Users", 
+                change: "0 active in current cohort" 
+            },
+            { 
+                id: 'activeCourses', 
+                title: "Active Courses", 
+                value: "0", 
+                iconName: "BookOpen", 
+                change: "0 total for current cohort" 
+            },
+            { 
+                id: 'completionRate', 
+                title: "Completion Rate", 
+                value: "75%", 
+                iconName: "CheckCircle2", 
+                change: "-2%" 
+            },
+            { 
+                id: 'avgGrade', 
+                title: "Avg. Grade", 
+                value: "B+", 
+                iconName: "FileText", 
+                change: "Stable" 
+            },
+        ];
+    }
 }
 
 export async function getAdminRecentStudents(limit: number = 4): Promise<StudentSummary[]> {
@@ -638,22 +800,9 @@ export const updateSectionProgress = async (weekId: string, sectionId: string, c
   }
 };
 
-export const getMyCourseGrades = async (courseId: string): Promise<WeekGradeSummary[]> => {
-  if (!courseId) {
-    console.error("[apiService] getMyCourseGrades: courseId is required.");
-    throw new Error("Course ID is required to fetch grades.");
-  }
-  try {
-    const response = await API.get(`/courses/${courseId}/my-grades`);
-    return response.data;
-  } catch (error: unknown) {
-    console.error(`[apiService] Error fetching grades for course ${courseId}:`, getErrorMessage(error));
-    if (axios.isAxiosError(error) && error.response?.status === 404) {
-        console.warn(`[apiService] No grades found for course ${courseId}, returning empty array.`);
-        return [];
-    }
-    throw error;
-  }
+export const getMyCourseGrades = async (courseId: string): Promise<CourseGradesResponse> => {
+  const response = await API.get(`/courses/${courseId}/my-grades`);
+  return response.data;
 };
 
 export { API };

@@ -3,9 +3,10 @@
 import React, { Component, ErrorInfo, ReactNode, useEffect } from 'react';
 import { Button } from "../ui/button.js";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card.js";
-import { X, FileText, Video as VideoIcon, HelpCircle } from 'lucide-react';
+import { X, FileText, Video as VideoIcon, HelpCircle, Download } from 'lucide-react';
 import { Input } from "../ui/input.js"; 
 import { Textarea } from "../ui/textarea.js";
+import DocumentViewer from '../DocumentViewer.js';
 
 import type { Section, ContentItem, RichContentItemBlock, VideoBlockContent, QuizBlockContent, QuizQuestion as ApiQuizQuestion } from '../../services/api';
 
@@ -21,6 +22,7 @@ const themedInputBg = `bg-white dark:bg-gray-700`;
 const focusRing = 'focus:ring-2 focus:ring-offset-1 focus:ring-[#C5A467]/80 focus:outline-none';
 const inputClasses = `h-9 rounded-md px-3 text-sm ${themedInputBg} ${themedInputBorder} ${deepBrown} ${focusRing} placeholder:text-gray-500 dark:placeholder:text-gray-400`;
 const defaultDarkTextColor = 'dark:text-gray-200';
+const primaryButtonClasses = 'bg-[#C5A467] hover:bg-[#B08E4F] text-white dark:bg-[#D4B77D] dark:hover:bg-[#C5A467] transition-colors';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -180,6 +182,79 @@ const SectionPreviewModalComponent: React.FC<SectionPreviewModalProps> = ({
                                 {block.quizContent.questions === undefined ? 'Quiz questions loading or unavailable.' : 'Quiz has no questions.'}
                             </p>
                         )}
+                    </div>
+                )}
+                {block.type === 'document' && block.documentContent && (
+                    <div className="not-prose document-block-preview space-y-2">
+                        <h4 className={`text-md font-semibold mb-1 ${deepBrown}`}>{block.documentContent.title || "Untitled Document"}</h4>
+                        {block.documentContent.description && <p className={`text-sm mb-1.5 ${midBrown}`}>{block.documentContent.description}</p>}
+                        
+                        {(() => {
+                            const docUrl = block.documentContent.documentUrl;
+                            const fileName = block.documentContent.originalFileName;
+                            const fileTypeFromContent = block.documentContent.fileType;
+
+                            console.log('[Modal Preview] Evaluating Document Block. ID:', block.id, {
+                                docUrl: docUrl || 'absent',
+                                isDocUrlValid: !!docUrl,
+                                fileName,
+                                fileTypeFromContent,
+                            });
+
+                            let isViewableType = false;
+                            const lowerFileName = fileName?.toLowerCase();
+                            if (fileTypeFromContent) {
+                                isViewableType = fileTypeFromContent === 'application/pdf' ||
+                                               fileTypeFromContent === 'application/vnd.ms-powerpoint' ||
+                                               fileTypeFromContent === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+                            } else if (lowerFileName) {
+                                isViewableType = lowerFileName.endsWith('.pdf') ||
+                                               lowerFileName.endsWith('.ppt') ||
+                                               lowerFileName.endsWith('.pptx');
+                            }
+                            console.log('[Modal Preview] Document Block. ID:', block.id, 'isViewableType:', isViewableType);
+
+                            if (docUrl && isViewableType) {
+                                console.log('[Modal Preview] RENDERING DocumentViewer for ID:', block.id, 'with URL:', docUrl);
+                                return (
+                                    <div className="mt-2 mb-3">
+                                        <DocumentViewer
+                                            fileUrl={docUrl}
+                                            fileType={fileTypeFromContent}
+                                            originalFileName={fileName}
+                                            themedInputBorder={themedInputBorder}
+                                            mutedText={mutedText}
+                                        />
+                                    </div>
+                                );
+                            } else if (docUrl) {
+                                console.log('[Modal Preview] Document Block (Fallback). ID:', block.id, 'docUrl present, but not viewable type or viewer failed. isViewableType:', isViewableType);
+                                return (
+                                    <div className="my-2">
+                                        <p className={`text-sm ${mutedText} mb-2`}>
+                                            {isViewableType ? "Preview loading or an issue occurred processing this file." : "Slide-by-slide preview is not available for this file type."}
+                                        </p>
+                                        <a 
+                                            href={docUrl} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            download={fileName || 'document'}
+                                            className={`${primaryButtonClasses} inline-flex items-center text-xs px-2.5 py-1.5 rounded`}
+                                        >
+                                            <Download className="h-3.5 w-3.5 mr-1.5"/>
+                                            Download {fileName || 'Document'}
+                                        </a>
+                                    </div>
+                                );
+                            } else {
+                                console.log('[Modal Preview] Document Block (No URL/File). ID:', block.id);
+                                return (
+                                    <div className={`my-2 p-3 ${editorCardBg} rounded text-sm ${mutedText} border ${themedInputBorder}`}>
+                                        Document file not yet selected or URL is missing.
+                                    </div>
+                                );
+                            }
+                        })()}
                     </div>
                 )}
             </div>

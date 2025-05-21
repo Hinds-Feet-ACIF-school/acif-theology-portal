@@ -1,5 +1,5 @@
 // src/pages/UserProfilePage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 import * as apiService from '../services/api.js';
@@ -18,12 +18,12 @@ import {
   Home,
   Loader2,
   AlertCircle,
-  Camera,
+  Camera, // Imported, can be used for future profile picture upload UI
   X,
   Briefcase,
   CalendarDays,
-  CheckCircle, // <<< ADDED IMPORT
-} from 'lucide-react'; // <<< ENSURE CheckCircle IS IMPORTED HERE
+  CheckCircle,
+} from 'lucide-react';
 import { cn } from '../lib/utils.js';
 
 
@@ -46,7 +46,7 @@ const textAreaClasses = `rounded-md px-3 py-2 text-sm min-h-[80px] ${lightCardBg
 const labelClasses = `${deepBrown} text-sm font-medium`;
 
 const UserProfilePage: React.FC = () => {
-  const { currentUser: user, fetchCurrentUser, updateUserContextProfile, loading: authLoading } = useAuth();
+  const { currentUser: user, updateUserContextProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -68,6 +68,16 @@ const UserProfilePage: React.FC = () => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
 
+  const resetProfileFormFields = useCallback(() => {
+    if (user) {
+      setFirstName(user.firstName || '');
+      setLastName(user.lastName || '');
+      setCountry(user.country || '');
+      setChurch(user.church || '');
+      setBio(user.bio || '');
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/login', { replace: true, state: { from: location } });
@@ -76,23 +86,25 @@ const UserProfilePage: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      setFirstName(user.firstName || '');
-      setLastName(user.lastName || '');
-      setCountry(user.country || '');
-      setChurch(user.church || '');
-      setBio(user.bio || '');
+      resetProfileFormFields();
       setPageLoading(false);
     } else if (!authLoading) {
       setPageLoading(false);
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, resetProfileFormFields]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
 
-    if (!firstName.trim() || !lastName.trim() || !country.trim()) {
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
+    const trimmedCountry = country.trim();
+    const trimmedChurch = church.trim();
+    const trimmedBio = bio.trim();
+
+    if (!trimmedFirstName || !trimmedLastName || !trimmedCountry) {
         setError("First name, last name, and country are required.");
         return;
     }
@@ -101,12 +113,16 @@ const UserProfilePage: React.FC = () => {
 
     const profileDataToUpdate: Partial<{firstName: string; lastName: string; country: string; church: string | null; bio: string | null;}> = {};
 
-    if (firstName !== user?.firstName) profileDataToUpdate.firstName = firstName;
-    if (lastName !== user?.lastName) profileDataToUpdate.lastName = lastName;
-    if (country !== user?.country) profileDataToUpdate.country = country;
-    if (church !== (user?.church || '')) profileDataToUpdate.church = church || null;
-    if (bio !== (user?.bio || '')) profileDataToUpdate.bio = bio || null;
-
+    if (trimmedFirstName !== (user?.firstName || '')) profileDataToUpdate.firstName = trimmedFirstName;
+    if (trimmedLastName !== (user?.lastName || '')) profileDataToUpdate.lastName = trimmedLastName;
+    if (trimmedCountry !== (user?.country || '')) profileDataToUpdate.country = trimmedCountry;
+    
+    if (trimmedChurch !== (user?.church || '')) {
+        profileDataToUpdate.church = trimmedChurch === '' ? null : trimmedChurch;
+    }
+    if (trimmedBio !== (user?.bio || '')) {
+        profileDataToUpdate.bio = trimmedBio === '' ? null : trimmedBio;
+    }
 
     if (Object.keys(profileDataToUpdate).length === 0 ) {
         setSuccessMessage("No changes detected in profile information.");
@@ -122,7 +138,8 @@ const UserProfilePage: React.FC = () => {
         setSuccessMessage('Profile updated successfully!');
         setIsEditingProfile(false);
       } else {
-        throw new Error("Profile update response was not in the expected format.");
+        console.error("Profile update response was not in the expected format:", response);
+        throw new Error("Profile update response was not in the expected format. Please try again.");
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.data?.message || err.message || 'Failed to update profile.');
@@ -169,6 +186,19 @@ const UserProfilePage: React.FC = () => {
     setSuccessMessage(null);
   };
 
+  const handleCancelEditProfile = () => {
+    setIsEditingProfile(false);
+    clearMessages();
+    resetProfileFormFields();
+  };
+
+  const handleCancelChangePassword = () => {
+    setIsChangingPassword(false);
+    clearMessages();
+    setNewPassword('');
+    setConfirmNewPassword('');
+  };
+
   if (authLoading || pageLoading) {
     return (
       <div className={`flex flex-col items-center justify-center min-h-screen ${lightBg} ${darkBg} p-4`}>
@@ -180,8 +210,13 @@ const UserProfilePage: React.FC = () => {
 
   if (!user) {
     return (
-        <div className={`flex flex-col items-center justify-center min-h-screen ${lightBg} ${darkBg} p-4`}>
-            <p className={`${midBrown} mt-4`}>Redirecting to login...</p>
+        <div className={`flex flex-col items-center justify-center min-h-screen ${lightBg} ${darkBg} p-4 text-center`}>
+            <AlertCircle className={`h-12 w-12 ${goldAccent} mb-4`} />
+            <p className={`${midBrown}`}>Could not load user profile.</p>
+            <p className={`${midBrown} text-sm`}>You may need to log in again.</p>
+            <Button onClick={() => navigate('/login', { replace: true })} className={`mt-6 ${primaryButtonClasses}`}>
+                Go to Login
+            </Button>
       </div>
     );
   }
@@ -225,7 +260,7 @@ const UserProfilePage: React.FC = () => {
                  {user.role && <p className={`${midBrown} text-sm capitalize mt-0.5 flex items-center gap-1.5`}><Briefcase className="h-4 w-4"/> Role: {user.role}</p>}
               </div>
             </div>
-            {!isEditingProfile && (
+            {!isEditingProfile && !isChangingPassword && (
               <Button variant="outline" onClick={() => { setIsEditingProfile(true); setIsChangingPassword(false); clearMessages(); }} className={`${outlineButtonClasses} mt-4 md:mt-0`}>
                 <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
               </Button>
@@ -267,7 +302,7 @@ const UserProfilePage: React.FC = () => {
                 </div>
               </CardContent>
               <CardFooter className="p-4 md:p-6 flex justify-end gap-2 border-t ${inputBorder}">
-                <Button type="button" variant="outline" onClick={() => { setIsEditingProfile(false); clearMessages(); }} className={outlineButtonClasses} disabled={isSavingProfile}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={handleCancelEditProfile} className={outlineButtonClasses} disabled={isSavingProfile}>Cancel</Button>
                 <Button type="submit" className={primaryButtonClasses} disabled={isSavingProfile}>
                   {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   Save Changes
@@ -276,11 +311,11 @@ const UserProfilePage: React.FC = () => {
             </form>
           ) : (
             <CardContent className="p-4 md:p-6 space-y-3">
-              <InfoItem icon={MapPin} label="Country" value={user.country || 'Not set'} />
-              <InfoItem icon={Home} label="Church/Affiliation" value={user.church || 'Not set'} />
-              <InfoItem icon={UserIcon} label="Bio" value={user.bio || 'Not set'} isTextarea />
-              {user.enrollment?.cohortId && <InfoItem icon={UserIcon} label="Enrollment" value={`Enrolled (Cohort: ${user.enrollment.cohortId})`} />}
-              {user.createdAt && <InfoItem icon={CalendarDays} label="Joined" value={typeof user.createdAt === 'string' ? new Date(user.createdAt).toLocaleDateString() : user.createdAt?.toLocaleDateString() || 'N/A'} />}
+              <InfoItem icon={MapPin} label="Country" value={user.country} />
+              <InfoItem icon={Home} label="Church/Affiliation" value={user.church} />
+              <InfoItem icon={UserIcon} label="Bio" value={user.bio} isTextarea />
+              {user.enrollment?.cohortId && <InfoItem icon={Briefcase} label="Enrollment" value={`Enrolled (Cohort: ${user.enrollment.cohortId})`} />}
+              {user.createdAt && <InfoItem icon={CalendarDays} label="Joined" value={user.createdAt instanceof Date ? user.createdAt.toLocaleDateString() : String(user.createdAt)} />}
             </CardContent>
           )}
         </Card>
@@ -288,7 +323,7 @@ const UserProfilePage: React.FC = () => {
         <Card className={`${lightCardBg} ${darkCardBg} border ${inputBorder} shadow-lg`}>
           <CardHeader className="flex flex-row items-center justify-between p-4 md:p-6 border-b ${inputBorder}">
             <CardTitle className={`${deepBrown} text-xl font-serif flex items-center gap-2`}><KeyRound className="h-5 w-5"/>Security</CardTitle>
-            {!isChangingPassword && (
+            {!isChangingPassword && !isEditingProfile && (
                 <Button variant="outline" onClick={() => { setIsChangingPassword(true); setIsEditingProfile(false); clearMessages(); }} className={outlineButtonClasses}>
                     Change Password
                 </Button>
@@ -307,7 +342,7 @@ const UserProfilePage: React.FC = () => {
                 </div>
               </CardContent>
               <CardFooter className="p-4 md:p-6 flex justify-end gap-2 border-t ${inputBorder}">
-                <Button type="button" variant="outline" onClick={() => { setIsChangingPassword(false); clearMessages();}} className={outlineButtonClasses} disabled={isSavingPassword}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={handleCancelChangePassword} className={outlineButtonClasses} disabled={isSavingPassword}>Cancel</Button>
                 <Button type="submit" className={primaryButtonClasses} disabled={isSavingPassword}>
                   {isSavingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   Update Password
