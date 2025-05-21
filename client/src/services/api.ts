@@ -73,39 +73,34 @@ export interface UserProgress { [sectionId: string]: boolean; }
 export interface GradedItem {
   id: string;
   title: string;
-  type: 'section_completion' | 'quiz_score' | string; // Added string for flexibility if other types exist
-  status?:
-    | 'completed'
-    | 'incomplete'
-    | 'not_started'
-    | 'passed'
-    | 'failed'
-    | 'pending_grade'
-    | 'submitted'
-    | 'pending_manual_grading' // Added
-    | 'pending_review'       // Added
-    | 'in_progress'          // Added
-    | string;                // Added string for flexibility
-  score?: number | null;
-  maxScore?: 100;
-  isGraded?: boolean;
-  progressPercent?: number;  // Added
-  passingScore?: number;     // Added
+  status: string;
+  score: number | null;
+  isGraded: boolean;
+  passingScore?: number;
+  type?: string; // Make type optional since it's not always present
 }
 
-export interface WeekGradeSummary { weekId: string; weekNumber: number; weekTitle: string; items: GradedItem[]; overallWeekProgress?: number; }
+export interface WeekGradeSummary {
+  weekId: string;
+  weekNumber: number;
+  weekTitle: string;
+  items: GradedItem[];
+  overallWeekProgress: number;
+}
+
+export interface QuizScore {
+  quizId: string;
+  title: string;
+  score: number;
+  passed: boolean;
+  submittedAt: string | null; // Allow null for submittedAt
+}
 
 export interface MonthlyProgress {
   totalItems: number;
   completedItems: number;
   overallProgress: number;
-  quizScores: {
-    quizId: string;
-    title: string;
-    score: number;
-    passed: boolean;
-    submittedAt: string;
-  }[];
+  quizScores: QuizScore[];
 }
 
 export interface CourseGradesResponse {
@@ -801,8 +796,8 @@ export const updateSectionProgress = async (weekId: string, sectionId: string, c
 };
 
 export const getMyCourseGrades = async (courseId: string): Promise<CourseGradesResponse> => {
-  const response = await API.get(`/courses/${courseId}/my-grades`);
-  return response.data;
+    const response = await API.get(`/courses/${courseId}/my-grades`);
+    return response.data;
 };
 
 export { API };

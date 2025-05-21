@@ -90,13 +90,51 @@ export default function CourseDetailPage() {
         
         // Validate weeklyGrades
         if (Array.isArray(weeklyGrades)) {
-          const sanitizedWeeklyGrades = weeklyGrades.map(weekGrade => ({
-            weekId: weekGrade.weekId || '',
-            weekNumber: weekGrade.weekNumber || 0,
-            weekTitle: weekGrade.weekTitle || 'Untitled Week',
-            items: Array.isArray(weekGrade.items) ? weekGrade.items : [],
-            overallWeekProgress: typeof weekGrade.overallWeekProgress === 'number' ? weekGrade.overallWeekProgress : 0
-          }));
+          const sanitizedWeeklyGrades = weeklyGrades.map(weekGrade => {
+            // Ensure weekGrade is an object
+            if (!weekGrade || typeof weekGrade !== 'object') {
+              console.warn("Invalid weekGrade object:", weekGrade);
+              return {
+                weekId: '',
+                weekNumber: 0,
+                weekTitle: 'Untitled Week',
+                items: [],
+                overallWeekProgress: 0
+              };
+            }
+
+            // Ensure items is an array
+            const items = Array.isArray(weekGrade.items) ? weekGrade.items : [];
+            
+            // Sanitize each item in the items array
+            const sanitizedItems = items.map(item => {
+              if (!item || typeof item !== 'object') {
+                return {
+                  id: '',
+                  title: 'Untitled Item',
+                  status: 'not_started',
+                  score: null,
+                  isGraded: false
+                };
+              }
+              return {
+                id: item.id || '',
+                title: item.title || 'Untitled Item',
+                status: item.status || 'not_started',
+                score: typeof item.score === 'number' ? item.score : null,
+                isGraded: Boolean(item.isGraded),
+                passingScore: typeof item.passingScore === 'number' ? item.passingScore : undefined
+              };
+            });
+
+            return {
+              weekId: weekGrade.weekId || '',
+              weekNumber: typeof weekGrade.weekNumber === 'number' ? weekGrade.weekNumber : 0,
+              weekTitle: weekGrade.weekTitle || 'Untitled Week',
+              items: sanitizedItems,
+              overallWeekProgress: typeof weekGrade.overallWeekProgress === 'number' ? weekGrade.overallWeekProgress : 0
+            };
+          });
           setGradesData(sanitizedWeeklyGrades);
         } else {
           console.error("CourseDetailPage: weeklyGrades is not an array:", weeklyGrades);
@@ -109,7 +147,13 @@ export default function CourseDetailPage() {
             totalItems: typeof monthlyProgress.totalItems === 'number' ? monthlyProgress.totalItems : 0,
             completedItems: typeof monthlyProgress.completedItems === 'number' ? monthlyProgress.completedItems : 0,
             overallProgress: typeof monthlyProgress.overallProgress === 'number' ? monthlyProgress.overallProgress : 0,
-            quizScores: Array.isArray(monthlyProgress.quizScores) ? monthlyProgress.quizScores : []
+            quizScores: Array.isArray(monthlyProgress.quizScores) ? monthlyProgress.quizScores.map(quiz => ({
+              quizId: quiz.quizId || '',
+              title: quiz.title || 'Untitled Quiz',
+              score: typeof quiz.score === 'number' ? quiz.score : 0,
+              passed: Boolean(quiz.passed),
+              submittedAt: quiz.submittedAt || null
+            })) : []
           };
           setMonthlyProgress(sanitizedMonthlyProgress);
         } else {
@@ -181,20 +225,20 @@ export default function CourseDetailPage() {
         item.passingScore ?? 
         DEFAULT_GLOBAL_PASSING_SCORE;
 
-    if (item.score !== null && item.score !== undefined) { 
+      if (item.score !== null && item.score !== undefined) { 
       if (item.score >= effectivePassingScore) {
         statusIcon = <MuiCheckCircle color="success" sx={{ fontSize: '1.25rem' }} />;
         statusText = 'Passed';
         statusTextColorClass = 'text-green-600 dark:text-green-400';
         statusBgClass = 'bg-green-50 dark:bg-green-900/30'; // Adjusted dark mode bg
-      } else {
+        } else {
         statusIcon = <MuiCancel color="error" sx={{ fontSize: '1.25rem' }} />;
         statusText = 'Failed';
         statusTextColorClass = 'text-red-600 dark:text-red-400';
         statusBgClass = 'bg-red-50 dark:bg-red-900/30'; // Adjusted dark mode bg
-      }
-      scoreDisplay = `${item.score}%`;
-    } else {
+        }
+        scoreDisplay = `${item.score}%`; 
+      } else { 
       switch (item.status) {
         case 'completed':
           statusIcon = <MuiCheckCircle color="success" sx={{ fontSize: '1.25rem' }} />;
@@ -240,7 +284,7 @@ export default function CourseDetailPage() {
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className={`p-1.5 sm:p-2 rounded-full flex-shrink-0 ${statusBgClass} flex items-center justify-center`}>
               {statusIcon}
-            </div>
+        </div>
             <Typography variant="body1" className={`${primaryTextLight} ${primaryTextDark} font-medium truncate flex-grow`}>
               {item.title}
             </Typography>
@@ -252,7 +296,7 @@ export default function CourseDetailPage() {
               </Typography>
             </div>
             <Typography variant="body1" className={`${primaryTextLight} ${primaryTextDark} font-semibold w-12 text-right`}>
-              {scoreDisplay}
+            {scoreDisplay} 
             </Typography>
           </div>
         </div>
@@ -397,7 +441,7 @@ export default function CourseDetailPage() {
     <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark}`}>
       <div className="w-full py-6 md:py-8 lg:py-10 xl:py-12">
         <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-          <Button
+         <Button
             variant="link"
             onClick={() => navigate('/dashboard')}
             className={`flex items-center ${goldAccent} hover:text-[${accentHoverColor}] p-0 h-auto mb-4 text-xs sm:text-sm font-medium transition-colors focus-visible:ring-1 focus-visible:ring-[${accentColor}]`}
@@ -466,11 +510,11 @@ export default function CourseDetailPage() {
           <TabsContent value="content" className="space-y-4 sm:space-y-6 focus-visible:ring-0 outline-none">
             {courseData && courseData.weeks && courseData.weeks.length === 0 && (
               <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-lg hover:shadow-xl transition-shadow duration-300`}>
-                <CardContent className={`p-6 sm:p-8 text-center ${mutedTextLight} ${mutedTextDark}`}>
-                  <BookOpen className="mx-auto h-10 w-10 sm:h-12 sm:w-12 mb-3" />
-                  No weeks have been added to this course yet.
-                </CardContent>
-              </Card>
+                    <CardContent className={`p-6 sm:p-8 text-center ${mutedTextLight} ${mutedTextDark}`}>
+                        <BookOpen className="mx-auto h-10 w-10 sm:h-12 sm:w-12 mb-3" />
+                        No weeks have been added to this course yet.
+                    </CardContent>
+                </Card>
             )}
             
             {courseData && courseData.weeks && courseData.weeks.map((week) => {
@@ -498,7 +542,7 @@ export default function CourseDetailPage() {
                       <Button
                         onClick={() => {
                           if (routeCourseId && week.id) {
-                            navigate(`/courses/${routeCourseId}/week/${week.id}`);
+                             navigate(`/courses/${routeCourseId}/week/${week.id}`);
                           }
                         }}
                         className={`${primaryButtonClasses} text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto self-start sm:self-center mt-2 sm:mt-0 shrink-0`}
@@ -512,35 +556,35 @@ export default function CourseDetailPage() {
                     <CardContent className="p-2 sm:p-2.5 pt-1.5 sm:pt-2">
                       <div className="flex items-center justify-center text-xs h-6"> {/* Added h-6 for consistent height */}
                         <Loader2 className={`h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin mr-1.5 sm:mr-2 ${goldAccent}`} />
-                        <span className={`${mutedTextLight} ${mutedTextDark}`}>Loading progress...</span>
-                      </div>
+                            <span className={`${mutedTextLight} ${mutedTextDark}`}>Loading progress...</span>
+                        </div>
                     </CardContent>
                   ) : currentWeekProgress !== undefined ? (
                     <CardContent className="p-2 sm:p-2.5 pt-1.5 sm:pt-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className={`${mutedTextLight} ${mutedTextDark}`}>Week Progress</span>
-                        <span className={`${primaryTextLight} ${primaryTextDark} font-medium`}>{currentWeekProgress}%</span>
-                      </div>
+                          <div className="flex items-center justify-between text-xs">
+                              <span className={`${mutedTextLight} ${mutedTextDark}`}>Week Progress</span>
+                              <span className={`${primaryTextLight} ${primaryTextDark} font-medium`}>{currentWeekProgress}%</span>
+                          </div>
                       <Progress 
                         value={currentWeekProgress || 0} 
                         className={`h-1 sm:h-1.5 mt-1 [&>div]:bg-[${accentColor}]`} 
                         aria-label={`Week ${week.weekNumber} progress: ${currentWeekProgress}%`}
                       />
-                    </CardContent>
+                      </CardContent>
                   ) : (
                     !isLoadingGrades && !gradesError && (
                       <CardContent className="p-2 sm:p-2.5 pt-1.5 sm:pt-2">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className={`${mutedTextLight} ${mutedTextDark}`}>Week Progress</span>
-                          <span className={`${mutedTextLight} ${mutedTextDark}`}>N/A</span>
-                        </div>
+                             <div className="flex items-center justify-between text-xs">
+                                <span className={`${mutedTextLight} ${mutedTextDark}`}>Week Progress</span>
+                                <span className={`${mutedTextLight} ${mutedTextDark}`}>N/A</span>
+                            </div>
                         <Progress 
                           value={0} 
                           title="Progress not available" 
                           className={`h-1 sm:h-1.5 mt-1 bg-gray-200 dark:bg-gray-700 [&>div]:bg-gray-400 dark:[&>div]:bg-gray-600`} 
                           aria-label={`Week ${week.weekNumber} progress: Not available`}
                         />
-                      </CardContent>
+                        </CardContent>
                     )
                   )}
                 </Card>
@@ -579,32 +623,32 @@ export default function CourseDetailPage() {
                             key={weekGrade.weekId} // Make sure weekGrade.weekId is unique and present
                             className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-lg hover:shadow-xl transition-shadow duration-300`}
                         >
-                            <CardHeader className="p-4 sm:p-5">
+                        <CardHeader className="p-4 sm:p-5">
                                 <CardTitle className={`text-base sm:text-lg md:text-xl ${primaryTextLight} ${primaryTextDark}`}>
                                     Week {weekGrade.weekNumber}: {weekGrade.weekTitle}
                                 </CardTitle>
                                 {overallWeekProgressForDisplay !== undefined && (
-                                    <div className="mt-2">
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span className={`${mutedTextLight} ${mutedTextDark}`}>Week Progress</span>
+                                 <div className="mt-2">
+                                     <div className="flex items-center justify-between text-xs">
+                                         <span className={`${mutedTextLight} ${mutedTextDark}`}>Week Progress</span>
                                             <span className={`${primaryTextLight} ${primaryTextDark} font-medium`}>
                                                 {overallWeekProgressForDisplay}%
                                             </span>
-                                        </div>
+                                     </div>
                                         <Progress
                                             value={overallWeekProgressForDisplay}
                                             className={`h-1 sm:h-1.5 mt-1 [&>div]:bg-[${accentColor}]`}
                                             aria-label={`Week ${weekGrade.weekNumber} progress: ${overallWeekProgressForDisplay}%`}
                                         />
-                                    </div>
-                                )}
-                            </CardHeader>
-                            <CardContent className="p-0">
+                                 </div>
+                            )}
+                        </CardHeader>
+                        <CardContent className="p-0">
                                 {gradedItemsToDisplay.length > 0 ? (
                                     <div className={`divide-y ${itemBorderLight} ${itemBorderDark}`}>
                                         {gradedItemsToDisplay.map(item => renderGradedItem(item))}
-                                    </div>
-                                ) : (
+                                </div>
+                            ) : (
                                     <p className={`${mutedTextLight} ${mutedTextDark} text-xs sm:text-sm py-4 px-4 sm:px-5`}>
                                         No graded items for this week.
                                     </p>
@@ -622,7 +666,7 @@ export default function CourseDetailPage() {
                     </Card>
                   )
                 )}
-              </>
+                </>
             )}
           </TabsContent>
         </Tabs>
