@@ -81,63 +81,46 @@ export default function CourseDetailPage() {
     try {
       const response = await apiService.getMyCourseGrades(routeCourseId);
       
-      // --- THIS IS THE MOST IMPORTANT LOG. WE NEED ITS FULL OUTPUT ---
-      console.log("CourseDetailPage (fetchGrades): FULL Raw API Response:", JSON.stringify(response, null, 2));
+      // Log the raw response for debugging
+      console.log("CourseDetailPage: RAW Grades data received from backend:", response);
 
-      if (response && response.weeklyGrades && Array.isArray(response.weeklyGrades) && response.monthlyProgress) {
-        console.log("CourseDetailPage (fetchGrades): response.weeklyGrades IS an array. Length:", response.weeklyGrades.length);
-
-        const sanitizedWeeklyGrades = response.weeklyGrades.map((wg: any, index: number) => {
-          // Log each original weekGrade object before any sanitization
-          console.log(`CourseDetailPage (fetchGrades - PRE-SANITIZATION): Processing weeklyGrade index ${index}:`, JSON.stringify(wg, null, 2));
-
-          if (!wg) { // Handles if an element in weeklyGrades is null/undefined
-            console.warn(`CourseDetailPage (fetchGrades - SANITIZING): weeklyGrade at index ${index} is null/undefined. Replacing with default.`);
-            // Provide a default structure that matches WeekGradeSummary as much as possible
-            return { 
-              items: [], 
-              weekId: `unknown_week_${Date.now()}_${index}`, 
-              weekTitle: "Unknown Week", 
-              weekNumber: 0, 
-              overallWeekProgress: 0 // Ensure all expected fields are present
-            };
-          }
-
-          const currentItems = wg.items;
-          if (!Array.isArray(currentItems)) {
-            // --- THIS IS THE CRITICAL WARNING. IF THIS APPEARS, WE'VE FOUND THE PROBLEM DATA ---
-            console.warn(`CourseDetailPage (fetchGrades - SANITIZING): weeklyGrade.items for weekId '${wg.weekId}' (index ${index}) was NOT an array. Type: ${typeof currentItems}. Value:`, JSON.stringify(currentItems, null, 2), ". Replacing with empty array.");
-            return {
-              ...wg,
-              items: [] // Replace non-array 'items' with an empty array
-            };
-          }
-          
-          console.log(`CourseDetailPage (fetchGrades - SANITIZING): weeklyGrade.items for weekId '${wg.weekId}' (index ${index}) IS an array. Length: ${currentItems.length}`);
-          return wg; // If items is already an array, return as is
-        });
-
-        console.log("CourseDetailPage (fetchGrades - POST-SANITIZATION): Sanitized weeklyGrades:", JSON.stringify(sanitizedWeeklyGrades, null, 2));
-        setGradesData(sanitizedWeeklyGrades);
-        setMonthlyProgress(response.monthlyProgress);
-      } else {
-        let errorMsg = "Failed to fetch grades: Invalid data format from server.";
-        if (!response) {
-            errorMsg = "Failed to fetch grades: No response from server.";
-        } else if (!response.weeklyGrades || !Array.isArray(response.weeklyGrades)) {
-            errorMsg = "Failed to fetch grades: Invalid weekly grades data structure.";
-            console.error("CourseDetailPage (fetchGrades): weeklyGrades is missing or not an array. Full response:", response);
-        } else if (!response.monthlyProgress) {
-            errorMsg = "Failed to fetch grades: Invalid monthly progress data structure.";
-            console.error("CourseDetailPage (fetchGrades): monthlyProgress is missing. Full response:", response);
+      // Ensure response has the expected structure
+      if (response && typeof response === 'object') {
+        const { weeklyGrades, monthlyProgress } = response;
+        
+        // Validate weeklyGrades
+        if (Array.isArray(weeklyGrades)) {
+          const sanitizedWeeklyGrades = weeklyGrades.map(weekGrade => ({
+            weekId: weekGrade.weekId || '',
+            weekNumber: weekGrade.weekNumber || 0,
+            weekTitle: weekGrade.weekTitle || 'Untitled Week',
+            items: Array.isArray(weekGrade.items) ? weekGrade.items : [],
+            overallWeekProgress: typeof weekGrade.overallWeekProgress === 'number' ? weekGrade.overallWeekProgress : 0
+          }));
+          setGradesData(sanitizedWeeklyGrades);
+        } else {
+          console.error("CourseDetailPage: weeklyGrades is not an array:", weeklyGrades);
+          setGradesData([]);
         }
-        console.error("CourseDetailPage (fetchGrades): Problem with API response structure. Full response:", JSON.stringify(response, null, 2));
-        setGradesError(errorMsg);
-        setGradesData([]); 
-        setMonthlyProgress(null);
+
+        // Validate monthlyProgress
+        if (monthlyProgress && typeof monthlyProgress === 'object') {
+          const sanitizedMonthlyProgress = {
+            totalItems: typeof monthlyProgress.totalItems === 'number' ? monthlyProgress.totalItems : 0,
+            completedItems: typeof monthlyProgress.completedItems === 'number' ? monthlyProgress.completedItems : 0,
+            overallProgress: typeof monthlyProgress.overallProgress === 'number' ? monthlyProgress.overallProgress : 0,
+            quizScores: Array.isArray(monthlyProgress.quizScores) ? monthlyProgress.quizScores : []
+          };
+          setMonthlyProgress(sanitizedMonthlyProgress);
+        } else {
+          console.error("CourseDetailPage: monthlyProgress is invalid:", monthlyProgress);
+          setMonthlyProgress(null);
+        }
+      } else {
+        throw new Error("Invalid response format from server");
       }
     } catch (err: any) {
-      console.error("CourseDetailPage (fetchGrades): Exception during fetch or processing:", err);
+      console.error("CourseDetailPage: Error fetching grades:", err);
       setGradesError(err.response?.data?.message || err.message || "Failed to load grades.");
       setGradesData([]);
       setMonthlyProgress(null);
