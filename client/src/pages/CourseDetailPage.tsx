@@ -530,12 +530,20 @@ export default function CourseDetailPage() {
               <>
                 {renderMonthlyProgress()}
                 {gradesData.length > 0 ? gradesData.map((weekGrade) => {
-                    const gradedItemsToDisplay = weekGrade.items.filter(item => item.isGraded === true);
+                    // --- START FIX ---
+                    // Ensure weekGrade.items is an array. Default to empty array if not.
+                    const itemsToFilter = Array.isArray(weekGrade.items) ? weekGrade.items : [];
+                    if (!Array.isArray(weekGrade.items) && weekGrade.items != null) { // Log if it's not an array but also not null/undefined
+                        console.warn(`CourseDetailPage: weekGrade.items for weekId ${weekGrade.weekId} was not an array. Received:`, weekGrade.items);
+                    }
+                    const gradedItemsToDisplay = itemsToFilter.filter(item => item.isGraded === true);
+                    // --- END FIX ---
+                    
                     const overallWeekProgressForDisplay = weekGrade.overallWeekProgress;
 
                     return (
                         <Card
-                            key={weekGrade.weekId}
+                            key={weekGrade.weekId} // Make sure weekGrade.weekId is unique and present
                             className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-lg hover:shadow-xl transition-shadow duration-300`}
                         >
                             <CardHeader className="p-4 sm:p-5">
@@ -572,7 +580,7 @@ export default function CourseDetailPage() {
                         </Card>
                     );
                 }) : (
-                  !monthlyProgress && ( // Show only if monthly progress also didn't load, to avoid double "no data"
+                  !monthlyProgress && ( 
                     <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-lg`}>
                         <CardContent className={`p-6 sm:p-8 text-center ${mutedTextLight} ${mutedTextDark}`}>
                             <ListChecks className="mx-auto h-10 w-10 sm:h-12 sm:w-12 mb-3" />
