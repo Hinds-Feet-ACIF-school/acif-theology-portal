@@ -1,10 +1,12 @@
+// src/pages/CoursesPage.tsx
 import React, { useState, useEffect, MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button.js";
-import { Lock, PlayCircle, CheckCircle2, ChevronRight, Loader2, AlertCircle, LayoutDashboard } from "lucide-react";
+import { Lock, PlayCircle, CheckCircle2, ChevronRight, Loader2, AlertCircle, LayoutDashboard, Film, Sparkles } from "lucide-react"; // Added Film, Sparkles
 import logo from "../assets/logo.jpg";
 import { useAuth, AppUser } from "../context/AuthContext.js";
 import * as apiService from "../services/api";
+import GuidanceVideoModal from "../components/modals/GuidanceVideoModal"; // Assuming you create this
 
 interface ProcessedCourseData {
     id: string;
@@ -37,6 +39,8 @@ const activeColor = `text-[${accentColor}]`;
 const activeBg = `bg-[${accentColor}]/10 dark:bg-[${accentColor}]/20`;
 const completedColor = `text-green-600 dark:text-green-400`;
 const completedBg = `bg-green-100 dark:bg-green-900/30`;
+const goldBg = 'bg-[#C5A467]'; // Added for button
+const goldBgHover = 'hover:bg-[#B08F55]'; // Added for button
 
 
 export default function CoursesPage() {
@@ -45,6 +49,8 @@ export default function CoursesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [enrollmentMessage, setEnrollmentMessage] = useState<string | null>(null);
+    const [showGuidanceVideoModal, setShowGuidanceVideoModal] = useState(false); // State for modal
+    const guidanceVideoUrl = "YOUR_GUIDANCE_VIDEO_URL_HERE"; // Replace with your actual video URL
 
     useEffect(() => {
         if (authLoading) {
@@ -74,7 +80,7 @@ export default function CoursesPage() {
         fetchCourseAccessData();
     }, [user, authLoading]);
 
-    if (isLoading) {
+    if (isLoading && authLoading) { // Show loader if either auth or course data is loading
         return <div className="flex justify-center items-center min-h-[60vh]"><Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-[#C5A467]" /></div>;
     }
 
@@ -111,7 +117,7 @@ export default function CoursesPage() {
                             <Link to="/dashboard">
                                 <Button
                                     size="lg"
-                                    className={`bg-[${accentColor}] hover:bg-[${accentHoverColor}] text-[#2A0F0F] font-semibold transition-colors group shrink-0 text-sm sm:text-base md:text-lg`}
+                                    className={`${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold transition-colors group shrink-0 text-sm sm:text-base md:text-lg`}
                                 >
                                     Go to My Dashboard
                                     <ChevronRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
@@ -122,10 +128,31 @@ export default function CoursesPage() {
                 </section>
             )}
 
+            {/* Guidance Video CTA - Show if user is logged in and there's an enrollment message */}
+            {user && enrollmentMessage && (
+                 <section className={`w-full py-8 md:py-10 lg:py-12 bg-[#C5A467]/10 dark:bg-[#C5A467]/5 border-y border-[#C5A467]/20`}>
+                    <div className="container mx-auto px-4 sm:px-6 md:px-8 flex flex-col items-center text-center">
+                        <Sparkles className={`h-8 w-8 ${activeColor} mb-3`} />
+                        <h3 className={`text-xl sm:text-2xl font-semibold mb-2 ${primaryTextLight} ${primaryTextDark}`}>New Here or Need a Refresher?</h3>
+                        <p className={`${secondaryTextLight} ${secondaryTextDark} mb-4 max-w-xl text-sm sm:text-base`}>
+                            Watch our quick guide to learn how to navigate the platform, access courses, and track your progress.
+                        </p>
+                        <Button
+                            size="lg"
+                            onClick={() => setShowGuidanceVideoModal(true)}
+                            className={`${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 shadow-md group text-sm sm:text-base`}
+                        >
+                            <Film className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                            Watch Platform Guide
+                        </Button>
+                    </div>
+                </section>
+            )}
+
             {enrollmentMessage && (
-                <section className={`w-full py-12 md:py-16 lg:py-20 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200`}>
+                <section className={`w-full py-8 md:py-10 lg:py-12 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200`}>
                     <div className="container mx-auto px-4 sm:px-6 md:px-8 text-center">
-                        <AlertCircle className="inline-block h-6 w-6 mr-2 align-middle" />
+                        <AlertCircle className="inline-block h-5 w-5 sm:h-6 sm:w-6 mr-2 align-middle" />
                         <p className="inline align-middle text-sm sm:text-base md:text-lg">{enrollmentMessage}</p>
                     </div>
                 </section>
@@ -202,6 +229,11 @@ export default function CoursesPage() {
                     </div>
                 </div>
             </section>
+            <GuidanceVideoModal 
+                isOpen={showGuidanceVideoModal} 
+                onClose={() => setShowGuidanceVideoModal(false)} 
+                videoUrl={guidanceVideoUrl} 
+            />
         </div>
     );
 }

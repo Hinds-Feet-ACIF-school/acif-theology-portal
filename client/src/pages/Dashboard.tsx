@@ -1,21 +1,21 @@
 // src/pages/DashboardPage.tsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, MouseEvent } from "react"; // Added MouseEvent if not already there
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs.js";
 import { Progress } from "../components/ui/progress.js";
-import { CheckCircle2, PlayCircle, Lock, Loader2, AlertCircle } from "lucide-react";
+import { CheckCircle2, PlayCircle, Lock, Loader2, AlertCircle, LayoutDashboard, Film, Sparkles } from "lucide-react"; // Added Film, Sparkles
 import { useAuth } from "../context/AuthContext.js";
 import * as apiService from "../services/api";
-import type { GradedItem } from "../services/api"; // We'll need this if calculating week progress here
+import type { GradedItem } from "../services/api";
+import GuidanceVideoModal from "../components/modals/GuidanceVideoModal"; // Assuming path
 
-export interface AccessibleContentWeekItemDetails { // Simplified version of GradedItem for this context
-  type: string; // 'section_completion', 'quiz_score', etc.
-  status?: string; // 'completed', 'passed', 'not_started'
+export interface AccessibleContentWeekItemDetails {
+  type: string;
+  status?: string;
   progressPercent?: number;
   score?: number | null;
-  // Add other fields from GradedItem if needed by calculateWeekProgressLogic
 }
 
 export interface AccessibleContentWeek {
@@ -25,8 +25,8 @@ export interface AccessibleContentWeek {
   title: string;
   description?: string;
   isCompleted?: boolean;
-  progress?: number;     // This will be CALCULATED if items are present
-  items?: AccessibleContentWeekItemDetails[]; // IMPORTANT: Assumes API provides items needed for calc
+  progress?: number;
+  items?: AccessibleContentWeekItemDetails[];
 }
 
 export interface AccessibleContentCourse {
@@ -43,21 +43,16 @@ interface DashboardProcessedCourse extends apiService.ProcessedCourseOverviewIte
     detailedWeeks?: AccessibleContentWeek[];
 }
 
-// --- START: Helper function to calculate week progress on the frontend ---
-// This logic should be identical to the one in CourseDetailPage.tsx or a shared utility
 const calculateWeekProgressFromItems = (weekItems: AccessibleContentWeekItemDetails[] | undefined): number => {
   if (!weekItems || weekItems.length === 0) {
     return 0; 
   }
-
   const relevantItems = weekItems.filter(
     item => item.type === "section_completion" || item.type === "quiz_score"
   );
-
   if (relevantItems.length === 0) {
     return 0;
   }
-
   let completedRelevantItemsCount = 0;
   relevantItems.forEach(item => {
     let isItemCompleted = false;
@@ -66,24 +61,18 @@ const calculateWeekProgressFromItems = (weekItems: AccessibleContentWeekItemDeta
         isItemCompleted = true;
       }
     } else if (item.type === "quiz_score") {
-      if (item.score !== null && item.score !== undefined) { // Attempted
+      if (item.score !== null && item.score !== undefined) {
         isItemCompleted = true;
       }
-      // Optional: only count passed quizzes
-      // if (item.status === "passed") isItemCompleted = true;
     }
     if (isItemCompleted) {
       completedRelevantItemsCount++;
     }
   });
-
   return Math.round((completedRelevantItemsCount / relevantItems.length) * 100);
 };
-// --- END: Helper function ---
-
 
 const accentColor = "#C5A467";
-// ... (other styling constants remain the same) ...
 const primaryTextLight = "text-[#2A0F0F]";
 const secondaryTextLight = "text-[#4A1F1F]";
 const primaryTextDark = "dark:text-[#FFF8F0]";
@@ -103,7 +92,8 @@ const lockedBg = `bg-gray-100 dark:bg-gray-800`;
 const goldBgHover = 'hover:bg-[#B08F55]';
 const goldBg = 'bg-[#C5A467]';
 const goldBorder = 'border-[#C5A467]';
-const goldAccentBgLight = `bg-[${accentColor}]/10 dark:bg-[${accentColor}]/20`;
+const goldAccentBgLight = `bg-[${accentColor}]/10 dark:bg-[${accentColor}]/20`; // Used this name, matches CoursesPage
+const activeColor = `text-[${accentColor}]`; // Added for consistency if needed for video CTA text
 
 const tabsTriggerBaseClasses = `px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium rounded-md transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}] dark:focus-visible:ring-offset-gray-950`;
 const tabsTriggerInactiveClasses = `text-[#4A1F1F] dark:text-[#E0D6C3]/80 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white`;
@@ -119,6 +109,8 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [enrollmentMessage, setEnrollmentMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [showGuidanceVideoModal, setShowGuidanceVideoModal] = useState(false); // State for modal
+  const guidanceVideoUrl = "YOUR_GUIDANCE_VIDEO_URL_HERE"; // Replace with your actual video URL
 
   const announcements = [
     { id: 1, title: "Live Q&A Session", date: "May 10, 2025", content: "Join us for a live Q&A with instructors this Friday." },
@@ -146,37 +138,24 @@ export default function DashboardPage() {
 
         if (user) {
           try {
-            // IMPORTANT: Assume getAccessibleContent returns courses with weeks,
-            // AND each week contains an 'items' array with details needed for calculateWeekProgressFromItems.
             const detailedContentCourses: AccessibleContentCourse[] = await apiService.getAccessibleContent();
-            // console.log("DashboardPage: detailedContentCourses from API:", JSON.stringify(detailedContentCourses, null, 2));
-
+            
             processedCourses = processedCourses.map(course => {
               const detailedMatch = detailedContentCourses.find(dp => dp.id === course.id);
-              
               let finalStatus = course.status;
               let calculatedCourseProgress = typeof course.progress === 'number' ? course.progress : 0; 
 
               if (detailedMatch && detailedMatch.weeks && detailedMatch.weeks.length > 0) {
-                // Calculate progress for each week first if not already provided or to ensure consistency
                 const weeksWithCalculatedProgress = detailedMatch.weeks.map(week => ({
                     ...week,
-                    // If week.progress is already correctly provided by API, use it.
-                    // Otherwise, calculate it from week.items.
                     progress: (typeof week.progress === 'number') 
                                 ? week.progress 
                                 : calculateWeekProgressFromItems(week.items) 
                 }));
-                
-                // console.log(`Course: ${course.title}, Weeks with calculated progress:`, weeksWithCalculatedProgress);
-
-                // Now, average these calculated/verified week progresses
                 const sumOfWeeksProgress = weeksWithCalculatedProgress.reduce((sum, week) => sum + (week.progress || 0), 0);
                 calculatedCourseProgress = Math.round(sumOfWeeksProgress / weeksWithCalculatedProgress.length);
-                
                 const allWeeksAreEffectively100Percent = weeksWithCalculatedProgress.length > 0 &&
                                              weeksWithCalculatedProgress.every(w => w.progress === 100);
-
                 if (allWeeksAreEffectively100Percent) {
                   if (finalStatus !== 'locked') {
                      finalStatus = 'completed';
@@ -185,27 +164,21 @@ export default function DashboardPage() {
                 } else if (calculatedCourseProgress === 100 && finalStatus === 'active') {
                   finalStatus = 'completed';
                 }
-
               } else if (detailedMatch && (!detailedMatch.weeks || detailedMatch.weeks.length === 0)) {
                 calculatedCourseProgress = 0; 
               }
-              
-              // console.log(`Course: ${course.title}, Final Calculated Progress: ${calculatedCourseProgress}, Final Status: ${finalStatus}`);
               return { 
                 ...course, 
                 status: finalStatus, 
                 progress: calculatedCourseProgress, 
-                detailedWeeks: detailedMatch?.weeks // Keep original detailedWeeks for potential use
+                detailedWeeks: detailedMatch?.weeks 
               };
             });
-
           } catch (progressError: any) {
             console.warn("DashboardPage: Could not fetch detailed user progress from getAccessibleContent:", progressError.message);
           }
         }
-        
         setDashboardCourses(processedCourses);
-
       } catch (err: any) {
         setError((err as Error).message || "Failed to load dashboard content.");
         console.error("DashboardPage: Fetch error:", err);
@@ -218,7 +191,6 @@ export default function DashboardPage() {
   }, [user, authLoading]);
 
   const { completedCoursesCount, overallProgramProgressPercent } = useMemo(() => {
-    // ... (this part remains the same, as it uses the updated course.progress) ...
     if (dashboardCourses.length === 0) return { completedCoursesCount: 0, overallProgramProgressPercent: 0 };
     const trackableCourses = dashboardCourses.filter(c => c.status !== 'locked');
     if (trackableCourses.length === 0) return { completedCoursesCount: 0, overallProgramProgressPercent: 0 };
@@ -234,8 +206,6 @@ export default function DashboardPage() {
     };
   }, [dashboardCourses]);
 
-
-  // ... (Loading, Error, Not Logged In UI remains the same) ...
   if (authLoading || (isLoadingCourses && dashboardCourses.length === 0 && !error)) {
     return (
       <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark} justify-center items-center p-4`}>
@@ -272,13 +242,35 @@ export default function DashboardPage() {
   return (
     <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark}`}>
       <div className="w-full px-4 sm:px-6 py-6 sm:py-8 md:py-10 lg:py-12 xl:py-16">
-        {/* ... (Header section: Welcome, Enrollment Message) ... */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 sm:mb-8 md:mb-10 lg:mb-12 gap-4">
           <div className="text-center md:text-left w-full md:w-auto">
             <h1 className={`text-2xl sm:text-3xl md:text-4xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>Student Dashboard</h1>
             <p className={`text-sm sm:text-base ${secondaryTextLight} ${secondaryTextDark}`}>Welcome back, {user?.displayName || user?.firstName || user?.email || 'Student'}</p>
           </div>
         </div>
+
+        {/* Guidance Video CTA - Show if user is logged in (perhaps only if there's an enrollment message or for new users) */}
+        {user && (enrollmentMessage || true) && ( // Condition: show if logged in AND (has enrollment msg OR always true for now)
+             <div className={`mb-6 sm:mb-8 p-4 sm:p-6 rounded-lg shadow-md ${goldAccentBgLight} border ${cardBorder}`}>
+                <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-3 sm:gap-4">
+                    <Sparkles className={`h-8 w-8 sm:h-10 sm:w-10 ${activeColor} flex-shrink-0`} />
+                    <div className="flex-grow">
+                        <h3 className={`text-base sm:text-lg font-semibold mb-1 ${primaryTextLight} ${primaryTextDark}`}>Get Started Smoothly!</h3>
+                        <p className={`${secondaryTextLight} ${secondaryTextDark} text-xs sm:text-sm max-w-2xl`}>
+                            New to the platform or need a quick tour? Our guide video will walk you through everything.
+                        </p>
+                    </div>
+                    <Button
+                        size="sm" // Slightly smaller button for this context
+                        onClick={() => setShowGuidanceVideoModal(true)}
+                        className={`${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 shadow-sm group text-xs sm:text-sm mt-2 sm:mt-0 shrink-0 px-3 py-1.5 h-auto sm:px-4 sm:py-2`}
+                    >
+                        <Film className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Watch Platform Guide
+                    </Button>
+                </div>
+            </div>
+        )}
 
         {enrollmentMessage && (
           <Card className={`mb-6 sm:mb-8 ${cardBgLight} ${cardBgDark} ${cardBorder} border-l-4 border-[${accentColor}]`}>
@@ -292,14 +284,12 @@ export default function DashboardPage() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          {/* ... (TabsList for Overview/Announcements) ... */}
           <TabsList className={`grid w-full grid-cols-2 mb-6 sm:mb-8 rounded-lg p-1 sm:p-1.5 ${tabsListBgLight} ${tabsListBgDark} shadow-sm`}>
              <TabsTrigger value="overview" className={`${tabsTriggerBaseClasses} ${activeTab === 'overview' ? tabsTriggerActiveClasses : tabsTriggerInactiveClasses}`}>Overview</TabsTrigger>
              <TabsTrigger value="announcements" className={`${tabsTriggerBaseClasses} ${activeTab === 'announcements' ? tabsTriggerActiveClasses : tabsTriggerInactiveClasses}`}>Announcements</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* ... (Program Overview & Progress Card header) ... */}
             <h2 className={`text-lg sm:text-xl md:text-2xl font-semibold mb-4 sm:mb-6 ${primaryTextLight} ${primaryTextDark} text-center md:text-left`}>Program Overview & Progress</h2>
               <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-sm`}>
                <CardHeader className="p-4 sm:p-6">
@@ -316,7 +306,6 @@ export default function DashboardPage() {
                    </div>
                  <div className="space-y-2 sm:space-y-3">
                    <h3 className={`text-base sm:text-lg font-semibold mb-2 sm:mb-3 ${primaryTextLight} ${primaryTextDark}`}>Course Status</h3>
-                    {/* ... (Loading and No Courses messages) ... */}
                     {isLoadingCourses && dashboardCourses.length === 0 && (
                         <div className="flex justify-center items-center py-8">
                             <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-[#C5A467]" />
@@ -334,7 +323,7 @@ export default function DashboardPage() {
                          let statusText = 'View Course';
                          let statusColor = `text-[${accentColor}]`;
                          let statusIconElement = <PlayCircle className={`h-4 w-4 sm:h-5 sm:w-5 text-[${accentColor}] flex-shrink-0`} />;
-                         let rowBg = `${goldAccentBgLight} ${cardBorder} hover:shadow-md`;
+                         let rowBg = `${goldAccentBgLight} ${cardBorder} hover:shadow-md`; // Changed to goldAccentBgLight for active
                          let textColor = `${primaryTextLight} ${primaryTextDark}`;
                          let cursorClass = 'cursor-pointer';
 
@@ -342,13 +331,13 @@ export default function DashboardPage() {
                              statusText = 'Completed - Review';
                              statusColor = positiveColor;
                              statusIconElement = <CheckCircle2 className={`h-4 w-4 sm:h-5 sm:w-5 ${positiveColor} flex-shrink-0`} />;
-                             rowBg = `${cardBgLight} ${cardBgDark} hover:shadow-md dark:hover:bg-gray-800/50`;
+                             rowBg = `${cardBgLight} ${cardBgDark} hover:shadow-md dark:hover:bg-gray-800/50 ${cardBorder}`; // Ensure border
                              textColor = `${secondaryTextLight} ${secondaryTextDark}`;
                          } else if (displayStatus === 'locked') {
                              statusText = 'Locked';
                              statusColor = lockedColor;
                              statusIconElement = <Lock className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />;
-                             rowBg = lockedBg;
+                             rowBg = `${lockedBg} ${cardBorder}`; // Ensure border
                              textColor = lockedColor;
                              cursorClass = 'cursor-not-allowed';
                          }
@@ -387,7 +376,6 @@ export default function DashboardPage() {
           </TabsContent>
           
            <TabsContent value="announcements" className="space-y-4">
-                {/* ... (Announcements section remains the same) ... */}
                 <h2 className={`text-lg sm:text-xl md:text-2xl font-semibold mb-4 sm:mb-6 ${primaryTextLight} ${primaryTextDark} text-center md:text-left`}>Announcements</h2>
                  {announcements.map((announcement) => (
                     <Card key={announcement.id} className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-sm`}>
@@ -406,6 +394,11 @@ export default function DashboardPage() {
             </TabsContent>
         </Tabs>
       </div>
+      <GuidanceVideoModal 
+          isOpen={showGuidanceVideoModal} 
+          onClose={() => setShowGuidanceVideoModal(false)} 
+          videoUrl={guidanceVideoUrl} 
+      />
     </div>
   );
 }

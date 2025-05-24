@@ -1,7 +1,8 @@
+// src/pages/HomePage.tsx
 import React from 'react';
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button.js";
-import { ChevronRight, BookOpen, Calendar, Award, Users, LayoutDashboard } from "lucide-react";
+import { ChevronRight, BookOpen, Calendar, Award, Users, LayoutDashboard, DollarSign, Sparkles, Info } from "lucide-react"; // Added Sparkles, Info
 import logo from "../assets/logo.jpg";
 import { useAuth } from '../context/AuthContext.js';
 
@@ -62,6 +63,14 @@ const HomePage: React.FC = () => {
   const goldBorder = 'border-[#C5A467]';
   const lightBg = 'bg-[#FFF8F0]';
   const darkBg = 'dark:bg-gray-950';
+
+  const programHighlights = [
+    { icon: BookOpen, text: "Six comprehensive courses over 6 months" },
+    { icon: Calendar, text: "Biannual intakes in January & July" },
+    { icon: Award, text: "Certificate awarded upon completion (39 ECTS)" },
+    { icon: Users, text: "Mentoring, community forums, and support" },
+  ];
+
 
   return (
     <div className={`flex flex-col min-h-screen ${lightBg} ${darkBg}`}>
@@ -129,12 +138,7 @@ const HomePage: React.FC = () => {
                 Our certificate program equips believers with a solid theological foundation and practical ministry skills for impactful service.
               </p>
               <ul className="space-y-3 pt-2">
-                {[
-                  { icon: BookOpen, text: "Six comprehensive courses over 6 months" },
-                  { icon: Calendar, text: "Biannual intakes in January & July" },
-                  { icon: Award, text: "Certificate awarded upon completion (39 ECTS)" },
-                  { icon: Users, text: "Mentoring, community forums, and support" },
-                ].map((item, index) => (
+                {programHighlights.map((item, index) => (
                   <li key={index} className="flex items-center gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm justify-center lg:justify-start">
                     <item.icon className={`h-6 w-6 ${goldAccent} flex-shrink-0`} />
                     <span className={`text-[#4A1F1F] dark:text-gray-300 text-base md:text-lg`}>{item.text}</span>
@@ -188,6 +192,21 @@ const HomePage: React.FC = () => {
                 ? "Access your courses, progress, and community resources through your dashboard."
                 : "Join our community of seekers and scholars. Enroll today and deepen your understanding of God's Word."}
             </p>
+            
+            {!isAuthenticated && (
+              <div className="mt-4 p-4 bg-[#C5A467]/10 dark:bg-[#C5A467]/5 border border-[#C5A467]/30 rounded-lg shadow-inner max-w-md mx-auto">
+                <div className="flex items-center justify-center gap-2">
+                  <DollarSign className={`h-6 w-6 ${goldAccent} flex-shrink-0`} />
+                  <p className={`text-base md:text-lg font-semibold ${goldAccent}`}>
+                    Investment: <span className="text-[#FFF8F0]">$100 Enrollment Fee</span>
+                  </p>
+                </div>
+                <p className="text-xs text-[#E0D6C3]/80 mt-1">
+                  This one-time fee secures your place in the program.
+                </p>
+              </div>
+            )}
+
             <div className="pt-4">
               {isAuthenticated ? (
                  <Link to="/dashboard">
@@ -200,7 +219,7 @@ const HomePage: React.FC = () => {
                    </Button>
                  </Link>
               ) : (
-                <div className="flex flex-col items-center sm:flex-row sm:justify-center gap-4">
+                <div className="flex flex-col items-center sm:flex-row sm:justify-center gap-4 mt-2"> {/* Added mt-2 for spacing */}
                    <Link to="/register">
                     <Button
                       size="lg"

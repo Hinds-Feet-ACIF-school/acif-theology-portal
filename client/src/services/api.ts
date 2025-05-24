@@ -1,5 +1,5 @@
 import axios, { type AxiosResponse, AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from 'axios';
-
+import apiClient from './apiClient';
 export interface QuizQuestionOption { id: string; text: string; isCorrect?: boolean; }
 export interface QuizQuestion { id: string; type: 'multiple_choice' | 'checkbox' | 'short_answer' | 'paragraph'; question: string; required: boolean; description?: string; options?: QuizQuestionOption[]; correctAnswer?: string | string[]; }
 export interface VideoBlockContent { id: string; title: string; description?: string; videoFile?: File; videoUrl?: string; thumbnail?: File; thumbnailUrl?: string; duration?: number; isRequired: boolean; drmEnabled: boolean; accessControl: { allowDownload: boolean; allowSharing: boolean; expirationDate?: Date; }; }
@@ -85,7 +85,29 @@ export interface WeekGradeSummary {
   items: GradedItem[];
   overallWeekProgress: number;
 }
+export interface ContactFormData {
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
+  }
 
+  export async function sendContactEmail(data: ContactFormData): Promise<any> { // You can refine Promise<any> to a more specific response type if your backend returns one
+    try {
+      // Replace '/contact-form' with the actual endpoint path on your backend
+      // e.g., if your backend base URL is https://acif-theology-portal.onrender.com/api
+      // and your contact endpoint is /contact, then use '/contact'
+      // If your contact endpoint is /api/contact-form and base is just the domain, use '/api/contact-form'
+      const response = await apiClient.post('/contact-form', data); 
+      return response.data; // Or handle the response as needed (e.g., check for a success message)
+    } catch (error) {
+      // The error will be an AxiosError if it's from the API call
+      // You can use getErrorMessage or handle it specifically here
+      console.error('Error in sendContactEmail service:', getErrorMessage(error)); 
+      throw error; // Re-throw the error so it can be caught by the component
+    }
+  }
+  
 export interface QuizScore {
   quizId: string;
   title: string;

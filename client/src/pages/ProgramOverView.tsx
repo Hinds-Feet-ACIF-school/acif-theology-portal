@@ -1,3 +1,4 @@
+// src/pages/ProgramOverviewPage.tsx
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button.js";
@@ -10,6 +11,7 @@ import {
   FileText,
   GraduationCap,
   LucideIcon,
+  DollarSign, // Added DollarSign
 } from "lucide-react";
 import { useAuth } from '../context/AuthContext.js';
 
@@ -42,11 +44,12 @@ const sectionBgDark = "dark:bg-gray-950";
 const altSectionBgLight = "bg-[#F4EDE4]";
 const altSectionBgDark = "dark:bg-gray-900";
 const headerTextLight = "text-[#FFF8F0]";
-const headerTextDark = "dark:text-[#FFF8F0]";
+const headerTextDark = "dark:text-[#FFF8F0]"; // Corrected, was primaryTextDark
 const ctaBgLight = "bg-[#2A0F0F]";
 const ctaBgDark = "dark:bg-black";
 const ctaText = "text-[#FFF8F0]";
 const ctaSubText = "text-[#E0D6C3]";
+const goldAccent = 'text-[#C5A467]'; // Added for consistency
 
 const ProgramOverviewPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -249,9 +252,9 @@ const ProgramOverviewPage: React.FC = () => {
                 key={course.id}
                 className={`${cardBgLight} ${cardBgDark} ${cardBorder} rounded-lg overflow-hidden shadow-lg`}
               >
-                <div className={`p-6 ${primaryTextLight} ${headerTextDark} bg-[#2A0F0F] dark:bg-gray-800`}>
+                <div className={`p-6 bg-[#2A0F0F] dark:bg-gray-800`}> {/* Removed redundant text color classes */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <h3 className={`text-xl sm:text-2xl lg:text-3xl font-semibold font-serif flex-1 ${headerTextLight} ${headerTextDark}`}>{course.title}</h3>
+                    <h3 className={`text-xl sm:text-2xl lg:text-3xl font-semibold font-serif flex-1 ${headerTextLight}`}>{course.title}</h3> {/* Removed primaryTextDark */}
                     <div className="flex items-center gap-2 text-sm font-medium bg-[#C5A467]/10 dark:bg-[#C5A467]/20 text-[#C5A467] px-3 py-1 rounded-full">
                       <Clock className="h-4 w-4" />
                       <span>{course.ects} ECTS</span>
@@ -340,7 +343,6 @@ const ProgramOverviewPage: React.FC = () => {
         </div>
       </section>
 
-
       {!isAuthenticated && (
         <section className={`w-full py-16 md:py-24 lg:py-28 ${ctaBgLight} ${ctaBgDark} relative ${ctaText}`}>
           <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-b from-[#C5A467]/30 to-transparent"></div>
@@ -355,7 +357,21 @@ const ProgramOverviewPage: React.FC = () => {
               <p className={`mx-auto max-w-[700px] text-lg md:text-xl lg:text-xl xl:text-2xl ${ctaSubText}`}>
                 Join our next cohort and deepen your understanding of Apostolic and Evangelical theology.
               </p>
-              <div className="space-x-4 pt-4">
+              
+              {/* Added Enrollment Fee Information Block */}
+              <div className="mt-4 p-4 bg-[#C5A467]/10 dark:bg-[#C5A467]/5 border border-[#C5A467]/30 rounded-lg shadow-inner max-w-md mx-auto">
+                <div className="flex items-center justify-center gap-2">
+                  <DollarSign className={`h-6 w-6 ${goldAccent} flex-shrink-0`} />
+                  <p className={`text-base md:text-lg font-semibold ${goldAccent}`}>
+                    Investment: <span className={`${ctaText} opacity-90`}>$100 Enrollment Fee</span>
+                  </p>
+                </div>
+                <p className="text-xs text-[#E0D6C3]/80 mt-1">
+                  A one-time fee to secure your place and begin this transformative program.
+                </p>
+              </div>
+
+              <div className="space-x-4 pt-4"> {/* Consider adjusting pt-4 if spacing looks off with new block */}
                 <Link to="/register">
                   <Button
                     size="lg"

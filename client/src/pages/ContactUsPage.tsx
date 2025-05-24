@@ -1,11 +1,14 @@
+// src/pages/ContactUsPage.tsx
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+// Link component is not used, can be removed if not needed elsewhere on this page.
+// import { Link } from 'react-router-dom'; 
 import { Button } from '../components/ui/button.js';
 import { Input } from '../components/ui/input.js';
 import { Textarea } from '../components/ui/textarea.js';
 import { Label } from '../components/ui/label.js';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card.js';
-import { Mail, Phone, MapPin, Send, Loader2, CheckCircle } from 'lucide-react';
+import { Mail, Send, Loader2, CheckCircle } from 'lucide-react'; // Removed Phone, MapPin if not used
+import * as apiService from '../services/api'; // Ensure this path is correct
 
 const accentColor = "#C5A467";
 const accentHoverColor = "#B08F55";
@@ -20,16 +23,14 @@ const cardBgDark = "dark:bg-gray-900";
 const cardBorder = `border border-[#C5A467]/20 dark:border-[#C5A467]/30`;
 const sectionBgLight = "bg-[#FFF8F0]";
 const sectionBgDark = "dark:bg-gray-950";
-const altSectionBgLight = "bg-[#F4EDE4]";
-const altSectionBgDark = "dark:bg-gray-900";
+// altSectionBgLight and altSectionBgDark are not used, can be removed
 const inputBgLight = "bg-[#FFF8F0]";
 const inputBgDark = "dark:bg-gray-800";
 const inputBorderLight = "border-[#E0D6C3]";
 const inputBorderDark = "dark:border-gray-700";
-const focusRingAccent = `focus:ring-[${accentColor}]`;
-const focusBorderAccent = `focus:border-[${accentColor}] dark:focus:border-[${accentColor}]`;
-const goldBg = `bg-[${accentColor}]`;
-const goldBgHover = `hover:bg-[${accentHoverColor}]`;
+// focusRingAccent and focusBorderAccent are not directly used by name, but similar logic is in inputClasses
+// const goldBg = `bg-[${accentColor}]`; // Not used directly, buttonPrimaryClasses uses it
+// const goldBgHover = `hover:bg-[${accentHoverColor}]`; // Not used directly
 
 export default function ContactUsPage() {
   const [formData, setFormData] = useState({
@@ -42,9 +43,13 @@ export default function ContactUsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const newEmailAddress = "info@apostolictheology.org";
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setError(null); // Clear error on change
+    setSuccess(false); // Clear success on change
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -52,23 +57,28 @@ export default function ContactUsPage() {
     setError(null);
     setSuccess(false);
 
-    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+    if (!formData.name.trim() || !formData.email.trim() || !formData.subject.trim() || !formData.message.trim()) {
       setError("Please fill out all required fields.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError("Please enter a valid email address.");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      console.log("Submitting contact form:", formData);
-
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
+      // Actual API call to your backend
+      await apiService.sendContactEmail(formData); 
 
       setSuccess(true);
-      setFormData({ name: '', email: '', subject: '', message: '' });
+      setFormData({ name: '', email: '', subject: '', message: '' }); // Reset form on success
     } catch (err: any) {
-      console.error("Contact form submission error:", err);
-      setError(err.message || "Failed to send message. Please try again later.");
+      console.error("Contact form submission error on frontend:", err);
+      const errorMessage = err.response?.data?.message || err.message || "Failed to send message. Please try again later.";
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -107,8 +117,8 @@ export default function ContactUsPage() {
                     <Mail className={`h-6 w-6 text-[${accentColor}] mt-1 flex-shrink-0`} />
                     <div>
                       <h3 className={`font-semibold ${primaryTextLight} ${primaryTextDark}`}>Email</h3>
-                      <a href="mailto:info@apostolictheology.org" className={`${secondaryTextLight} ${secondaryTextDark} hover:text-[${accentColor}] transition-colors break-all`}>
-                        info@apostolictheology.org
+                      <a href={`mailto:${newEmailAddress}`} className={`${secondaryTextLight} ${secondaryTextDark} hover:text-[${accentColor}] transition-colors break-all`}>
+                        {newEmailAddress}
                       </a>
                       <p className={`text-xs ${mutedTextLight} ${mutedTextDark} mt-1`}>For general inquiries and admissions</p>
                     </div>
