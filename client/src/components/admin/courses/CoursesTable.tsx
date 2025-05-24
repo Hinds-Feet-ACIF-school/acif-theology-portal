@@ -31,7 +31,7 @@ export const CoursesTable: React.FC<CoursesTableProps> = ({ courses, isLoading, 
                   <th className={`${AdminStyles.tableHeaderClasses} text-right`}>Actions</th>
                 </tr>
               </thead>
-              <tbody className={`divide-y ${AdminStyles.tableBorderLight} ${AdminStyles.tableBorderDark}`}>
+              <tbody>
                 {courses.map((course) => (
                   <tr key={course.id} className={`${AdminStyles.tableRowBgLight} ${AdminStyles.tableRowBgDark}`}>
                     <td className={`p-4 align-middle font-medium ${AdminStyles.primaryTextLight} ${AdminStyles.primaryTextDark}`}>{course.title}</td>
@@ -39,13 +39,13 @@ export const CoursesTable: React.FC<CoursesTableProps> = ({ courses, isLoading, 
                     <td className={AdminStyles.tableCellClasses}>{course.startDate ? new Date(course.startDate).toLocaleDateString() : 'N/A'}</td>
                     <td className={AdminStyles.tableCellClasses}>{course.endDate ? new Date(course.endDate).toLocaleDateString() : 'N/A'}</td>
                     <td className={AdminStyles.tableCellClasses}>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClasses(course.status)}`}>
-                        {course.status.charAt(0).toUpperCase() + course.status.slice(1)}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClasses(course.status || 'upcoming')}`}>
+                        {(course.status || 'upcoming').charAt(0).toUpperCase() + (course.status || 'upcoming').slice(1)}
                       </span>
                     </td>
                     <td className={`${AdminStyles.tableCellClasses} text-right`}>
                       <div className="flex items-center justify-end gap-1">
-                        <Link to={`/admin/courses/manage/${course.courseId || course.id}`}>
+                        <Link to={`/admin/courses/manage/${course.id}`}>
                           <Button variant="ghost" size="icon" className={`${AdminStyles.ghostButtonClasses} h-8 w-8`}>
                             <span className="sr-only">Manage Course Content</span>
                             <Edit className="h-4 w-4" />

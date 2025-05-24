@@ -1,4 +1,3 @@
-// src/components/modals/CreateEditContentModal.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from "../ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
@@ -7,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import {
     X, Save, Loader2, AlertCircle, Plus, Trash2, Video as VideoIcon, FileText as FileTextIcon, HelpCircle,
     ChevronDown, ChevronUp, Eye, Edit3, Image as ImageIcon, Download,
-    CheckCircle
+    CheckCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { MantineProvider, TextInput, Textarea, Checkbox as MantineCheckbox, Group, FileInput } from '@mantine/core';
 import { type MantineTheme } from '@mantine/core';
@@ -19,7 +18,7 @@ import {
     type RichContentItemBlock as ApiRichContentItemBlockFromApi,
     type QuizBlockContent as ApiQuizBlockContentFromApi,
     type VideoBlockContent as ApiVideoBlockContentFromApi,
-    type QuizQuestion as ApiQuizQuestionFromApi, 
+    type QuizQuestion as ApiQuizQuestionFromApi,
     type QuizQuestionOption as ApiQuizQuestionOptionFromApi,
     type Material as ApiMaterial,
     type ApiDocumentBlockContentForSave,
@@ -112,7 +111,7 @@ const defaultQuizSettings: QuizSettings = {
 
 interface ModalQuizContentData extends Omit<ApiQuizBlockContentFromApi, 'settings' | 'questions' | 'id'> {
     id: string;
-    questions: ModalQuizQuestion[]; 
+    questions: ModalQuizQuestion[];
     settings: Omit<ApiQuizBlockContentFromApi['settings'], 'requireLogin' | 'showPoints'> & {
         requireLogin?: boolean; showPoints?: boolean;
     };
@@ -120,6 +119,8 @@ interface ModalQuizContentData extends Omit<ApiQuizBlockContentFromApi, 'setting
 interface ModalDocumentContentData extends ApiDocumentBlockContentForSave {
     documentFile?: File | undefined;
     documentObjectUrl?: string;
+    currentSlide?: number;
+    totalSlides?: number;
 }
 
 interface ModalRichContentItem {
@@ -179,20 +180,20 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                     id: qc.id || blockId,
                     questions: (qc.questions as ApiQuizQuestionFromApi[] || []).map((api_q): ModalQuizQuestion => {
                         const { type: apiType, ...restOfApiQ } = api_q;
-                        const modalQuestionType = apiType as ModalQuizQuestion['type']; // Assumes ModalQuizQuestion['type'] is compatible or wider
+                        const modalQuestionType = apiType as ModalQuizQuestion['type'];
 
-                        const mappedOptions = api_q.options 
-                            ? (api_q.options as ApiQuizQuestionOptionFromApi[]).map(opt => ({ ...opt, id: opt.id || generateId() })) 
+                        const mappedOptions = api_q.options
+                            ? (api_q.options as ApiQuizQuestionOptionFromApi[]).map(opt => ({ ...opt, id: opt.id || generateId() }))
                             : [];
 
                         const modalQuestion: ModalQuizQuestion = {
                             ...restOfApiQ,
                             id: restOfApiQ.id || generateId(),
-                            type: modalQuestionType, 
+                            type: modalQuestionType,
                             options: mappedOptions,
                             question: restOfApiQ.question || "",
-                            required: restOfApiQ.required ?? false, 
-                            description: restOfApiQ.description, 
+                            required: restOfApiQ.required ?? false,
+                            description: restOfApiQ.description,
                             correctAnswer: restOfApiQ.correctAnswer as string | string[] | undefined,
                         };
                         return modalQuestion;
@@ -201,7 +202,21 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                 }
             };
         }
-        if (blockType === 'document' && apiRcBlock.documentContent) return { ...modalBlockBase, type: 'document', documentContent: { ...(apiRcBlock.documentContent as ApiDocumentBlockContentForSave), id: apiRcBlock.documentContent.id || blockId, documentFile: undefined, documentObjectUrl: undefined, } };
+        if (blockType === 'document' && apiRcBlock.documentContent) {
+            const docContentFromApi = apiRcBlock.documentContent as ApiDocumentBlockContentForSave;
+            return {
+                ...modalBlockBase,
+                type: 'document',
+                documentContent: {
+                    ...docContentFromApi,
+                    id: docContentFromApi.id || blockId,
+                    documentFile: undefined,
+                    documentObjectUrl: undefined,
+                    currentSlide: 1,
+                    totalSlides: undefined,
+                }
+            };
+        }
         console.warn("Mapping warning: Unrecognized rich content block:", apiRcBlock);
         return { ...modalBlockBase, type: 'text', content: '<p>Corrupted block.</p>' };
     }, [generateId]);
@@ -254,17 +269,17 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         let newBlock: ModalRichContentItem = { id: newBlockId, type: contentType, order: richContent.length };
         if (contentType === 'text') newBlock.content = '<p></p>';
         else if (contentType === 'video') newBlock.videoContent = { id: newBlockId, title: '', description: '', videoUrl: '', thumbnailUrl: '', duration: 0, isRequired: false, drmEnabled: false, accessControl: { allowDownload: true, allowSharing: true }};
-        else if (contentType === 'quiz') newBlock.quizContent = { 
-            id: newBlockId, 
-            databaseQuizId: newBlockId, 
-            title: '', 
-            description: '', 
-            questions: [], 
-            settings: { 
+        else if (contentType === 'quiz') newBlock.quizContent = {
+            id: newBlockId,
+            databaseQuizId: newBlockId,
+            title: '',
+            description: '',
+            questions: [],
+            settings: {
                 ...defaultQuizSettings
             }
         };
-        else if (contentType === 'document') newBlock.documentContent = { id: newBlockId, title: '', description: '', documentUrl: '', originalFileName: '' };
+        else if (contentType === 'document') newBlock.documentContent = { id: newBlockId, title: '', description: '', documentUrl: '', originalFileName: '', currentSlide: 1, totalSlides: undefined };
         setRichContent(prev => { const updated = [...prev, newBlock].map((b,i) => ({...b, order: i})); setExpandedContentIndex(updated.length - 1); return updated; });
         setSuccessMessage(null); setErrorModal(null);
     };
@@ -295,7 +310,14 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                         const newQuizSettings = updatedFields.quizContent.settings ? { ...newItem.quizContent.settings, ...updatedFields.quizContent.settings } : newItem.quizContent.settings;
                         newItem.quizContent = { ...newItem.quizContent, ...updatedFields.quizContent, settings: newQuizSettings };
                     }
-                    if (updatedFields.documentContent && item.type === 'document' && newItem.documentContent) newItem.documentContent = { ...newItem.documentContent, ...updatedFields.documentContent };
+                    if (updatedFields.documentContent && item.type === 'document' && newItem.documentContent) {
+                        const oldDocContent = newItem.documentContent;
+                        newItem.documentContent = { ...newItem.documentContent, ...updatedFields.documentContent };
+                        if (updatedFields.documentContent.documentFile || updatedFields.documentContent.documentObjectUrl !== oldDocContent.documentObjectUrl) {
+                            newItem.documentContent.currentSlide = 1;
+                            newItem.documentContent.totalSlides = undefined;
+                        }
+                    }
                     return newItem;
                 }
                 return item;
@@ -332,12 +354,65 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
             videoContent: {
                 ...current.videoContent,
                 ...videoContent,
-                id: current.videoContent.id 
+                id: current.videoContent.id
             }
         });
         setSuccessMessage(null);
         setErrorModal(null);
     };
+
+    const handleDocumentLoadSuccess = (itemId: string, numPages: number) => {
+        setRichContent(prevRichContent =>
+            prevRichContent.map(rcItem => {
+                if (rcItem.id === itemId && rcItem.documentContent) {
+                    return {
+                        ...rcItem,
+                        documentContent: {
+                            ...rcItem.documentContent,
+                            totalSlides: numPages,
+                            currentSlide: rcItem.documentContent.currentSlide || 1,
+                        },
+                    };
+                }
+                return rcItem;
+            })
+        );
+    };
+
+    const goToPrevSlide = (itemId: string) => {
+        setRichContent(prevRichContent =>
+            prevRichContent.map(rcItem => {
+                if (rcItem.id === itemId && rcItem.documentContent && rcItem.documentContent.currentSlide && rcItem.documentContent.currentSlide > 1) {
+                    return {
+                        ...rcItem,
+                        documentContent: {
+                            ...rcItem.documentContent,
+                            currentSlide: rcItem.documentContent.currentSlide - 1,
+                        },
+                    };
+                }
+                return rcItem;
+            })
+        );
+    };
+
+    const goToNextSlide = (itemId: string) => {
+        setRichContent(prevRichContent =>
+            prevRichContent.map(rcItem => {
+                if (rcItem.id === itemId && rcItem.documentContent && rcItem.documentContent.currentSlide && rcItem.documentContent.totalSlides && rcItem.documentContent.currentSlide < rcItem.documentContent.totalSlides) {
+                    return {
+                        ...rcItem,
+                        documentContent: {
+                            ...rcItem.documentContent,
+                            currentSlide: rcItem.documentContent.currentSlide + 1,
+                        },
+                    };
+                }
+                return rcItem;
+            })
+        );
+    };
+
 
     const handleSaveClick = async () => {
         setErrorModal(null); setSuccessMessage(null);
@@ -380,14 +455,12 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                     ...opt,
                                     id: opt.id || generateId(),
                                 })) as ApiQuizQuestionOptionFromApi[],
-                                // Ensure type is compatible if it was changed (e.g. 'essay' to 'paragraph' for API)
-                                // type: modal_q.type === 'essay' ? 'paragraph' : modal_q.type, 
-                            } as ApiQuizQuestionFromApi; 
+                            } as ApiQuizQuestionFromApi;
                         });
                         
                         return {
                             ...baseBlock,
-                            type: 'quiz', 
+                            type: 'quiz',
                             quizContent: {
                                 ...restQuiz,
                                 id: quizContentId,
@@ -401,7 +474,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                         };
                     }
                     if (modalRcBlock.type === 'document' && modalRcBlock.documentContent) {
-                        const { documentFile, documentObjectUrl, ...restDoc } = modalRcBlock.documentContent;
+                        const { documentFile, documentObjectUrl, currentSlide, totalSlides, ...restDoc } = modalRcBlock.documentContent;
                         let { documentUrl: finalDocumentUrl, originalFileName, fileSize, fileType } = restDoc;
                         if (documentFile) {
                             const formData = new FormData(); formData.append('file', documentFile); formData.append('weekId', weekIdForFileUploads); formData.append('title', restDoc.title || `Document: ${title}`); formData.append('type', 'document_asset');
@@ -466,7 +539,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                             </div>
                         )}
                         
-                        {item.type === 'document' && item.documentContent && (
+                                                {item.type === 'document' && item.documentContent && (
                              <div className="not-prose document-block-preview space-y-2">
                                 <h3 className={`text-lg font-medium mb-1 text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`}>{item.documentContent.title || "Untitled Document"}</h3>
                                 {item.documentContent.description && <p className={`text-xs mb-1 text-[${midBrownLightHex}] dark:text-[${midBrownDarkHex}]`}>{item.documentContent.description}</p>}
@@ -477,12 +550,52 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                     let isViewableType = false;
                                     const lowerFileName = fileName?.toLowerCase();
                                     if (fileTypeFromContent) {
-                                        isViewableType = fileTypeFromContent === 'application/pdf' || fileTypeFromContent.includes('powerpoint') || fileTypeFromContent.includes('presentationml');
+                                        isViewableType = fileTypeFromContent === 'application/pdf' || fileTypeFromContent.includes('powerpoint') || fileTypeFromContent.includes('presentationml') || fileTypeFromContent.includes('msword') || fileTypeFromContent.includes('wordprocessingml');
                                     } else if (lowerFileName) {
-                                        isViewableType = lowerFileName.endsWith('.pdf') || lowerFileName.endsWith('.ppt') || lowerFileName.endsWith('.pptx');
+                                        isViewableType = lowerFileName.endsWith('.pdf') || lowerFileName.endsWith('.ppt') || lowerFileName.endsWith('.pptx') || lowerFileName.endsWith('.doc') || lowerFileName.endsWith('.docx');
                                     }
+
                                     if (docUrl && isViewableType) {
-                                        return (<div className="mt-2 mb-3"><DocumentViewer fileUrl={docUrl} fileType={fileTypeFromContent} originalFileName={fileName} themedInputBorder={themedInputBorder} mutedText={mutedText}/></div>);
+                                        return (
+                                            <>
+                                            <div className="mt-2 mb-3">
+                                                <DocumentViewer
+                                                    fileUrl={item.documentContent?.documentUrl || ''}
+                                                    fileType={item.documentContent?.fileType}
+                                                    originalFileName={item.documentContent?.originalFileName}
+                                                    themedInputBorder={themedInputBorder}
+                                                    mutedText={mutedText}
+                                                />
+                                            </div>
+                                                {item.documentContent && item.documentContent.totalSlides && item.documentContent.totalSlides > 1 && (
+                                                    <div className="flex items-center justify-center space-x-3 mt-2 mb-1">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => goToPrevSlide(item.id)}
+                                                            disabled={item.documentContent.currentSlide === 1}
+                                                            className={`${outlineButtonClasses} h-8 w-8 p-0`}
+                                                            aria-label="Previous slide"
+                                                        >
+                                                            <ChevronLeft className="h-4 w-4" />
+                                                        </Button>
+                                                        <span className={`text-xs ${mutedText}`}>
+                                                            Slide {item.documentContent.currentSlide} of {item.documentContent.totalSlides}
+                                                        </span>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => goToNextSlide(item.id)}
+                                                            disabled={item.documentContent.currentSlide === item.documentContent.totalSlides}
+                                                            className={`${outlineButtonClasses} h-8 w-8 p-0`}
+                                                            aria-label="Next slide"
+                                                        >
+                                                            <ChevronRight className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
                                     } else if (docUrl) {
                                         return (<div className="my-2"><p className={`text-sm ${mutedText} mb-2`}>{isViewableType ? "Preview loading..." : "Preview not available for this file type."}</p></div>);
                                     } else {
@@ -495,14 +608,14 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                             </div>
                         )}
 
-                        {item.type === 'quiz' && item.quizContent && ( 
+                        {item.type === 'quiz' && item.quizContent && (
                              <div className="not-prose">
                                 <h3 className={`text-lg font-semibold mb-1.5 text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`}>{item.quizContent.title || "Quiz"}</h3>
                                 {item.quizContent.description && <p className={`text-sm mb-2 text-[${midBrownLightHex}] dark:text-[${midBrownDarkHex}]`}>{item.quizContent.description}</p>}
                                 {(item.quizContent.settings?.timeLimit != null) && <p className={`text-xs mb-2 ${mutedText}`}>Time Limit: {item.quizContent.settings.timeLimit} min</p>}
                                 {(!item.quizContent.questions || item.quizContent.questions.length === 0) && <p className={`${mutedText} text-sm`}>No questions.</p>}
                                 <div className="space-y-3 mt-2">
-                                    {item.quizContent.questions?.map((q, qIdx) => ( 
+                                    {item.quizContent.questions?.map((q, qIdx) => (
                                         <div key={q.id} className={`p-3 border rounded ${editorCardBgMantine} ${themedInputBorder}`}>
                                             <p className={`font-medium text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] mb-1`}>{qIdx + 1}. {q.question} {q.required && <span className="text-red-500 text-xs">*</span>}</p>
                                             {q.description && <p className={`text-xs ${mutedText} mb-1.5`}>{q.description}</p>}
@@ -601,7 +714,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                             {expandedContentIndex === index && (
                                                 <CardContent className="p-2 sm:p-3 space-y-3">
                                                     {item.type === 'text' && ( <IntegratedRichTextEditor value={item.content || '<p></p>'} onChange={html => {handleUpdateRichContentItem(item.id, { content: html }); setSuccessMessage(null); setErrorModal(null);}} placeholder="Start writing text..." weekIdForImageUploads={weekIdForFileUploads} mutedTextClass={mutedText} /> )}
-                                                    {item.type === 'video' && item.videoContent && ( /* Video Editor UI from previous full code */
+                                                    {item.type === 'video' && item.videoContent && (
                                                         <div className="space-y-3">
                                                             <TextInput label={<span className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-medium`}>Video Title</span>} value={item.videoContent.title} onChange={(event) => handleUpdateVideoContent(item.id, { title: event.currentTarget.value })} placeholder="Enter video title" disabled={isSaving} required size="sm" styles={mantineInputStyles} />
                                                             <Textarea label={<span className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-medium`}>Video Description(Optional)</span>} placeholder="Add a description..." size="sm" minRows={2} autosize value={item.videoContent.description || ''} onChange={e => {handleUpdateVideoContent(item.id, { description: e.target.value }); setSuccessMessage(null); setErrorModal(null);}} styles={mantineInputStyles} />
@@ -637,21 +750,21 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                                                     if (oldUrl) URL.revokeObjectURL(oldUrl);
                                                                     setSuccessMessage(null); setErrorModal(null);
                                                                 }} size="sm" styles={mantineInputStyles} />
-                                                            <MantineCheckbox 
-                                                                label={<span className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm`}>Video required</span>} 
-                                                                checked={item.videoContent.isRequired === true} 
+                                                            <MantineCheckbox
+                                                                label={<span className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm`}>Video required</span>}
+                                                                checked={item.videoContent.isRequired === true}
                                                                 onChange={(event) => {
                                                                     handleUpdateVideoContent(item.id, { isRequired: event.currentTarget.checked });
                                                                     setSuccessMessage(null);
                                                                     setErrorModal(null);
-                                                                }} 
-                                                                size="xs" 
-                                                                className="mt-3 pt-1" 
-                                                                disabled={isSaving} 
+                                                                }}
+                                                                size="xs"
+                                                                className="mt-3 pt-1"
+                                                                disabled={isSaving}
                                                             />
                                                         </div>
                                                     )}
-                                                    {item.type === 'quiz' && item.quizContent && ( /* Quiz Editor UI from previous full code */
+                                                    {item.type === 'quiz' && item.quizContent && (
                                                          <div className="space-y-3">
                                                             <TextInput label={<span className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-medium`}>Quiz Title</span>} value={item.quizContent.title} onChange={(event) => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, title: event.currentTarget.value}}); setSuccessMessage(null); setErrorModal(null);}} placeholder="Enter quiz title" disabled={isSaving} required size="sm" styles={mantineInputStyles} />
                                                             <Textarea label={<span className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-medium`}>Quiz Description</span>} placeholder="Instructions..." size="sm" minRows={2} autosize value={item.quizContent.description || ''} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, description: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}} styles={mantineInputStyles} />
@@ -661,62 +774,62 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                                                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                                                                         <div className="flex items-center gap-1">
                                                                             <ShadcnLabel htmlFor={`timeLimit-${item.id}`} className={`text-[${deepBrownLightHex}] text-xs`}>Time Limit (min):</ShadcnLabel>
-                                                                            <TextInput 
-                                                                                id={`timeLimit-${item.id}`} 
-                                                                                type="number" 
-                                                                                min="1" 
-                                                                                value={item.quizContent.settings?.timeLimit ?? ''} 
+                                                                            <TextInput
+                                                                                id={`timeLimit-${item.id}`}
+                                                                                type="number"
+                                                                                min="1"
+                                                                                value={item.quizContent.settings?.timeLimit ?? ''}
                                                                                 onChange={e => {
-                                                                                    handleUpdateQuizSettings(item.id, { 
-                                                                                        timeLimit: e.currentTarget.value ? Math.max(1, parseInt(e.currentTarget.value)) : undefined 
+                                                                                    handleUpdateQuizSettings(item.id, {
+                                                                                        timeLimit: e.currentTarget.value ? Math.max(1, parseInt(e.currentTarget.value)) : undefined
                                                                                     });
-                                                                                }} 
-                                                                                placeholder="None" 
-                                                                                size="xs" 
-                                                                                className="w-20" 
+                                                                                }}
+                                                                                placeholder="None"
+                                                                                size="xs"
+                                                                                className="w-20"
                                                                                 styles={mantineInputStyles}
                                                                             />
                                                                         </div>
                                                                         <div className="flex items-center gap-1">
                                                                             <ShadcnLabel htmlFor={`passScore-${item.id}`} className={`text-[${deepBrownLightHex}] text-xs`}>Pass Score (%):</ShadcnLabel>
-                                                                            <TextInput 
-                                                                                id={`passScore-${item.id}`} 
-                                                                                type="number" 
-                                                                                min="0" 
-                                                                                max="100" 
-                                                                                value={item.quizContent.settings?.passingScore ?? ''} 
+                                                                            <TextInput
+                                                                                id={`passScore-${item.id}`}
+                                                                                type="number"
+                                                                                min="0"
+                                                                                max="100"
+                                                                                value={item.quizContent.settings?.passingScore ?? ''}
                                                                                 onChange={e => {
-                                                                                    handleUpdateQuizSettings(item.id, { 
-                                                                                        passingScore: e.currentTarget.value ? Math.max(0, Math.min(100, parseInt(e.currentTarget.value))) : undefined 
+                                                                                    handleUpdateQuizSettings(item.id, {
+                                                                                        passingScore: e.currentTarget.value ? Math.max(0, Math.min(100, parseInt(e.currentTarget.value))) : undefined
                                                                                     });
-                                                                                }} 
-                                                                                placeholder="None" 
-                                                                                size="xs" 
-                                                                                className="w-20" 
+                                                                                }}
+                                                                                placeholder="None"
+                                                                                size="xs"
+                                                                                className="w-20"
                                                                                 styles={mantineInputStyles}
                                                                             />
                                                                         </div>
                                                                         <Group>
-                                                                            <MantineCheckbox 
-                                                                                id={`shuffle-${item.id}`} 
-                                                                                checked={item.quizContent.settings?.shuffleQuestions ?? false} 
+                                                                            <MantineCheckbox
+                                                                                id={`shuffle-${item.id}`}
+                                                                                checked={item.quizContent.settings?.shuffleQuestions ?? false}
                                                                                 onChange={(e) => {
                                                                                     handleUpdateQuizSettings(item.id, { shuffleQuestions: e.currentTarget.checked });
                                                                                     setSuccessMessage(null);
                                                                                     setErrorModal(null);
-                                                                                }} 
-                                                                                label={<span className={`text-[${deepBrownLightHex}] text-sm font-normal`}>Shuffle Qs</span>} 
+                                                                                }}
+                                                                                label={<span className={`text-[${deepBrownLightHex}] text-sm font-normal`}>Shuffle Qs</span>}
                                                                                 size="xs"
                                                                             />
-                                                                            <MantineCheckbox 
-                                                                                id={`retake-${item.id}`} 
-                                                                                checked={item.quizContent.settings?.allowRetake ?? true} 
+                                                                            <MantineCheckbox
+                                                                                id={`retake-${item.id}`}
+                                                                                checked={item.quizContent.settings?.allowRetake ?? true}
                                                                                 onChange={(e) => {
                                                                                     handleUpdateQuizSettings(item.id, { allowRetake: e.currentTarget.checked });
                                                                                     setSuccessMessage(null);
                                                                                     setErrorModal(null);
-                                                                                }} 
-                                                                                label={<span className={`text-[${deepBrownLightHex}] text-sm font-normal`}>Allow Retakes</span>} 
+                                                                                }}
+                                                                                label={<span className={`text-[${deepBrownLightHex}] text-sm font-normal`}>Allow Retakes</span>}
                                                                                 size="xs"
                                                                             />
                                                                         </Group>
@@ -725,33 +838,33 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                                             </details>
                                                             <ShadcnLabel className={`text-[${deepBrownLightHex}] text-sm font-medium block pt-2`}>Questions: <span className="text-red-500">*</span></ShadcnLabel>
                                                             {(item.quizContent.questions || []).map((q) => ( <QuizQuestionEditor key={q.id} question={q} generateId={generateId} onUpdate={updatedQ => { if (!item.quizContent?.questions) return; const newQs = item.quizContent.questions.map(oldQ => oldQ.id === q.id ? updatedQ : oldQ); handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: newQs } }); setSuccessMessage(null); setErrorModal(null);}} onRemove={() => { if (!item.quizContent?.questions) return; handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: item.quizContent.questions.filter(oldQ => oldQ.id !== q.id) } }); setSuccessMessage(null); setErrorModal(null);}} /> ))}
-                                                            <Button 
-                                                                variant="outline" 
-                                                                size="sm" 
-                                                                onClick={() => { 
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => {
                                                                     const newQ: ModalQuizQuestion = {
-                                                                        id: generateId(), 
-                                                                        type: 'essay', 
-                                                                        question: '', 
-                                                                        required: false, 
+                                                                        id: generateId(),
+                                                                        type: 'essay',
+                                                                        question: '',
+                                                                        required: false,
                                                                         options: [{id: generateId(), text:'', isCorrect:false}]
-                                                                    }; 
-                                                                    handleUpdateRichContentItem(item.id, { 
-                                                                        quizContent: { 
-                                                                            ...item.quizContent!, 
-                                                                            questions: [...(item.quizContent!.questions || []), newQ] 
-                                                                        } 
-                                                                    }); 
-                                                                    setSuccessMessage(null); 
+                                                                    };
+                                                                    handleUpdateRichContentItem(item.id, {
+                                                                        quizContent: {
+                                                                            ...item.quizContent!,
+                                                                            questions: [...(item.quizContent!.questions || []), newQ]
+                                                                        }
+                                                                    });
+                                                                    setSuccessMessage(null);
                                                                     setErrorModal(null);
-                                                                }} 
+                                                                }}
                                                                 className={`${outlineButtonClasses} text-xs h-8`}
                                                             >
                                                                 <Plus className="h-3.5 w-3.5 mr-1.5"/>Add Question
                                                             </Button>
                                                         </div>
                                                     )}
-                                                    {item.type === 'document' && item.documentContent && ( /* Restored Document Editor UI */
+                                                    {item.type === 'document' && item.documentContent && (
                                                         <div className="space-y-3">
                                                             <TextInput label={<span className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-medium`}>Document Title</span>} placeholder="Enter document title" size="sm"
                                                                 value={item.documentContent.title}
@@ -772,7 +885,18 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                                                     const current = richContent.find(rc => rc.id === item.id);
                                                                     const oldUrl = current?.documentContent?.documentObjectUrl;
                                                                     let newUrl = file ? URL.createObjectURL(file) : undefined;
-                                                                    handleUpdateRichContentItem(item.id, { documentContent: { ...item.documentContent!, documentFile: file || undefined, documentUrl: '', documentObjectUrl: newUrl, originalFileName: file?.name || item.documentContent?.originalFileName } });
+
+                                                                    const docContentUpdate: Partial<ModalDocumentContentData> = {
+                                                                        documentFile: file || undefined,
+                                                                        documentUrl: '',
+                                                                        documentObjectUrl: newUrl,
+                                                                        originalFileName: file?.name || item.documentContent?.originalFileName,
+                                                                        currentSlide: 1, 
+                                                                        totalSlides: undefined 
+                                                                    };
+
+                                                                    handleUpdateRichContentItem(item.id, { documentContent: { ...item.documentContent!, ...docContentUpdate }});
+
                                                                     if (oldUrl && oldUrl !== newUrl) URL.revokeObjectURL(oldUrl);
                                                                     setSuccessMessage(null); setErrorModal(null);
                                                                 }}

@@ -61,7 +61,7 @@ export interface Quiz { id: string; weekId: string; title: string; description?:
 export interface DashboardStat { id: string | number; title: string; value: string | number; iconName: string; change?: string; }
 export interface StudentSummary { id: string; name: string; courseName: string; progress: number; }
 export interface AdminCourseSummary { id: string; title: string; studentCount: number; status: 'active' | 'upcoming' | 'completed' | 'archived' | string; startDate?: string; endDate?: string; courseId?: string; }
-export interface AdminQuizSummary { id: string; title: string; courseName: string; submittedCount: number; totalEligible: number; dueDate?: string; courseId?: string; }
+export interface AdminQuizSummary { id: string; title: string; courseName: string; submittedCount: number; totalEligible: number; dueDate?: string; courseId?: string; monthOrder: number; weekNumber: number; }
 export interface AdminStudent extends StudentSummary { email: string; status: 'active' | 'at risk' | 'inactive' | 'completed' | string; }
 export interface AdminCourse extends AdminCourseSummary {}
 export interface AdminFullQuiz extends AdminQuizSummary {}
@@ -626,32 +626,26 @@ export async function getCourseById(courseId: string): Promise<Course | null> {
 export async function getAdminDashboardStats(): Promise<DashboardStat[]> {
     try {
         const response = await API.get("/admin/stats");
+        console.log("API response for /admin/stats:", JSON.stringify(response.data, null, 2));
         const stats = response.data || {};
         
-        // Ensure we have default values for all stats
         const userStats = stats.users || { students: 0, instructors: 0, admins: 0 };
-        const programStats = stats.program || { totalCourses: 0, activeCourses: 0, currentCohort: null };
-        const enrollmentStats = stats.enrollments || { activeEnrollments: 0 };
-
-        // Get cohort name for display
-        const cohortName = programStats.currentCohort 
-            ? `${programStats.currentCohort.isJanuaryCohort ? 'January' : 'July'} ${new Date(programStats.currentCohort.startDate).getFullYear()}`
-            : 'Current';
+        const programStats = stats.program || { totalCourses: 0, activeCourses: 0, completedCourses: 0 };
         
         return [
             { 
                 id: 'totalStudents', 
                 title: "Total Students", 
-                value: (userStats.students || 0).toString(), 
+                value: userStats.students.toString(), 
                 iconName: "Users", 
-                change: `${enrollmentStats.activeEnrollments || 0} active in ${cohortName} cohort` 
+                change: "" 
             },
             { 
                 id: 'activeCourses', 
                 title: "Active Courses", 
-                value: (programStats.activeCourses || 0).toString(), 
+                value: programStats.totalCourses.toString(), 
                 iconName: "BookOpen", 
-                change: `${programStats.totalCourses || 0} total for ${cohortName} cohort` 
+                change: "" 
             },
             { 
                 id: 'completionRate', 
@@ -670,21 +664,20 @@ export async function getAdminDashboardStats(): Promise<DashboardStat[]> {
         ];
     } catch (error) {
         console.error("Error fetching dashboard stats:", error);
-        // Return default values in case of error
         return [
             { 
                 id: 'totalStudents', 
                 title: "Total Students", 
                 value: "0", 
                 iconName: "Users", 
-                change: "0 active in current cohort" 
+                change: "" 
             },
             { 
                 id: 'activeCourses', 
                 title: "Active Courses", 
                 value: "0", 
                 iconName: "BookOpen", 
-                change: "0 total for current cohort" 
+                change: "" 
             },
             { 
                 id: 'completionRate', 
@@ -715,26 +708,65 @@ export async function getAdminRecentStudents(limit: number = 4): Promise<Student
     return simulatedData.slice(0, limit);
 }
 
-export async function getAdminDashboardCourses(limit: number = 4): Promise<AdminCourseSummary[]> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const simulatedData: AdminCourseSummary[] = [
-        { id: 'c1', courseId: 'c1', title: "Foundations of Faith (Live)", studentCount: 50, status: "active", startDate: "2024-01-15T00:00:00Z", endDate: "2024-03-15T00:00:00Z" },
-        { id: 'c2', courseId: 'c2', title: "Old Testament Survey (Live)", studentCount: 35, status: "upcoming", startDate: "2024-03-20T00:00:00Z", endDate: "2024-05-20T00:00:00Z" },
-        { id: 'c3', courseId: 'c3', title: "Apologetics 101 (Completed)", studentCount: 25, status: "completed", startDate: "2023-10-01T00:00:00Z", endDate: "2023-12-01T00:00:00Z" },
-        { id: 'c4', courseId: 'c4', title: "Systematic Theology I", studentCount: 40, status: "active", startDate: "2024-02-01T00:00:00Z", endDate: "2024-04-01T00:00:00Z" },
-    ];
-    return simulatedData.slice(0, limit);
+export async function getAdminDashboardCourses(): Promise<AdminCourseSummary[]> {
+    try {
+        const response = await API.get('/courses/admin/all');
+        const courses = response.data;
+        
+        // Process the courses to match AdminCourseSummary format
+        const processedCourses = courses.map((course: any) => ({
+            id: course.id,
+            courseId: course.id,
+            title: course.title,
+            studentCount: course.studentCount || 0,
+            status: course.status || 'upcoming',
+            startDate: course.startDate,
+            endDate: course.endDate
+        }));
+
+        // Sort by start date
+        return processedCourses
+            .sort((a: AdminCourseSummary, b: AdminCourseSummary) => 
+                new Date(a.startDate || '').getTime() - new Date(b.startDate || '').getTime()
+            );
+    } catch (error) {
+        console.error("Error fetching dashboard courses:", error);
+        return [];
+    }
 }
 
-export async function getAdminDashboardQuizzes(limit: number = 4): Promise<AdminQuizSummary[]> {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    const simulatedData: AdminQuizSummary[] = [
-        { id: 'q1', courseId: 'c1', title: "Week 1 - Foundations Quiz", courseName: "Foundations of Faith (Live)", submittedCount: 40, totalEligible: 50, dueDate: "2024-01-22T00:00:00Z" },
-        { id: 'q2', courseId: 'c1', title: "Week 2 - Doctrine Basics", courseName: "Foundations of Faith (Live)", submittedCount: 10, totalEligible: 50, dueDate: "2024-01-29T00:00:00Z" },
-        { id: 'q3', courseId: 'c2', title: "Genesis Chapters 1-11", courseName: "Old Testament Survey (Live)", submittedCount: 0, totalEligible: 35, dueDate: "2024-03-27T00:00:00Z" },
-        { id: 'q4', courseId: 'c4', title: "Theology Proper - Midterm", courseName: "Systematic Theology I", submittedCount: 30, totalEligible: 40, dueDate: "2024-03-01T00:00:00Z" },
-    ];
-    return simulatedData.slice(0, limit);
+export async function getAdminDashboardQuizzes(): Promise<AdminQuizSummary[]> {
+    try {
+        const response = await API.get('/quizzes/admin/overview');
+        const quizzes = response.data;
+        
+        // Process the quizzes to match AdminQuizSummary format
+        const processedQuizzes = quizzes.map((quiz: any) => {
+            // Ensure dueDate is a valid ISO string if it exists
+            const dueDate = quiz.dueDate ? new Date(quiz.dueDate).toISOString() : undefined;
+            return {
+                id: quiz.id,
+                courseId: quiz.courseId,
+                title: quiz.title,
+                courseName: quiz.courseName,
+                submittedCount: quiz.submittedCount || 0,
+                totalEligible: quiz.totalEligible || 0,
+                dueDate,
+                monthOrder: quiz.monthOrder || 1,
+                weekNumber: quiz.weekNumber || 1
+            };
+        });
+
+        // Sort by due date, putting undefined dates at the end
+        return processedQuizzes.sort((a: AdminQuizSummary, b: AdminQuizSummary) => {
+            if (!a.dueDate) return 1;
+            if (!b.dueDate) return -1;
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        });
+    } catch (error) {
+        console.error("Error fetching dashboard quizzes:", error);
+        return [];
+    }
 }
 
 interface AdminDataParams {
@@ -780,19 +812,32 @@ export async function getAdminAllCourses(params: AdminDataParams = {}): Promise<
 }
 
 export async function getAdminAllQuizzes(params: AdminDataParams = {}): Promise<AdminFullQuiz[]> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    let quizzesDb: AdminFullQuiz[] = [
-        { id: 'q1', courseId: 'c1', title: "Week 1 - Foundations Quiz", courseName: "Foundations of Faith (Live)", submittedCount: 40, totalEligible: 50, dueDate: "2024-01-22T00:00:00Z" },
-        { id: 'q2', courseId: 'c1', title: "Week 2 - Doctrine Basics", courseName: "Foundations of Faith (Live)", submittedCount: 10, totalEligible: 50, dueDate: "2024-01-29T00:00:00Z" },
-    ];
-    if (params.search) {
-        const searchTerm = params.search.toLowerCase();
-        quizzesDb = quizzesDb.filter(q => q.title.toLowerCase().includes(searchTerm));
+    try {
+        const response = await API.get('/admin/quizzes/all', { params });
+        const quizzes = response.data;
+        
+        // Process the quizzes to match AdminFullQuiz format
+        const processedQuizzes = quizzes.map((quiz: any) => {
+            // Ensure dueDate is a valid ISO string
+            const dueDate = quiz.dueDate ? new Date(quiz.dueDate).toISOString() : new Date().toISOString();
+            return {
+                id: quiz.id,
+                courseId: quiz.courseId,
+                title: quiz.title,
+                courseName: quiz.courseName,
+                submittedCount: quiz.submittedCount || 0,
+                totalEligible: quiz.totalEligible || 0,
+                dueDate,
+                monthOrder: quiz.monthOrder || 1,
+                weekNumber: quiz.weekNumber || 1
+            };
+        });
+
+        return processedQuizzes;
+    } catch (error) {
+        console.error("Error fetching all quizzes:", error);
+        return [];
     }
-    if (params.courseId && params.courseId !== 'all') {
-        quizzesDb = quizzesDb.filter(q => q.courseId === params.courseId);
-    }
-    return quizzesDb;
 }
 
 export const getUserWeekProgress = async (weekId: string): Promise<UserProgress> => {
