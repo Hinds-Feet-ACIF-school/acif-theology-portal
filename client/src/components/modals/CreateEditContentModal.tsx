@@ -202,7 +202,25 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         let newBlock: ModalRichContentItem = { id: newBlockId, type: contentType, order: richContent.length };
         if (contentType === 'text') newBlock.content = '<p></p>';
         else if (contentType === 'video') newBlock.videoContent = { id: newBlockId, title: '', description: '', videoUrl: '', thumbnailUrl: '', duration: 0, isRequired: false, drmEnabled: false, accessControl: { allowDownload: true, allowSharing: true }};
-        else if (contentType === 'quiz') newBlock.quizContent = { id: newBlockId, databaseQuizId: newBlockId, title: '', description: '', questions: [], settings: { shuffleQuestions: false, showResults: true, allowRetake: true, showCorrectAnswers: true }};
+        else if (contentType === 'quiz') newBlock.quizContent = { 
+            id: newBlockId, 
+            databaseQuizId: newBlockId, 
+            title: '', 
+            description: '', 
+            questions: [], 
+            settings: { 
+                shuffleQuestions: false, 
+                showResults: true, 
+                allowRetake: true, 
+                showCorrectAnswers: true,
+                passingScore: 70,
+                timeLimit: undefined,
+                maxAttempts: undefined,
+                showPoints: false,
+                requireLogin: false,
+                collectEmail: false
+            }
+        };
         else if (contentType === 'document') newBlock.documentContent = { id: newBlockId, title: '', description: '', documentUrl: '', originalFileName: '' };
         setRichContent(prev => { const updated = [...prev, newBlock].map((b,i) => ({...b, order: i})); setExpandedContentIndex(updated.length - 1); return updated; });
         setSuccessMessage(null); setErrorModal(null);
@@ -519,115 +537,4 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
 
                                                     {item.type === 'video' && item.videoContent && (
                                                         <div className="space-y-3">
-                                                            <TextInput label={<><span className={`${midBrown} text-xs font-medium`}>Video Title</span> <span className="text-red-500">*</span></>} placeholder="Enter video title" size="sm" value={item.videoContent.title} onChange={e => {handleUpdateRichContentItem(item.id, {videoContent: { ...item.videoContent!, title: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}} styles={mantineInputStyles}/>
-                                                            <Textarea label={<span className={`${midBrown} text-xs font-medium`}>Video Description(Optional)</span>} placeholder="Add a description..." size="sm" minRows={2} autosize value={item.videoContent.description || ''} onChange={e => {handleUpdateRichContentItem(item.id, {videoContent: { ...item.videoContent!, description: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}} styles={mantineInputStyles}/>
-                                                            <FileInput label={<span className={`${midBrown} text-xs font-medium`}>Video File</span>} placeholder="Select video file" accept="video/*" value={item.videoContent.videoFile || null}
-                                                                onChange={(file: File | null) => {
-                                                                    const current = richContent.find(rc => rc.id === item.id); const oldUrl = current?.videoContent?.videoObjectUrl;
-                                                                    let newUrl = file ? URL.createObjectURL(file) : undefined;
-                                                                    handleUpdateRichContentItem(item.id, { videoContent: { ...item.videoContent!, videoFile: file || undefined, videoUrl: '', videoObjectUrl: newUrl } });
-                                                                    if (oldUrl && oldUrl !== newUrl) URL.revokeObjectURL(oldUrl);
-                                                                    setSuccessMessage(null); setErrorModal(null);
-                                                                }} clearable size="sm" styles={mantineInputStyles} />
-                                                            {item.videoContent.videoFile && <p className="text-xs mt-1 text-green-600 dark:text-green-400">Selected: {item.videoContent.videoFile.name}</p>}
-                                                            <TextInput label={<span className={`${midBrown} text-xs font-medium`}>Or Video URL</span>} placeholder="https://..." value={item.videoContent.videoUrl || ''}
-                                                                onChange={(event) => {
-                                                                    const url = event.currentTarget.value; const current = richContent.find(rc => rc.id === item.id); const oldUrl = current?.videoContent?.videoObjectUrl;
-                                                                    handleUpdateRichContentItem(item.id, { videoContent: { ...item.videoContent!, videoUrl: url, videoFile: undefined, videoObjectUrl: undefined } });
-                                                                    if (oldUrl) URL.revokeObjectURL(oldUrl);
-                                                                    setSuccessMessage(null); setErrorModal(null);
-                                                                }} size="sm" styles={mantineInputStyles} />
-                                                            <FileInput label={<span className={`${midBrown} text-xs font-medium`}>Thumbnail (Optional)</span>} placeholder="Select image" accept="image/*" value={item.videoContent.thumbnail || null}
-                                                                onChange={(file: File | null) => {
-                                                                     const current = richContent.find(rc => rc.id === item.id); const oldUrl = current?.videoContent?.thumbnailObjectUrl;
-                                                                     let newUrl = file ? URL.createObjectURL(file) : undefined;
-                                                                     handleUpdateRichContentItem(item.id, { videoContent: { ...item.videoContent!, thumbnail: file || undefined, thumbnailUrl: '', thumbnailObjectUrl: newUrl } });
-                                                                     if (oldUrl && oldUrl !== newUrl) URL.revokeObjectURL(oldUrl);
-                                                                     setSuccessMessage(null); setErrorModal(null);
-                                                                }} clearable size="sm" styles={mantineInputStyles} />
-                                                            {item.videoContent.thumbnail && <p className="text-xs mt-1 text-green-600 dark:text-green-400">Selected: {item.videoContent.thumbnail.name}</p>}
-                                                            <TextInput label={<span className={`${midBrown} text-xs font-medium`}>Or Thumbnail URL</span>} placeholder="https://..." value={item.videoContent.thumbnailUrl || ''}
-                                                                onChange={(event) => {
-                                                                    const url = event.currentTarget.value; const current = richContent.find(rc => rc.id === item.id); const oldUrl = current?.videoContent?.thumbnailObjectUrl;
-                                                                    handleUpdateRichContentItem(item.id, { videoContent: { ...item.videoContent!, thumbnailUrl: url, thumbnail: undefined, thumbnailObjectUrl: undefined } });
-                                                                    if (oldUrl) URL.revokeObjectURL(oldUrl);
-                                                                    setSuccessMessage(null); setErrorModal(null);
-                                                                }} size="sm" styles={mantineInputStyles} />
-                                                            <MantineCheckbox label={<span className={`${midBrown} text-xs`}>Video required</span>} checked={item.videoContent.isRequired === true} onChange={(event) => {handleUpdateRichContentItem(item.id, { videoContent: { ...item.videoContent!, isRequired: event.currentTarget.checked }}); setSuccessMessage(null); setErrorModal(null);}} size="xs" className="mt-3 pt-1" disabled={isSaving} />
-                                                        </div>
-                                                    )}
-
-                                                    {item.type === 'quiz' && item.quizContent && (
-                                                         <div className="space-y-3">
-                                                            <TextInput label={<><span className={`${midBrown} text-xs font-medium`}>Quiz Title</span> <span className="text-red-500">*</span></>} placeholder="Enter quiz title" size="sm" value={item.quizContent.title} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, title: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}} styles={mantineInputStyles} />
-                                                            <Textarea label={<span className={`${midBrown} text-xs font-medium`}>Quiz Description</span>} placeholder="Instructions..." size="sm" minRows={2} autosize value={item.quizContent.description || ''} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, description: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}} styles={mantineInputStyles} />
-                                                            <details className="group">
-                                                                <summary className={`list-none flex items-center justify-between cursor-pointer p-2 border rounded-md ${themedInputBorder} ${editorToolbarBgMantine}`}> <span className={`${midBrown} text-sm font-medium`}>Quiz Settings</span> <ChevronDown className="h-4 w-4 text-gray-500 group-open:rotate-180 transition-transform"/> </summary>
-                                                                <div className={`mt-2 p-3 border rounded-md border-t-0 rounded-t-none ${themedInputBorder} space-y-3 bg-white dark:bg-gray-800/30`}>
-                                                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                                                                        <div className="flex items-center gap-1"><ShadcnLabel htmlFor={`timeLimit-${item.id}`} className={`${midBrown} text-xs`}>Time Limit (min):</ShadcnLabel><TextInput id={`timeLimit-${item.id}`} type="number" min="1" value={item.quizContent.settings?.timeLimit ?? ''} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent?.settings, timeLimit: e.currentTarget.value ? Math.max(1, parseInt(e.currentTarget.value)) : undefined }}}); setSuccessMessage(null); setErrorModal(null);}} placeholder="None" size="xs" className="w-20" styles={mantineInputStyles}/></div>
-                                                                        <div className="flex items-center gap-1"><ShadcnLabel htmlFor={`passScore-${item.id}`} className={`${midBrown} text-xs`}>Pass Score (%):</ShadcnLabel><TextInput id={`passScore-${item.id}`} type="number" min="0" max="100" value={item.quizContent.settings?.passingScore ?? ''} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent?.settings, passingScore: e.currentTarget.value ? Math.max(0, Math.min(100, parseInt(e.currentTarget.value))) : undefined }}}); setSuccessMessage(null); setErrorModal(null);}} placeholder="None" size="xs" className="w-20" styles={mantineInputStyles}/></div>
-                                                                        <Group>
-                                                                            <MantineCheckbox id={`shuffle-${item.id}`} checked={item.quizContent.settings?.shuffleQuestions ?? false} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent?.settings, shuffleQuestions: e.currentTarget.checked }}}); setSuccessMessage(null); setErrorModal(null);}} label={<span className={midBrown}>Shuffle Qs</span>} size="xs"/>
-                                                                            <MantineCheckbox id={`retake-${item.id}`} checked={item.quizContent.settings?.allowRetake ?? true} onChange={e => {handleUpdateRichContentItem(item.id, {quizContent: {...item.quizContent!, settings: {...item.quizContent?.settings, allowRetake: e.currentTarget.checked }}}); setSuccessMessage(null); setErrorModal(null);}} label={<span className={midBrown}>Allow Retakes</span>} size="xs"/>
-
-                                                                        </Group>
-                                                                     </div>
-                                                                </div>
-                                                            </details>
-                                                            <ShadcnLabel className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-medium block pt-2`}>Questions: <span className="text-red-500">*</span></ShadcnLabel>
-                                                            {(item.quizContent.questions || []).map((q) => ( <QuizQuestionEditor key={q.id} question={q as ModalQuizQuestion} generateId={generateId} onUpdate={updatedQ => { if (!item.quizContent?.questions) return; const newQs = item.quizContent.questions.map(oldQ => oldQ.id === q.id ? updatedQ : oldQ); handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: newQs as ModalQuizQuestion[] } }); setSuccessMessage(null); setErrorModal(null);}} onRemove={() => { if (!item.quizContent?.questions) return; handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: item.quizContent.questions.filter(oldQ => oldQ.id !== q.id) } }); setSuccessMessage(null); setErrorModal(null);}} /> ))}
-                                                            <Button variant="outline" size="sm" onClick={() => { const newQ: ModalQuizQuestion = {id: generateId(), type: 'multiple_choice', question: '', required: false, options: [{id: generateId(), text:'', isCorrect:false}]}; handleUpdateRichContentItem(item.id, { quizContent: { ...item.quizContent!, questions: [...(item.quizContent!.questions || []), newQ] } }); setSuccessMessage(null); setErrorModal(null);}} className={`${outlineButtonClasses} text-xs h-8`}><Plus className="h-3.5 w-3.5 mr-1.5"/>Add Question</Button>
-                                                        </div>
-                                                    )}
-
-                                                    {item.type === 'document' && item.documentContent && (
-                                                        <div className="space-y-3">
-                                                            <TextInput label={<><span className={`${midBrown} text-xs font-medium`}>Document Title</span> <span className="text-red-500">*</span></>} placeholder="Enter document title" size="sm"
-                                                                value={item.documentContent.title}
-                                                                onChange={e => {handleUpdateRichContentItem(item.id, {documentContent: {...item.documentContent!, title: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}}
-                                                                styles={mantineInputStyles}
-                                                            />
-                                                            <Textarea label={<span className={`${midBrown} text-xs font-medium`}>Document Description</span>} placeholder="Add a description..." size="sm" minRows={2} autosize
-                                                                value={item.documentContent.description || ''}
-                                                                onChange={e => {handleUpdateRichContentItem(item.id, {documentContent: {...item.documentContent!, description: e.target.value}}); setSuccessMessage(null); setErrorModal(null);}}
-                                                                styles={mantineInputStyles}
-                                                            />
-                                                            <FileInput
-                                                                label={<span className={`${midBrown} text-xs font-medium`}>Document File</span>}
-                                                                placeholder="Select PDF, DOC(X), PPT(X) file"
-                                                                accept={documentFileAcceptTypes}
-                                                                value={item.documentContent.documentFile || null}
-                                                                onChange={(file: File | null) => {
-                                                                    const current = richContent.find(rc => rc.id === item.id);
-                                                                    const oldUrl = current?.documentContent?.documentObjectUrl;
-                                                                    let newUrl = file ? URL.createObjectURL(file) : undefined;
-                                                                    handleUpdateRichContentItem(item.id, { documentContent: { ...item.documentContent!, documentFile: file || undefined, documentUrl: '', documentObjectUrl: newUrl, originalFileName: file?.name || item.documentContent?.originalFileName } });
-                                                                    if (oldUrl && oldUrl !== newUrl) URL.revokeObjectURL(oldUrl);
-                                                                    setSuccessMessage(null); setErrorModal(null);
-                                                                }}
-                                                                clearable size="sm" styles={mantineInputStyles}
-                                                            />
-                                                            {item.documentContent.documentFile && <p className="text-xs mt-1 text-green-600 dark:text-green-400">Selected: {item.documentContent.documentFile.name}</p>}
-                                                        </div>
-                                                    )}
-                                                </CardContent>
-                                            )}
-                                        </Card>
-                                    ))}
-                                </div>
-                                <Group mt="lg"> <MantineCheckbox id="content-required" checked={isRequired} onChange={(event) => {setIsRequired(event.currentTarget.checked); setSuccessMessage(null); setErrorModal(null);}} disabled={isSaving} label={<span className={`${midBrown} text-sm font-normal cursor-pointer`}>Mark this entire content item as required</span>} size="sm" /> </Group>
-                            </>
-                        )}
-                    </CardContent>
-                    <CardFooter className={`flex justify-end gap-2 pt-3 pb-3 px-4 border-t ${themedInputBorder} sticky bottom-0 z-10 ${lightCardBg} ${darkCardBg}`}>
-                        <Button variant="outline" onClick={onClose} disabled={isSaving} className={`${outlineButtonClasses} h-9`}>Cancel</Button>
-                        {!isPreviewMode && ( <Button onClick={handleSaveClick} disabled={isSaving || !title.trim() || richContent.length === 0} className={`${primaryButtonClasses} h-9`}> {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Saving...</> : <><Save className="mr-2 h-4 w-4"/>{isEditingLocally ? "Save Changes" : "Create Content"}</>} </Button> )}
-                    </CardFooter>
-                </Card>
-            </MantineProvider>
-        </div>
-    );
-};
-
-export default CreateEditContentModal;
+                                                            <TextInput label={<><span className={`

@@ -5,6 +5,7 @@ export interface QuizQuestion { id: string; type: 'multiple_choice' | 'checkbox'
 export interface VideoBlockContent { id: string; title: string; description?: string; videoFile?: File; videoUrl?: string; thumbnail?: File; thumbnailUrl?: string; duration?: number; isRequired: boolean; drmEnabled: boolean; accessControl: { allowDownload: boolean; allowSharing: boolean; expirationDate?: Date; }; }
 export interface QuizBlockContent {
   id: string;
+  databaseQuizId: string;
   title: string;
   description?: string;
   questions: QuizQuestion[];
@@ -16,13 +17,10 @@ export interface QuizBlockContent {
     allowRetake: boolean;
     maxAttempts?: number;
     showCorrectAnswers: boolean;
-    showPoints?: boolean;
-    requireLogin?: boolean;
-    collectEmail?: boolean;
-    allowProgressSaving?: boolean;
+    showPoints: boolean;
+    requireLogin: boolean;
+    collectEmail: boolean;
   };
-  databaseQuizId: string;
-
 }
 export interface RichContentItemBlock {
   id: string;
@@ -155,7 +153,7 @@ const API = axios.create({
 
 console.log("api.ts: Actual Axios baseURL after create:", API.defaults.baseURL);
 
-export interface ApiDocumentBlockContentForSave { // This definition is good
+export interface ApiDocumentBlockContentForSave {
   id: string;
   title: string;
   description?: string;
@@ -164,6 +162,8 @@ export interface ApiDocumentBlockContentForSave { // This definition is good
   fileSize?: number;
   fileType?: string;
 }
+
+export type DocumentBlockContent = ApiDocumentBlockContentForSave;
 
 export const getToken = (): string | null => {
     try {

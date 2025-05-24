@@ -35,6 +35,7 @@ interface QuizDisplayProps {
     isLoadingInitialSubmission?: boolean;
     weekId?: string;
     courseId?: string;
+    passingScore?: number;
 }
 
 const QuizDisplay: React.FC<QuizDisplayProps> = ({
@@ -44,7 +45,8 @@ const QuizDisplay: React.FC<QuizDisplayProps> = ({
     initialUserSubmission,
     isLoadingInitialSubmission,
     weekId,
-    courseId
+    courseId,
+    passingScore
 }) => {
     console.log(`QuizDisplay (${databaseQuizId}): RENDER START. Props received:`, {
         quizData: { title: quizData.title, id: quizData.id, questionsCount: quizData.questions?.length },
