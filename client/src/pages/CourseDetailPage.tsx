@@ -5,13 +5,13 @@ import { Button } from "../components/ui/button.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs.js";
 import { Progress } from "../components/ui/progress.js";
-import { BookOpen, PlayCircle, ArrowLeft, Loader2, AlertCircle, HelpCircle } from "lucide-react"; // Removed unused Lucide icons
+import { BookOpen, PlayCircle, ArrowLeft, Loader2, AlertCircle, HelpCircle } from "lucide-react";
 import * as apiService from "../services/api";
 import type { Course, Week, WeekGradeSummary, GradedItem, MonthlyProgress } from "../services/api";
 import { cn } from "../lib/utils.js";
 import { Box, Typography, Divider } from '@mui/material';
 import { CheckCircle as MuiCheckCircle, Cancel as MuiCancel, Pending as MuiPending, Warning as MuiWarning } from '@mui/icons-material';
-import { TrendingUp, ListChecks } from "lucide-react"; // Re-added used Lucide icons for monthly progress
+import { TrendingUp, ListChecks } from "lucide-react";
 
 const accentColor = "#C5A467";
 const accentHoverColor = "#B08F55";
@@ -47,9 +47,8 @@ const goldBg = 'bg-[#C5A467]';
 const goldBorder = 'border-[#C5A467]';
 const goldAccent = 'text-[#C5A467]';
 const primaryButtonClasses = `${goldBg} ${goldBgHover} text-[#2A0F0F] font-semibold`;
-// const outlineButtonClasses = `${goldBorder} ${goldAccent} hover:bg-[#C5A467]/10 dark:hover:bg-[#C5A467]/15 hover:text-[#A07F44] dark:hover:text-[#E0D6C3]`; // Not used in the provided code
 
-// Define a global default passing score
+
 const DEFAULT_GLOBAL_PASSING_SCORE = 70;
 
 interface CourseWithSettings extends Course {
@@ -81,17 +80,13 @@ export default function CourseDetailPage() {
     try {
       const response = await apiService.getMyCourseGrades(routeCourseId);
       
-      // Log the raw response for debugging
       console.log("CourseDetailPage: RAW Grades data received from backend:", response);
 
-      // Ensure response has the expected structure
       if (response && typeof response === 'object') {
         const { weeklyGrades, monthlyProgress } = response;
         
-        // Validate weeklyGrades
         if (Array.isArray(weeklyGrades)) {
           const sanitizedWeeklyGrades = weeklyGrades.map(weekGrade => {
-            // Ensure weekGrade is an object
             if (!weekGrade || typeof weekGrade !== 'object') {
               console.warn("Invalid weekGrade object:", weekGrade);
               return {
@@ -103,10 +98,8 @@ export default function CourseDetailPage() {
               };
             }
 
-            // Ensure items is an array
             const items = Array.isArray(weekGrade.items) ? weekGrade.items : [];
             
-            // Sanitize each item in the items array
             const sanitizedItems = items.map(item => {
               if (!item || typeof item !== 'object') {
                 return {
@@ -141,7 +134,6 @@ export default function CourseDetailPage() {
           setGradesData([]);
         }
 
-        // Validate monthlyProgress
         if (monthlyProgress && typeof monthlyProgress === 'object') {
           const sanitizedMonthlyProgress = {
             totalItems: typeof monthlyProgress.totalItems === 'number' ? monthlyProgress.totalItems : 0,
@@ -214,11 +206,11 @@ export default function CourseDetailPage() {
   };
 
   const renderGradedItem = (item: GradedItem) => {
-    let statusIcon = <MuiPending color="action" sx={{ fontSize: '1.25rem' }} />; // Adjusted icon size slightly
+    let statusIcon = <MuiPending color="action" sx={{ fontSize: '1.25rem' }} />;
     let statusText = 'Not Started';
     let scoreDisplay = '-';
     let statusTextColorClass = `${mutedTextLight} ${mutedTextDark}`;
-    let statusBgClass = 'bg-gray-100 dark:bg-gray-700/60'; // Slightly adjusted dark mode bg
+    let statusBgClass = 'bg-gray-100 dark:bg-gray-700/60';
 
     const effectivePassingScore = 
         courseData?.defaultCoursePassingScore ?? 
@@ -230,12 +222,12 @@ export default function CourseDetailPage() {
         statusIcon = <MuiCheckCircle color="success" sx={{ fontSize: '1.25rem' }} />;
         statusText = 'Passed';
         statusTextColorClass = 'text-green-600 dark:text-green-400';
-        statusBgClass = 'bg-green-50 dark:bg-green-900/30'; // Adjusted dark mode bg
+        statusBgClass = 'bg-green-50 dark:bg-green-900/30';
         } else {
         statusIcon = <MuiCancel color="error" sx={{ fontSize: '1.25rem' }} />;
         statusText = 'Failed';
         statusTextColorClass = 'text-red-600 dark:text-red-400';
-        statusBgClass = 'bg-red-50 dark:bg-red-900/30'; // Adjusted dark mode bg
+        statusBgClass = 'bg-red-50 dark:bg-red-900/30';
         }
         scoreDisplay = `${item.score}%`; 
       } else { 
@@ -265,7 +257,6 @@ export default function CourseDetailPage() {
           statusBgClass = 'bg-yellow-50 dark:bg-yellow-900/30';
           break;
         case 'not_started':
-          // Defaults are already set for Not Started
           break;
         default:
           if (item.status) {
@@ -309,13 +300,13 @@ export default function CourseDetailPage() {
 
     const getDateFromTimestamp = (timestamp: any): Date | null => {
         if (!timestamp) return null;
-        if (timestamp.toDate && typeof timestamp.toDate === 'function') { // For Firebase v9 Timestamps
+        if (timestamp.toDate && typeof timestamp.toDate === 'function') {
             return timestamp.toDate();
         }
-        if (timestamp._seconds !== undefined && timestamp._nanoseconds !== undefined) { // For older Firebase Timestamps or serialized objects
+        if (timestamp._seconds !== undefined && timestamp._nanoseconds !== undefined) {
             return new Date(timestamp._seconds * 1000 + timestamp._nanoseconds / 1000000);
         }
-        const date = new Date(timestamp); // Attempt to parse if it's a Date string or number
+        const date = new Date(timestamp);
         return isNaN(date.getTime()) ? null : date;
     };
 
@@ -554,7 +545,7 @@ export default function CourseDetailPage() {
                   
                   {(isLoadingGrades && currentWeekProgress === undefined) ? (
                     <CardContent className="p-2 sm:p-2.5 pt-1.5 sm:pt-2">
-                      <div className="flex items-center justify-center text-xs h-6"> {/* Added h-6 for consistent height */}
+                      <div className="flex items-center justify-center text-xs h-6">
                         <Loader2 className={`h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin mr-1.5 sm:mr-2 ${goldAccent}`} />
                             <span className={`${mutedTextLight} ${mutedTextDark}`}>Loading progress...</span>
                         </div>
@@ -607,20 +598,17 @@ export default function CourseDetailPage() {
               <>
                 {renderMonthlyProgress()}
                 {gradesData.length > 0 ? gradesData.map((weekGrade) => {
-                    // --- START FIX ---
-                    // Ensure weekGrade.items is an array. Default to empty array if not.
                     const itemsToFilter = Array.isArray(weekGrade.items) ? weekGrade.items : [];
-                    if (!Array.isArray(weekGrade.items) && weekGrade.items != null) { // Log if it's not an array but also not null/undefined
-                        console.warn(`CourseDetailPage: weekGrade.items for weekId ${weekGrade.weekId} was not an array. Received:`, weekGrade.items);
+                    if (!Array.isArray(weekGrade.items) && weekGrade.items != null) { 
+                        console.warn(`CourseDetailPage: weekGrade.items for weekId ${weekGrade.weekId} was not an array during render. Received:`, weekGrade.items);
                     }
                     const gradedItemsToDisplay = itemsToFilter.filter(item => item.isGraded === true);
-                    // --- END FIX ---
                     
                     const overallWeekProgressForDisplay = weekGrade.overallWeekProgress;
 
                     return (
                         <Card
-                            key={weekGrade.weekId} // Make sure weekGrade.weekId is unique and present
+                            key={weekGrade.weekId}
                             className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-lg hover:shadow-xl transition-shadow duration-300`}
                         >
                         <CardHeader className="p-4 sm:p-5">

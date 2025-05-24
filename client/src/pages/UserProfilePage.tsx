@@ -18,11 +18,13 @@ import {
   Home,
   Loader2,
   AlertCircle,
-  Camera, // Imported, can be used for future profile picture upload UI
+  Camera,
   X,
   Briefcase,
   CalendarDays,
   CheckCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { cn } from '../lib/utils.js';
 
@@ -64,6 +66,8 @@ const UserProfilePage: React.FC = () => {
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
 
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
@@ -166,6 +170,8 @@ const UserProfilePage: React.FC = () => {
       setSuccessMessage('Password changed successfully!');
       setNewPassword('');
       setConfirmNewPassword('');
+      setShowNewPassword(false);
+      setShowConfirmNewPassword(false);
       setIsChangingPassword(false);
        setTimeout(() => {
          alert("For security reasons, after a password change, it's recommended to log out and log back in if you experience any issues.");
@@ -197,6 +203,8 @@ const UserProfilePage: React.FC = () => {
     clearMessages();
     setNewPassword('');
     setConfirmNewPassword('');
+    setShowNewPassword(false);
+    setShowConfirmNewPassword(false);
   };
 
   if (authLoading || pageLoading) {
@@ -334,11 +342,53 @@ const UserProfilePage: React.FC = () => {
               <CardContent className="p-4 md:p-6 space-y-4">
                 <div>
                   <Label htmlFor="newPassword" className={labelClasses}>New Password</Label>
-                  <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className={inputClasses} required disabled={isSavingPassword} />
+                  <div className="relative">
+                    <Input 
+                        id="newPassword" 
+                        type={showNewPassword ? "text" : "password"} 
+                        value={newPassword} 
+                        onChange={(e) => setNewPassword(e.target.value)} 
+                        className={cn(inputClasses, "pr-10")} 
+                        required 
+                        disabled={isSavingPassword} 
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className={cn("absolute inset-y-0 right-0 h-full px-3 flex items-center focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0", deepBrown, "hover:bg-transparent dark:hover:bg-transparent")}
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                      disabled={isSavingPassword}
+                    >
+                      {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="confirmNewPassword" className={labelClasses}>Confirm New Password</Label>
-                  <Input id="confirmNewPassword" type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} className={inputClasses} required disabled={isSavingPassword} />
+                  <div className="relative">
+                    <Input 
+                        id="confirmNewPassword" 
+                        type={showConfirmNewPassword ? "text" : "password"} 
+                        value={confirmNewPassword} 
+                        onChange={(e) => setConfirmNewPassword(e.target.value)} 
+                        className={cn(inputClasses, "pr-10")} 
+                        required 
+                        disabled={isSavingPassword} 
+                    />
+                     <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className={cn("absolute inset-y-0 right-0 h-full px-3 flex items-center focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0", deepBrown, "hover:bg-transparent dark:hover:bg-transparent")}
+                      onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                      aria-label={showConfirmNewPassword ? "Hide confirm new password" : "Show confirm new password"}
+                      disabled={isSavingPassword}
+                    >
+                      {showConfirmNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
               <CardFooter className="p-4 md:p-6 flex justify-end gap-2 border-t ${inputBorder}">
