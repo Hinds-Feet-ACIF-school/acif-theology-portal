@@ -77,41 +77,65 @@ export default function CourseDetailPage() {
     if (!routeCourseId) return;
     setIsLoadingGrades(true);
     setGradesError(null);
+    console.log("CourseDetailPage: fetchGrades called. routeCourseId:", routeCourseId);
     try {
       const response = await apiService.getMyCourseGrades(routeCourseId);
       
-      console.log("CourseDetailPage: RAW Grades data received from backend:", response);
+      console.log("CourseDetailPage: RAW Grades data received. Type:", typeof response);
+      if (typeof response === 'object' && response !== null) {
+        console.log("CourseDetailPage: RAW response keys:", Object.keys(response));
+        // More robust logging for the response object
+        try {
+            console.log("CourseDetailPage: RAW response (stringified):", JSON.stringify(response, null, 2));
+        } catch (stringifyError) {
+            console.error("CourseDetailPage: Could not stringify raw response. Logging as is. Stringify Error:", stringifyError);
+            console.log("CourseDetailPage: RAW response (as is):", response);
+        }
+        console.log("CourseDetailPage: RAW response.weeklyGrades type:", typeof response.weeklyGrades, "isArray:", Array.isArray(response.weeklyGrades));
+        console.log("CourseDetailPage: RAW response.monthlyProgress type:", typeof response.monthlyProgress);
+      } else {
+        console.log("CourseDetailPage: RAW response is not a typical object or is null:", response);
+      }
 
-      if (response && typeof response === 'object') {
-        const { weeklyGrades, monthlyProgress } = response;
+      if (response && typeof response === 'object' && response !== null) {
+        const { weeklyGrades, monthlyProgress: rawMonthlyProgress } = response; 
+        
+        console.log("CourseDetailPage: Destructured weeklyGrades. Type:", typeof weeklyGrades, "isArray:", Array.isArray(weeklyGrades));
         
         if (Array.isArray(weeklyGrades)) {
-          const sanitizedWeeklyGrades = weeklyGrades.map(weekGrade => {
+          console.log("CourseDetailPage: Processing weeklyGrades array. Length:", weeklyGrades.length);
+          const sanitizedWeeklyGrades = weeklyGrades.map((weekGrade, index) => {
+            console.log(`CourseDetailPage: Processing weekGrade at index ${index}. Type:`, typeof weekGrade);
             if (!weekGrade || typeof weekGrade !== 'object') {
-              console.warn("Invalid weekGrade object:", weekGrade);
+              console.warn(`CourseDetailPage: Invalid weekGrade object at index ${index}:`, weekGrade);
               return {
-                weekId: '',
+                weekId: `unknown-week-${index}`,
                 weekNumber: 0,
-                weekTitle: 'Untitled Week',
+                weekTitle: 'Invalid Week Data',
                 items: [],
                 overallWeekProgress: 0
               };
             }
-
-            const items = Array.isArray(weekGrade.items) ? weekGrade.items : [];
+            console.log(`CourseDetailPage: weekGrade[${index}].weekId: ${weekGrade.weekId}, .items type:`, typeof weekGrade.items, "isArray:", Array.isArray(weekGrade.items));
             
-            const sanitizedItems = items.map(item => {
+            const items = Array.isArray(weekGrade.items) ? weekGrade.items : [];
+            if (!Array.isArray(weekGrade.items) && weekGrade.items != null) {
+                console.warn(`CourseDetailPage: weekGrade.items for weekId ${weekGrade.weekId || `index ${index}`} was not an array in API response. Received:`, weekGrade.items);
+            }
+            
+            const sanitizedItems = items.map((item, itemIndex) => {
               if (!item || typeof item !== 'object') {
+                console.warn(`CourseDetailPage: Invalid item object at weekGrade[${index}], itemIndex ${itemIndex}:`, item);
                 return {
-                  id: '',
-                  title: 'Untitled Item',
+                  id: `unknown-item-${itemIndex}`,
+                  title: 'Invalid Item Data',
                   status: 'not_started',
                   score: null,
                   isGraded: false
                 };
               }
               return {
-                id: item.id || '',
+                id: item.id || `generated-id-${itemIndex}`,
                 title: item.title || 'Untitled Item',
                 status: item.status || 'not_started',
                 score: typeof item.score === 'number' ? item.score : null,
@@ -121,7 +145,7 @@ export default function CourseDetailPage() {
             });
 
             return {
-              weekId: weekGrade.weekId || '',
+              weekId: weekGrade.weekId || `generated-week-id-${index}`,
               weekNumber: typeof weekGrade.weekNumber === 'number' ? weekGrade.weekNumber : 0,
               weekTitle: weekGrade.weekTitle || 'Untitled Week',
               items: sanitizedItems,
@@ -129,17 +153,19 @@ export default function CourseDetailPage() {
             };
           });
           setGradesData(sanitizedWeeklyGrades);
+          console.log("CourseDetailPage: Successfully processed and set gradesData state:", sanitizedWeeklyGrades);
         } else {
-          console.error("CourseDetailPage: weeklyGrades is not an array:", weeklyGrades);
+          console.error("CourseDetailPage: Destructured weeklyGrades is NOT an array:", weeklyGrades);
           setGradesData([]);
         }
 
-        if (monthlyProgress && typeof monthlyProgress === 'object') {
+        console.log("CourseDetailPage: Destructured rawMonthlyProgress. Type:", typeof rawMonthlyProgress);
+        if (rawMonthlyProgress && typeof rawMonthlyProgress === 'object') {
           const sanitizedMonthlyProgress = {
-            totalItems: typeof monthlyProgress.totalItems === 'number' ? monthlyProgress.totalItems : 0,
-            completedItems: typeof monthlyProgress.completedItems === 'number' ? monthlyProgress.completedItems : 0,
-            overallProgress: typeof monthlyProgress.overallProgress === 'number' ? monthlyProgress.overallProgress : 0,
-            quizScores: Array.isArray(monthlyProgress.quizScores) ? monthlyProgress.quizScores.map(quiz => ({
+            totalItems: typeof rawMonthlyProgress.totalItems === 'number' ? rawMonthlyProgress.totalItems : 0,
+            completedItems: typeof rawMonthlyProgress.completedItems === 'number' ? rawMonthlyProgress.completedItems : 0,
+            overallProgress: typeof rawMonthlyProgress.overallProgress === 'number' ? rawMonthlyProgress.overallProgress : 0,
+            quizScores: Array.isArray(rawMonthlyProgress.quizScores) ? rawMonthlyProgress.quizScores.map(quiz => ({
               quizId: quiz.quizId || '',
               title: quiz.title || 'Untitled Quiz',
               score: typeof quiz.score === 'number' ? quiz.score : 0,
@@ -148,20 +174,23 @@ export default function CourseDetailPage() {
             })) : []
           };
           setMonthlyProgress(sanitizedMonthlyProgress);
+          console.log("CourseDetailPage: Successfully processed and set monthlyProgress state:", sanitizedMonthlyProgress);
         } else {
-          console.error("CourseDetailPage: monthlyProgress is invalid:", monthlyProgress);
+          console.error("CourseDetailPage: rawMonthlyProgress is invalid or not an object:", rawMonthlyProgress);
           setMonthlyProgress(null);
         }
       } else {
+        console.error("CourseDetailPage: API response is not a valid object or is null after initial check.");
         throw new Error("Invalid response format from server");
       }
     } catch (err: any) {
-      console.error("CourseDetailPage: Error fetching grades:", err);
+      console.error("CourseDetailPage: Error during fetchGrades execution:", err);
       setGradesError(err.response?.data?.message || err.message || "Failed to load grades.");
       setGradesData([]);
       setMonthlyProgress(null);
     } finally {
       setIsLoadingGrades(false);
+      console.log("CourseDetailPage: fetchGrades finished.");
     }
   }, [routeCourseId]);
 
@@ -201,6 +230,7 @@ export default function CourseDetailPage() {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     if (value === "grades") {
+        console.log("CourseDetailPage: Switched to grades tab, calling fetchGrades.");
         fetchGrades(); 
     }
   };
@@ -600,7 +630,7 @@ export default function CourseDetailPage() {
                 {gradesData.length > 0 ? gradesData.map((weekGrade) => {
                     const itemsToFilter = Array.isArray(weekGrade.items) ? weekGrade.items : [];
                     if (!Array.isArray(weekGrade.items) && weekGrade.items != null) { 
-                        console.warn(`CourseDetailPage: weekGrade.items for weekId ${weekGrade.weekId} was not an array during render. Received:`, weekGrade.items);
+                        console.warn(`CourseDetailPage: [Render] weekGrade.items for weekId ${weekGrade.weekId} was not an array. Received:`, weekGrade.items, "Using empty array instead for filtering.");
                     }
                     const gradedItemsToDisplay = itemsToFilter.filter(item => item.isGraded === true);
                     
