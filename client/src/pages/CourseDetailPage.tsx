@@ -118,6 +118,7 @@ export default function CourseDetailPage() {
             }
             console.log(`CourseDetailPage: weekGrade[${index}].weekId: ${weekGrade.weekId}, .items type:`, typeof weekGrade.items, "isArray:", Array.isArray(weekGrade.items));
             
+            // Ensure items is always an array
             const items = Array.isArray(weekGrade.items) ? weekGrade.items : [];
             if (!Array.isArray(weekGrade.items) && weekGrade.items != null) {
                 console.warn(`CourseDetailPage: weekGrade.items for weekId ${weekGrade.weekId || `index ${index}`} was not an array in API response. Received:`, weekGrade.items);
@@ -628,11 +629,20 @@ export default function CourseDetailPage() {
               <>
                 {renderMonthlyProgress()}
                 {gradesData.length > 0 ? gradesData.map((weekGrade) => {
+                    // Add defensive check for items
                     const itemsToFilter = Array.isArray(weekGrade.items) ? weekGrade.items : [];
                     if (!Array.isArray(weekGrade.items) && weekGrade.items != null) { 
                         console.warn(`CourseDetailPage: [Render] weekGrade.items for weekId ${weekGrade.weekId} was not an array. Received:`, weekGrade.items, "Using empty array instead for filtering.");
                     }
-                    const gradedItemsToDisplay = itemsToFilter.filter(item => item.isGraded === true);
+                    
+                    // Add defensive check for each item before filtering
+                    const gradedItemsToDisplay = itemsToFilter.filter(item => {
+                        if (!item || typeof item !== 'object') {
+                            console.warn(`CourseDetailPage: [Render] Invalid item found in weekGrade.items for weekId ${weekGrade.weekId}:`, item);
+                            return false;
+                        }
+                        return item.isGraded === true;
+                    });
                     
                     const overallWeekProgressForDisplay = weekGrade.overallWeekProgress;
 
