@@ -22,11 +22,11 @@ interface ApiQuizQuestionOptionFromApi {
 
 interface ApiQuizQuestionFromApi {
     id: string;
-    type: 'multiple_choice' | 'checkbox' | 'short_answer' | 'essay';
+    type: 'multiple_choice' | 'checkbox' | 'short_answer' | 'paragraph' | 'essay'; 
     question: string;
     description?: string | null;
     options?: ApiQuizQuestionOptionFromApi[];
-    correctAnswer?: string | string[]; // For short_answer/essay or as an alternative way to store correct options
+    correctAnswer?: string | string[]; // For short_answer/paragraph or as an alternative way to store correct options
     points?: number;
     required?: boolean;
     feedback?: string | null; // General feedback for the question
@@ -38,6 +38,7 @@ interface ApiQuizQuestionFromApi {
 export interface ModalQuizQuestionOption extends ApiQuizQuestionOptionFromApi {}
 export interface ModalQuizQuestion extends ApiQuizQuestionFromApi {
     options?: ModalQuizQuestionOption[]; // Ensure options are of ModalQuizQuestionOption type
+    required: boolean; 
 }
 
 // Style constants and functions - these would ideally be imported from a shared util/theme file
