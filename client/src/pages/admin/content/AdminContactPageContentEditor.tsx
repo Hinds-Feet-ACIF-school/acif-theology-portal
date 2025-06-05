@@ -39,7 +39,7 @@ const fetchContactPageContentFromAPI = async (): Promise<ContactPageContentData 
 
 const saveContactPageContentToAPI = async (content: ContactPageContentData): Promise<ContactPageContentData> => {
   console.log("Saving Contact Us page content to API:", content);
-  const token = localStorage.getItem('adminAuthToken');
+  const token = localStorage.getItem('token');
   const { _id, identifier, createdAt, updatedAt, ...contentToSave } = content;
 
   const response = await fetch(`${API_BASE_URL}/content/contact`, {
