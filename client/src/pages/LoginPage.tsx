@@ -92,7 +92,7 @@ export default function LoginPage() {
               Welcome Back
             </CardTitle>
             <CardDescription className={`${secondaryTextLight} ${secondaryTextDark}`}>
-              Log in to your student account
+              Log in to your account
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
@@ -144,19 +144,6 @@ export default function LoginPage() {
                     )}
                   </button>
                 </div>
-              </div>
-              <div className="flex items-center space-x-2 pt-2">
-                 <input
-                    type="checkbox"
-                    id="rememberMe"
-                    name="rememberMe"
-                    checked={formData.rememberMe}
-                    onChange={handleChange}
-                    className={`h-4 w-4 rounded border-[#B08F55] dark:border-gray-600 text-[${accentColor}] focus:ring-[${accentColor}] focus:ring-offset-0 bg-[#FFF8F0] dark:bg-gray-800`}
-                  />
-                <label htmlFor="rememberMe" className={`text-sm ${secondaryTextLight} ${secondaryTextDark}`}>
-                  Remember me
-                </label>
               </div>
                {formError && (
                 <p className="text-sm text-red-600 dark:text-red-400 text-center pt-2">{formError}</p>

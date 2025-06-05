@@ -295,3 +295,54 @@ export const getUserSubmissionForQuiz = async (userId, quizId) => {
         throw new Error(`Error getting user submission for quiz: ${error.message}`);
     }
 };
+
+export const getAllQuizzes = async () => {
+  try {
+    const quizzesSnapshot = await quizzesCollection
+      .orderBy("createdAt", "desc")
+      .get();
+    const quizzes = [];
+    quizzesSnapshot.forEach((doc) => {
+      quizzes.push({ id: doc.id, ...doc.data() });
+    });
+    return quizzes;
+  } catch (error) {
+    console.error("Error getting all quizzes:", error);
+    throw new Error(`Error getting all quizzes: ${error.message}`);
+  }
+};
+
+export const getQuizzesByCourseId = async (courseId) => {
+  try {
+    if (!courseId) throw new Error("courseId is required.");
+    const quizzesSnapshot = await quizzesCollection
+      .where("courseId", "==", courseId)
+      .orderBy("createdAt", "asc")
+      .get();
+    const quizzes = [];
+    quizzesSnapshot.forEach((doc) => {
+      quizzes.push({ id: doc.id, ...doc.data() });
+    });
+    return quizzes;
+  } catch (error) {
+    console.error(`Error getting quizzes for course (${courseId}):`, error);
+    throw new Error(`Error getting quizzes by course: ${error.message}`);
+  }
+};
+
+export const QuizModel = {
+  createMainQuizFromContent,
+  getQuizById,
+  createQuiz,
+  getQuizzesByWeekId,
+  updateQuiz,
+  deleteQuiz,
+  submitQuizAttempt,
+  gradeQuizSubmission,
+  getSubmissionById,
+  getSubmissionsByQuiz,
+  getSubmissionsByUser,
+  getUserSubmissionForQuiz,
+  getAllQuizzes,
+  getQuizzesByCourseId
+};

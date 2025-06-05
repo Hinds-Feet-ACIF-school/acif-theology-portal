@@ -2,17 +2,33 @@
 
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Users, FileText, Settings, BarChart3, Sun, Moon } from 'lucide-react';
-import { useTheme } from '../theme-provider';
-import { Button } from '../ui/button.js'; // Adjust path if needed
+import {
+    LayoutDashboard, BookOpen, Users, Settings, BarChart3, Sun, Moon,
+    Home, // For Home Page Content
+    Info, // For Overview/About Page Content
+    Mail, // For Contact Page Content
+    LayoutPanelLeft , 
+    Copyright 
+} from 'lucide-react';
+import { useTheme } from '../theme-provider'; 
+import { Button } from '../ui/button'; 
 
-const adminLinks = [
+
+const adminManagementLinks = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Courses', href: '/admin/courses', icon: BookOpen },
     { name: 'Students', href: '/admin/students', icon: Users },
-    // { name: 'Quizzes', href: '/admin/quizzes', icon: FileText },
     { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
+];
+
+const userPageContentLinks = [
+    { name: 'Home Page', href: '/admin/pages/home', icon: Home },
+    { name: 'Overview Page', href: '/admin/pages/overview', icon: Info }, 
+    { name: 'About Page', href: '/admin/pages/about', icon: Info },
+    { name: 'Contact Page', href: '/admin/pages/contact', icon: Mail },
+    { name: 'User Dashboard Page', href: '/admin/pages/user-dashboard', icon: LayoutPanelLeft }, 
+    { name: 'Footer Content', href: '/admin/pages/footer', icon: Copyright },
 ];
 
 const activeClassName = "bg-gray-200 dark:bg-gray-700 text-[#2A0F0F] dark:text-white";
@@ -38,26 +54,44 @@ const AdminSidebar: React.FC = () => {
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            className="text-[#2A0F0F] dark:text-[#E0D6C3] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full h-8 w-8" // Adjusted size/padding slightly
+            className="text-[#2A0F0F] dark:text-[#E0D6C3] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full h-8 w-8"
             aria-label={`Switch to ${currentClientTheme === 'light' ? 'dark' : 'light'} mode`}
           >
             {currentClientTheme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </Button>
       </div>
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        {adminLinks.map((link) => (
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto"> 
+        {adminManagementLinks.map((link) => (
           <NavLink
             key={link.name}
             to={link.href}
-            end
+            end={link.href === '/admin'} 
             className={({ isActive }) =>
               `flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive ? activeClassName : inactiveClassName}`
             }
           >
-            <link.icon className="mr-3 h-5 w-5" aria-hidden="true" />
+            <link.icon className="mr-3 h-5 w-5 flex-shrink-0" aria-hidden="true" />
             {link.name}
           </NavLink>
         ))}
+
+        <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-600">
+          <h3 className="px-3 mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            Manage Page Content
+          </h3>
+          {userPageContentLinks.map((link) => (
+            <NavLink
+              key={link.name}
+              to={link.href}
+              className={({ isActive }) =>
+                `flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive ? activeClassName : inactiveClassName}`
+              }
+            >
+              <link.icon className="mr-3 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+              {link.name}
+            </NavLink>
+          ))}
+        </div>
       </nav>
 
        <div className="p-4 mt-auto border-t border-gray-200 dark:border-gray-700">

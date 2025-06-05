@@ -18,6 +18,8 @@ router.delete("/:quizId", verifyToken, isInstructor, QuizController.deleteQuiz);
 
 router.get("/:quizId/submissions", verifyToken, isInstructor, QuizController.getSubmissionsByQuiz);
 
+router.get("/admin/overview", verifyToken, isAdmin, QuizController.getAdminQuizOverview);
+
 
 router.post("/submissions/:submissionId/grade", verifyToken, isInstructor, QuizController.gradeQuizSubmission);
 

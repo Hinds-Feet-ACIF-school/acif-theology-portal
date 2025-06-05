@@ -28,6 +28,7 @@ export const createWeek = async (weekData) => {
       weekNumber: parseInt(String(weekData.weekNumber), 10),
       title: weekData.title,
       description: weekData.description || "",
+      monthOrder: Math.ceil(parseInt(String(weekData.weekNumber), 10) / 4),
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -46,7 +47,6 @@ export const createWeek = async (weekData) => {
     throw new Error(`Error creating week: ${message}`);
   }
 };
-
 export const getWeekById = async (weekId) => {
   try {
     if (!weekId) throw new Error("weekId is required.");
@@ -68,7 +68,6 @@ export const getWeekById = async (weekId) => {
     throw new Error(`Database error getting week ${weekId}: ${message}`);
   }
 };
-
 export const getWeeksByCourseId = async (courseId) => {
   try {
     if (!courseId) throw new Error("courseId is required.");
@@ -97,7 +96,6 @@ export const getWeeksByCourseId = async (courseId) => {
     throw new Error(`Database error getting weeks by course: ${message}`);
   }
 };
-
 export const updateWeek = async (weekId, weekDataToUpdate) => {
   try {
     if (!weekId) throw new Error("weekId is required for update.");
@@ -132,7 +130,6 @@ export const updateWeek = async (weekId, weekDataToUpdate) => {
     throw new Error(`Database error updating week ${weekId}: ${message}`);
   }
 };
-
 export const deleteWeek = async (weekId) => {
   try {
     if (!weekId) throw new Error("weekId is required for deletion.");
@@ -173,7 +170,6 @@ export const deleteWeek = async (weekId) => {
     throw new Error(`Database error deleting week ${weekId}: ${message}`);
   }
 };
-
 export const getSectionsByWeekId = async (weekId) => {
     try {
         if (!weekId) throw new Error("weekId is required.");
@@ -202,7 +198,6 @@ export const getSectionsByWeekId = async (weekId) => {
         throw new Error(`Database error getting sections by week: ${message}`);
     }
 };
-
 export const getUserProgressForWeek = async (userId, weekId) => {
     try {
         if (!userId || !weekId) {
@@ -229,7 +224,6 @@ export const getUserProgressForWeek = async (userId, weekId) => {
         throw new Error(`Database error getting user progress: ${error.message}`);
     }
 };
-
 export const updateSectionProgress = async (userId, weekId, sectionId, completed) => {
     try {
         if (!userId || !weekId || !sectionId || typeof completed !== 'boolean') {

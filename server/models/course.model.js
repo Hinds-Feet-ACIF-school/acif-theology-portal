@@ -1,5 +1,6 @@
 import { db } from "../config/firebase.config.js";
 import { FieldValue } from 'firebase-admin/firestore';
+import { QuizModel } from './quiz.model.js';
 
 const coursesCollection = db.collection("courses");
 
@@ -24,7 +25,6 @@ export const getAllCourseOverviews = async () => {
         throw new Error("Database error fetching course overviews.");
     }
 };
-
 export const createCourse = async (courseData) => {
   try {
     if (!courseData.title || courseData.monthOrder === undefined || courseData.monthOrder === null) {
@@ -68,8 +68,6 @@ export const createCourse = async (courseData) => {
     throw new Error(`Error creating course.`);
   }
 };
-
-
 export const getCourseById = async (courseId) => {
   try {
     const courseDoc = await coursesCollection.doc(courseId).get();
@@ -91,8 +89,6 @@ export const getCourseById = async (courseId) => {
     throw new Error(`Database error getting course ${courseId}.`);
   }
 };
-
-
 export const updateCourse = async (courseId, courseData) => {
   try {
     const courseRef = coursesCollection.doc(courseId);
@@ -143,8 +139,6 @@ export const updateCourse = async (courseId, courseData) => {
     throw new Error(`Database error updating course ${courseId}.`);
   }
 };
-
-
 export const deleteCourse = async (courseId) => {
   try {
 
@@ -164,8 +158,6 @@ export const deleteCourse = async (courseId) => {
     throw new Error(`Database error deleting course ${courseId}.`);
   }
 };
-
-
 export const getAllCourses = async () => {
   try {
     const coursesSnapshot = await coursesCollection.orderBy("monthOrder", "asc").get();
@@ -189,8 +181,6 @@ export const getAllCourses = async () => {
     throw new Error(`Database error getting all courses.`);
   }
 };
-
-
 export const getCoursesByInstructor = async (instructorId) => {
   try {
     const coursesSnapshot = await coursesCollection.where("instructor", "==", instructorId).orderBy("monthOrder", "asc").get();
@@ -212,5 +202,35 @@ export const getCoursesByInstructor = async (instructorId) => {
   } catch (error) {
     console.error(`Error getting courses by instructor (${instructorId}):`, error);
     throw new Error(`Database error getting courses by instructor.`);
+  }
+};
+export const getUserCourseGrades = async (userId, courseId) => {
+  try {
+    // Get all quizzes for the course
+    const quizzes = await QuizModel.getQuizzesByCourseId(courseId);
+    
+    // Get all submissions for the user
+    const submissions = await Promise.all(
+      quizzes.map(quiz => QuizModel.getUserSubmissionForQuiz(userId, quiz.id))
+    );
+
+    // Filter out null submissions and format the data
+    const grades = submissions
+      .filter(submission => submission !== null)
+      .map(submission => ({
+        quizId: submission.quizId,
+        score: submission.score,
+        submittedAt: submission.submittedAt,
+        status: submission.status
+      }));
+
+    return {
+      userId,
+      courseId,
+      grades
+    };
+  } catch (error) {
+    console.error(`Error getting grades for user ${userId} in course ${courseId}:`, error);
+    throw new Error(`Error getting user course grades: ${error.message}`);
   }
 };

@@ -1,6 +1,7 @@
 import * as QuizModel from "../models/quiz.model.js";
 import * as WeekModel from "../models/week.model.js"; // Still needed for createQuiz
 import * as UserModel from "../models/user.model.js"; // Assuming used by other functions if any
+import * as CourseModel from "../models/course.model.js"; // Assuming used by other functions if any
 
 export const createQuiz = async (req, res) => {
     try {
@@ -207,5 +208,65 @@ export const getMySubmissions = async (req, res) => {
     } catch (error) {
         console.error(`Error getting user submissions for user ${req.user.uid}:`, error);
         res.status(500).json({ message: `Failed to get submissions: ${error.message}` });
+    }
+};
+
+export const getAdminQuizOverview = async (req, res) => {
+    try {
+        // Get all quizzes with their submission counts
+        const quizzes = await QuizModel.getAllQuizzes();
+        const quizOverviews = await Promise.all(quizzes.map(async (quiz) => {
+            try {
+                const submissions = await QuizModel.getSubmissionsByQuiz(quiz.id);
+                let courseName = 'Unknown Course';
+                let totalEligible = 0;
+                let monthOrder = 1;
+                let weekNumber = 1;
+
+                if (quiz.courseId) {
+                    const course = await CourseModel.getCourseById(quiz.courseId);
+                    if (course) {
+                        courseName = course.title;
+                        // Get all users and count those enrolled in the course's cohort
+                        const users = await UserModel.getAllUsers();
+                        totalEligible = users.filter(user => 
+                            user.role === 'student' && 
+                            user.enrollment && 
+                            user.enrollment.cohortId
+                        ).length;
+                    }
+                }
+
+                if (quiz.weekId) {
+                    const week = await WeekModel.getWeekById(quiz.weekId);
+                    if (week) {
+                        monthOrder = week.monthOrder || 1;
+                        weekNumber = week.weekNumber || 1;
+                    }
+                }
+                
+                return {
+                    id: quiz.id,
+                    courseId: quiz.courseId,
+                    title: quiz.title,
+                    courseName,
+                    submittedCount: submissions.length,
+                    totalEligible,
+                    monthOrder,
+                    weekNumber
+                };
+            } catch (error) {
+                console.error(`Error processing quiz ${quiz.id}:`, error);
+                return null;
+            }
+        }));
+
+        // Filter out any null results from failed processing
+        const validQuizOverviews = quizOverviews.filter(overview => overview !== null);
+
+        res.status(200).json(validQuizOverviews);
+    } catch (error) {
+        console.error("Error getting admin quiz overview:", error);
+        res.status(500).json({ message: `Failed to get quiz overview: ${error.message}` });
     }
 };

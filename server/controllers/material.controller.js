@@ -1,12 +1,14 @@
 import * as MaterialModel from "../models/material.model.js";
 import * as WeekModel from "../models/week.model.js"; // To validate weekId
 import { getStorage } from "firebase-admin/storage";
+import { storage } from '../config/firebase.config.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const bucket = getStorage().bucket();
 
 const uploadFileToStorage = async (file, weekId, materialId) => {
     if (!file) return null;
+    const bucket = storage.bucket(); 
 
     const fileExtension = file.originalname.split('.').pop();
     const uniqueFilename = `${uuidv4()}.${fileExtension}`;

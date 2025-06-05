@@ -2,6 +2,20 @@ import { db } from "../config/firebase.config.js";
 
 const sectionsCollection = db.collection("sections");
 
+export const createSection = async (sectionData) => {
+    try {
+        const docRef = await sectionsCollection.add({
+            ...sectionData,
+            content: [],
+            createdAt: new Date(),
+            updatedAt: new Date()
+        });
+        return { id: docRef.id, ...sectionData, content: [] };
+    } catch (error) {
+        console.error("Error in createSection:", error);
+        throw error;
+    }
+};
 export const getSectionsByWeekId = async (weekId) => {
     try {
         if (!weekId) { // Good practice to validate input
@@ -33,21 +47,6 @@ export const getSectionsByWeekId = async (weekId) => {
         throw new Error(`Database error fetching sections for week ${weekId}: ${error.message}`);
     }
 };
-export const createSection = async (sectionData) => {
-    try {
-        const docRef = await sectionsCollection.add({
-            ...sectionData,
-            content: [],
-            createdAt: new Date(),
-            updatedAt: new Date()
-        });
-        return { id: docRef.id, ...sectionData, content: [] };
-    } catch (error) {
-        console.error("Error in createSection:", error);
-        throw error;
-    }
-};
-
 export const updateSection = async (sectionId, sectionData) => {
     try {
         const sectionRef = sectionsCollection.doc(sectionId);

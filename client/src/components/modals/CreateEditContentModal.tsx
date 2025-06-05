@@ -160,7 +160,6 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
 
     const isEditingLocally = !!currentContentItem?.id;
     const generateId = useCallback(() => `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, []);
-
     useEffect(() => { richContentRef.current = richContent; }, [richContent]);
 
     const mapApiBlockToModalBlock = useCallback((apiRcBlock: ApiRichContentItemBlockFromApi, index: number): ModalRichContentItem => {
@@ -544,59 +543,86 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                 <h3 className={`text-lg font-medium mb-1 text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`}>{item.documentContent.title || "Untitled Document"}</h3>
                                 {item.documentContent.description && <p className={`text-xs mb-1 text-[${midBrownLightHex}] dark:text-[${midBrownDarkHex}]`}>{item.documentContent.description}</p>}
                                 {(() => {
-                                    const docUrl = item.documentContent.documentObjectUrl || item.documentContent.documentUrl;
+                                    const docUrlToUse = item.documentContent.documentObjectUrl || item.documentContent.documentUrl;
                                     const fileName = item.documentContent.originalFileName;
                                     const fileTypeFromContent = item.documentContent.fileType;
                                     let isViewableType = false;
                                     const lowerFileName = fileName?.toLowerCase();
+
                                     if (fileTypeFromContent) {
-                                        isViewableType = fileTypeFromContent === 'application/pdf' || fileTypeFromContent.includes('powerpoint') || fileTypeFromContent.includes('presentationml') || fileTypeFromContent.includes('msword') || fileTypeFromContent.includes('wordprocessingml');
+                                        isViewableType = fileTypeFromContent === 'application/pdf' || 
+                                                         fileTypeFromContent.includes('powerpoint') || 
+                                                         fileTypeFromContent.includes('presentationml') || 
+                                                         fileTypeFromContent.includes('msword') || 
+                                                         fileTypeFromContent.includes('wordprocessingml');
                                     } else if (lowerFileName) {
-                                        isViewableType = lowerFileName.endsWith('.pdf') || lowerFileName.endsWith('.ppt') || lowerFileName.endsWith('.pptx') || lowerFileName.endsWith('.doc') || lowerFileName.endsWith('.docx');
+                                        isViewableType = lowerFileName.endsWith('.pdf') || 
+                                                         lowerFileName.endsWith('.ppt') || 
+                                                         lowerFileName.endsWith('.pptx') || 
+                                                         lowerFileName.endsWith('.doc') || 
+                                                         lowerFileName.endsWith('.docx');
                                     }
 
-                                    if (docUrl && isViewableType) {
+                                    if (docUrlToUse && isViewableType) {
                                         return (
                                             <>
                                             <div className="mt-2 mb-3">
                                                 <DocumentViewer
-                                                    fileUrl={item.documentContent?.documentUrl || ''}
+                                                    key={`doc-viewer-preview-${item.id}`}
+                                                    fileUrl={docUrlToUse}
                                                     fileType={item.documentContent?.fileType}
                                                     originalFileName={item.documentContent?.originalFileName}
                                                     themedInputBorder={themedInputBorder}
                                                     mutedText={mutedText}
+                                                    onLoadSuccess={(loadedPages) => {
+                                                        if (item.documentContent) {
+                                                            const newTotalSlides = loadedPages;
+                                                            if (item.documentContent.totalSlides !== newTotalSlides || item.documentContent.currentSlide !== 1) {
+                                                                handleUpdateRichContentItem(item.id, {
+                                                                    documentContent: {
+                                                                        ...item.documentContent,
+                                                                        totalSlides: newTotalSlides,
+                                                                        currentSlide: 1,
+                                                                    }
+                                                                });
+                                                            }
+                                                        }
+                                                    }}
                                                 />
                                             </div>
-                                                {item.documentContent && item.documentContent.totalSlides && item.documentContent.totalSlides > 1 && (
-                                                    <div className="flex items-center justify-center space-x-3 mt-2 mb-1">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => goToPrevSlide(item.id)}
-                                                            disabled={item.documentContent.currentSlide === 1}
-                                                            className={`${outlineButtonClasses} h-8 w-8 p-0`}
-                                                            aria-label="Previous slide"
-                                                        >
-                                                            <ChevronLeft className="h-4 w-4" />
-                                                        </Button>
-                                                        <span className={`text-xs ${mutedText}`}>
-                                                            Slide {item.documentContent.currentSlide} of {item.documentContent.totalSlides}
-                                                        </span>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => goToNextSlide(item.id)}
-                                                            disabled={item.documentContent.currentSlide === item.documentContent.totalSlides}
-                                                            className={`${outlineButtonClasses} h-8 w-8 p-0`}
-                                                            aria-label="Next slide"
-                                                        >
-                                                            <ChevronRight className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                )}
+                                            {item.documentContent && 
+                                             (item.documentContent.fileType === 'application/pdf' || (item.documentContent.originalFileName || '').toLowerCase().endsWith('.pdf')) && 
+                                             item.documentContent.totalSlides && 
+                                             item.documentContent.totalSlides > 1 && (
+                                                <div className="flex items-center justify-center space-x-3 mt-2 mb-1">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => goToPrevSlide(item.id)}
+                                                        disabled={item.documentContent.currentSlide === 1}
+                                                        className={`${outlineButtonClasses} h-8 w-8 p-0`}
+                                                        aria-label="Previous slide"
+                                                    >
+                                                        <ChevronLeft className="h-4 w-4" />
+                                                    </Button>
+                                                    <span className={`text-xs ${mutedText}`}>
+                                                        Slide {item.documentContent.currentSlide} of {item.documentContent.totalSlides}
+                                                    </span>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => goToNextSlide(item.id)}
+                                                        disabled={item.documentContent.currentSlide === item.documentContent.totalSlides}
+                                                        className={`${outlineButtonClasses} h-8 w-8 p-0`}
+                                                        aria-label="Next slide"
+                                                    >
+                                                        <ChevronRight className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            )}
                                             </>
                                         );
-                                    } else if (docUrl) {
+                                    } else if (docUrlToUse) {
                                         return (<div className="my-2"><p className={`text-sm ${mutedText} mb-2`}>{isViewableType ? "Preview loading..." : "Preview not available for this file type."}</p></div>);
                                     } else {
                                         return (<div className={`my-2 p-3 ${editorCardBgMantine} rounded text-sm ${mutedText} border ${themedInputBorder}`}>Document missing.</div>);

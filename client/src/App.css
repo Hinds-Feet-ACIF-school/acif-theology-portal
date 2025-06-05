@@ -85,3 +85,58 @@
   /* max-height: 60vh; /* Example max height, adjust as needed */
   /* overflow-y: auto; /* This is already on CardContent, but good to keep in mind */
 }
+
+/* PPTX Preview Styles */
+.pptx-render-area {
+    position: relative;
+    min-height: 400px;
+    background: #ffffff;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.pptx-custom-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    background: #ffffff;
+    transition: opacity 0.3s ease;
+}
+
+.pptx-custom-slide.active {
+    display: block;
+    opacity: 1;
+}
+
+.pptx-custom-slide img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+/* Dark mode support */
+.dark .pptx-render-area {
+    background: #1a1a1a;
+}
+
+.dark .pptx-custom-slide {
+    background: #1a1a1a;
+}
+
+/* Loading state */
+.pptx-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: #666;
+}
+
+.dark .pptx-loading {
+    color: #999;
+}

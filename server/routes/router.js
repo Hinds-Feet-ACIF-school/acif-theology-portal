@@ -13,6 +13,7 @@ import sectionRoutes from "./section.routes.js";
 import uploadRoutes from "./upload.routes.js";
 import paymentRoutes from './payment.routes.js';
 import utilityRoutes from './utility.routes.js'; 
+import contentRoutes from "./content.routes.js";
 
 import { verifyToken } from "../middleware/auth.middleware.js";
 import userCourseAccessRoutes from './userCourseAccess.routes.js'; // This router itself defines /me/course-access-state
@@ -38,6 +39,7 @@ router.use("/admin", verifyToken, adminRoutes);
 router.use("/sections", sectionRoutes);
 router.use('/cohorts', cohortRoutes);
 router.use('/payments', paymentRoutes);
+router.use("/content", contentRoutes); 
 router.use(uploadRoutes); // Upload routes likely define their own full paths starting with /upload
 router.use(utilityRoutes); 
 

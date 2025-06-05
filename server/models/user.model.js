@@ -4,6 +4,8 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 const usersCollection = db.collection("users");
 
+
+// Converts to JS Date
 const convertTimestamps = (userData) => {
     if (userData.createdAt && typeof userData.createdAt.toDate === 'function') {
         userData.createdAt = userData.createdAt.toDate();
@@ -17,50 +19,50 @@ const convertTimestamps = (userData) => {
     return userData;
 };
 
-export const createUser = async (userData) => {
-    if (!userData || !userData.uid) {
-        throw new Error("Cannot create user document without valid user data and UID.");
-    }
-
-    try {
-        const displayName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
-
-        const dataToSet = {
-            uid: userData.uid,
-            email: userData.email,
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            displayName: displayName,
-            role: userData.role || "student",
-            country: userData.country,
-            church: userData.church === undefined ? null : userData.church,
-            enrollment: userData.enrollment ? {
-                cohortId: userData.enrollment.cohortId || null,
-                paymentTxRef: userData.enrollment.paymentTxRef || null,
-                paymentAmount: userData.enrollment.paymentAmount || null,
-                paymentCurrency: userData.enrollment.paymentCurrency || null,
-                enrollmentDate: userData.enrollment.enrollmentDate instanceof Date ? userData.enrollment.enrollmentDate : FieldValue.serverTimestamp(),
-            } : null,
-            createdAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp(),
-            profileComplete: false,
-            profilePicture: "",
-            bio: "",
-        };
-
-        if (dataToSet.enrollment === undefined) {
-            dataToSet.enrollment = null;
+    export const createUser = async (userData) => {
+        if (!userData || !userData.uid) {
+            throw new Error("Cannot create user document without valid user data and UID.");
         }
 
-        await usersCollection.doc(dataToSet.uid).set(dataToSet);
-        const createdUser = await getUserById(dataToSet.uid);
-        return createdUser;
+        try {
+            const displayName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
 
-    } catch (error) {
-        console.error("Error creating user document in Firestore for UID " + userData.uid + ". Code: " + error.code + ". Message: " + error.message);
-        throw new Error(`Error creating user document in Firestore for UID ${userData.uid}. Code: ${error.code}. Message: ${error.message}`);
-    }
-};
+            const dataToSet = {
+                uid: userData.uid,
+                email: userData.email,
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                displayName: displayName,
+                role: userData.role || "student",
+                country: userData.country,
+                church: userData.church === undefined ? null : userData.church,
+                enrollment: userData.enrollment ? {
+                    cohortId: userData.enrollment.cohortId || null,
+                    paymentTxRef: userData.enrollment.paymentTxRef || null,
+                    paymentAmount: userData.enrollment.paymentAmount || null,
+                    paymentCurrency: userData.enrollment.paymentCurrency || null,
+                    enrollmentDate: userData.enrollment.enrollmentDate instanceof Date ? userData.enrollment.enrollmentDate : FieldValue.serverTimestamp(),
+                } : null,
+                createdAt: FieldValue.serverTimestamp(),
+                updatedAt: FieldValue.serverTimestamp(),
+                profileComplete: false,
+                profilePicture: "",
+                bio: "",
+            };
+
+            if (dataToSet.enrollment === undefined) {
+                dataToSet.enrollment = null;
+            }
+
+            await usersCollection.doc(dataToSet.uid).set(dataToSet);
+            const createdUser = await getUserById(dataToSet.uid);
+            return createdUser;
+
+        } catch (error) {
+            console.error("Error creating user document in Firestore for UID " + userData.uid + ". Code: " + error.code + ". Message: " + error.message);
+            throw new Error(`Error creating user document in Firestore for UID ${userData.uid}. Code: ${error.code}. Message: ${error.message}`);
+        }
+    };
 
 export const getUserById = async (userId) => {
     try {
@@ -132,7 +134,7 @@ export const updateUser = async (userId, updateData) => {
             dataToUpdate.enrollment = null;
         }
         if (updateData.enrollment && updateData.enrollment.enrollmentDate && !(updateData.enrollment.enrollmentDate instanceof Date) && !(updateData.enrollment.enrollmentDate instanceof FieldValue) ) {
-            delete updateData.enrollment.enrollmentDate; // Avoid writing bad date data
+            delete updateData.enrollment.enrollmentDate; 
         }
 
 
