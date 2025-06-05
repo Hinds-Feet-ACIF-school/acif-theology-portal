@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 5000;
 // Define allowed origins for CORS
 const allowedOrigins = [
     'http://localhost:5173',
-    'https://acif-theology-portall.vercel.app'
+    'https://acif-theology-portal.vercel.app'
 ];
 
 const corsOptions = {
