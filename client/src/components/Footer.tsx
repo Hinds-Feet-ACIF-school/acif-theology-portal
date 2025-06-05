@@ -1,46 +1,72 @@
 // src/components/Footer.tsx
-import React, { useState, useEffect } from 'react'; // Added useState, useEffect
+import React, { useState, useEffect } from 'react';
 import { Link } from "react-router-dom";
-import defaultLogo from "../assets/logo.jpg"; // Fallback logo
+import defaultStaticLogo from "../assets/logo.jpg"; // Your static fallback logo
 
-// Import the data type
-import { FooterContentData } from '../types/footerContentTypes'; // Adjust path
+// Import the new unified data type
+import { SiteBrandingContentData } from '../types/siteBrandingContentTypes'; // Adjust path if needed
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-const fetchPublicFooterContent = async (): Promise<FooterContentData | null> => {
+// Fetch function for the unified site branding content
+const fetchPublicSiteBrandingContent = async (): Promise<SiteBrandingContentData | null> => {
+  console.log("Footer: Fetching site branding content from API...");
   try {
-    const response = await fetch(`${API_BASE_URL}/content/footer`);
+    const response = await fetch(`${API_BASE_URL}/content/site-branding`); // Updated endpoint
     if (!response.ok) {
-        console.warn("Failed to fetch footer content, status:", response.status);
+        console.warn("Footer: Failed to fetch site branding content, status:", response.status);
+        // Try to get error message from response if possible
+        try {
+            const errorData = await response.json();
+            console.error("Footer: API error data:", errorData.message || response.statusText);
+        } catch (e) {
+            console.error("Footer: Could not parse error response as JSON. Status:", response.statusText);
+        }
         return null; // Return null on error to use fallbacks
     }
-    return response.json();
+    const data = await response.json();
+    // Basic validation
+    if (data && data.header && data.footer) {
+        return data;
+    } else {
+        console.warn("Footer: Fetched site branding data is not in the expected format:", data);
+        return null;
+    }
   } catch (error) {
-    console.error("Error fetching footer content:", error);
+    console.error("Footer: Network error fetching site branding content:", error);
     return null; // Return null on network error
   }
 };
 
 export default function Footer() {
-  const [content, setContent] = useState<FooterContentData | null>(null);
+  const [brandingContent, setBrandingContent] = useState<SiteBrandingContentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadContent = async () => {
       setIsLoading(true);
-      const fetchedContent = await fetchPublicFooterContent();
-      setContent(fetchedContent);
+      const fetchedContent = await fetchPublicSiteBrandingContent();
+      setBrandingContent(fetchedContent);
       setIsLoading(false);
     };
     loadContent();
   }, []);
 
   // Provide fallbacks if content is loading or fails to load
-  const siteName = isLoading ? "Loading..." : (content?.siteName || "Apostolic Theology");
-  const copyrightHolder = isLoading ? "" : (content?.copyrightText || "International Apostolic Church. All rights reserved.");
-  const tagline = isLoading ? "" : (content?.tagline || '"Study to shew thyself approved unto God..." - 2 Timothy 2:15');
-  const logoUrl = content?.logoUrl || defaultLogo; // Use fetched logo or fallback
+  // Accessing content within brandingContent.footer
+  const footerSiteName = isLoading 
+    ? "Loading..." 
+    : (brandingContent?.footer?.footerSiteName || "Apostolic Theology");
+  
+  const copyrightHolder = isLoading 
+    ? "" 
+    : (brandingContent?.footer?.copyrightText || "International Apostolic Church");
+  
+  const tagline = isLoading 
+    ? "" 
+    : (brandingContent?.footer?.tagline || '"Study to shew thyself approved unto God..." - 2 Timothy 2:15');
+  
+  const footerLogoToDisplay = brandingContent?.footer?.footerLogoUrl || defaultStaticLogo;
 
   return (
     <footer className="w-full py-8 sm:py-10 md:py-12 bg-[#FFF8F0] dark:bg-[#2A0F0F] border-t border-[#C5A467]/20">
@@ -49,17 +75,17 @@ export default function Footer() {
           <div className="flex flex-col items-center md:items-start gap-2 text-center md:text-left">
             <div className="flex items-center gap-2">
               <img 
-                src={logoUrl} 
-                alt={`${siteName} Logo`} 
+                src={footerLogoToDisplay} 
+                alt={`${footerSiteName} Footer Logo`} 
                 className="h-10 w-10 rounded-full object-cover shadow-md border-2 border-[#C5A467]/50" 
-                onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }} // Fallback for broken dynamic URL
+                onError={(e) => { (e.target as HTMLImageElement).src = defaultStaticLogo; }} // Fallback if dynamic URL fails
               />
               <span className="font-serif font-bold text-lg text-[#2A0F0F] dark:text-[#E0D6C3]">
-                {siteName}
+                {footerSiteName}
               </span>
             </div>
             <p className="text-sm text-[#4A1F1F] dark:text-[#E0D6C3]/80">
-              © {new Date().getFullYear()} {copyrightHolder}
+              © {new Date().getFullYear()} {copyrightHolder}. All rights reserved.
             </p>
           </div>
           
@@ -76,7 +102,8 @@ export default function Footer() {
           </div>
         </div>
 
-        {tagline && ( // Only render tagline if it exists
+        {/* Render tagline only if it's not empty after loading and potential fallback */}
+        {(tagline || (!isLoading && brandingContent?.footer?.tagline)) && (
           <div className="mt-8 pt-6 border-t border-[#C5A467]/20 text-center">
             <p className="text-xs sm:text-sm text-[#4A1F1F] dark:text-[#E0D6C3]/80">
               {tagline}

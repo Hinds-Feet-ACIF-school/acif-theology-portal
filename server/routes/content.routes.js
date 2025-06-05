@@ -13,6 +13,8 @@ import {
   updateUserDashboardPageContent, 
   getFooterContent,             
   updateFooterContent,
+  getSiteBrandingContent,       
+  updateSiteBrandingContent, 
 } from '../controllers/content.controller.js';
 import { verifyToken, isAdmin } from '../middleware/auth.middleware.js'; 
 
@@ -42,6 +44,11 @@ router.put('/user-dashboard', verifyToken, isAdmin, updateUserDashboardPageConte
 // Footer Content
 router.get('/footer', getFooterContent);
 router.put('/footer', verifyToken, isAdmin, updateFooterContent);
+
+
+// Site Branding (Header & Footer) Content
+router.get('/site-branding', getSiteBrandingContent);
+router.put('/site-branding', verifyToken, isAdmin, updateSiteBrandingContent);
 
 
 export default router;

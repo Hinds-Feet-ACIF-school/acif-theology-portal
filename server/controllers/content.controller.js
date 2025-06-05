@@ -10,6 +10,77 @@ const SITE_CONTENT_COLLECTION = 'siteContent'; // Re-using for consistency
 const HOME_PAGE_CONTENT_DOC_ID = 'homePage';
 const ABOUT_US_PAGE_CONTENT_DOC_ID = 'aboutUsPage';
 const USER_DASHBOARD_PAGE_CONTENT_DOC_ID = 'userDashboardPage'; 
+const SITE_BRANDING_DOC_ID = 'siteBranding'; 
+
+
+
+const defaultSiteBrandingContentData = {
+  header: {
+    siteName: "Apostolic Theology",
+    // siteLogoUrl: "/assets/default-header-logo.png", // Optional: default static asset path
+  },
+  footer: {
+    // footerLogoUrl: "/assets/default-footer-logo.png", // Optional
+    footerSiteName: "Apostolic Theology",
+    copyrightText: "International Apostolic Church", // "All rights reserved." and year added by frontend
+    tagline: '"Study to shew thyself approved unto God..." - 2 Timothy 2:15',
+  }
+};
+
+export const getSiteBrandingContent = async (req, res) => {
+  console.log('[getSiteBrandingContent] Request received.');
+  try {
+    const docRef = db.collection(SITE_CONTENT_COLLECTION).doc(SITE_BRANDING_DOC_ID);
+    const docSnap = await docRef.get();
+
+    if (docSnap.exists) {
+      res.status(200).json({ identifier: SITE_BRANDING_DOC_ID, ...docSnap.data() });
+    } else {
+      console.log('[getSiteBrandingContent] Document not found, creating default.');
+      await docRef.set({
+        ...defaultSiteBrandingContentData,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      const newDocSnap = await docRef.get();
+      res.status(200).json({ identifier: SITE_BRANDING_DOC_ID, ...newDocSnap.data() });
+    }
+  } catch (error) {
+    console.error("Error fetching site branding content:", error);
+    res.status(500).json({ message: "Error fetching site branding content", error: error.message });
+  }
+};
+
+export const updateSiteBrandingContent = async (req, res) => {
+  console.log('[updateSiteBrandingContent] Request received.');
+  try {
+    const contentData = req.body;
+    const { identifier, ...saveData } = contentData;
+    const docRef = db.collection(SITE_CONTENT_COLLECTION).doc(SITE_BRANDING_DOC_ID);
+
+    // Clean up empty logo URLs before saving
+    if (saveData.header && saveData.header.hasOwnProperty('siteLogoUrl') && saveData.header.siteLogoUrl === "") {
+        delete saveData.header.siteLogoUrl;
+    }
+    if (saveData.footer && saveData.footer.hasOwnProperty('footerLogoUrl') && saveData.footer.footerLogoUrl === "") {
+        delete saveData.footer.footerLogoUrl;
+    }
+    
+    await docRef.set({
+      ...saveData,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    const updatedDocSnap = await docRef.get();
+    res.status(200).json({ identifier: SITE_BRANDING_DOC_ID, ...updatedDocSnap.data() });
+  } catch (error) {
+    console.error("Error updating site branding content:", error);
+    res.status(500).json({ message: "Error updating site branding content", error: error.message });
+  }
+};
+
+
+
 const defaultHomePageContentData = {
   // ... your existing defaultHomePageContentData
   hero: {
