@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
-import { ChevronRight, BookOpen, Calendar, Award, Users, LayoutDashboard, DollarSign } from "lucide-react";
+import { ChevronRight, BookOpen, Calendar, Award, Users, LayoutDashboard, DollarSign, Coins } from "lucide-react";
 import logoPlaceholder from "../assets/logo.jpg";
 import { useAuth } from '../context/AuthContext';
-import { HomePageContentData } from './admin/content/AdminHomePageContentEditor';
-
+import { HomePageContentData } from './admin/content/AdminHomePageContentEditor'; // Ensure this path is correct
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+// Constants for currency localization
+const ETHIOPIA_COUNTRY_CODE = 'ET';
+// const USD_TO_ETB_RATE = 57.0; // No longer needed for direct conversion
 
 const fetchPublicHomePageContent = async (): Promise<HomePageContentData> => {
   const response = await fetch(`${API_BASE_URL}/content/home`);
@@ -22,25 +25,134 @@ const fetchPublicHomePageContent = async (): Promise<HomePageContentData> => {
 const HomePage: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const [content, setContent] = useState<HomePageContentData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoadingContent, setIsLoadingContent] = useState(true);
+  const [errorContent, setErrorContent] = useState<string | null>(null);
+
+  const [userCountryCode, setUserCountryCode] = useState<string | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(false);
+  const [displayInvestmentValue, setDisplayInvestmentValue] = useState<string | null>(null); // Renamed for clarity
 
   useEffect(() => {
     const loadContent = async () => {
       try {
-        setIsLoading(true);
-        setError(null);
+        setIsLoadingContent(true);
+        setErrorContent(null);
         const fetchedContent = await fetchPublicHomePageContent();
         setContent(fetchedContent);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "An unknown error occurred");
+        setErrorContent(err instanceof Error ? err.message : "An unknown error occurred");
         console.error("Error loading home page content:", err);
       } finally {
-        setIsLoading(false);
+        setIsLoadingContent(false);
       }
     };
     loadContent();
   }, []);
+
+  // Effect for fetching user location
+  useEffect(() => {
+    if (!isAuthenticated) {
+      console.log("HomePage: Attempting to fetch location because user is not authenticated.");
+      setIsLoadingLocation(true);
+      const fetchLocationAsync = async () => {
+        console.log("HomePage: fetchLocationAsync started.");
+        try {
+          // Try multiple geolocation services in sequence
+          let countryCode = null;
+          
+          // First try: ipapi.co (more reliable)
+          try {
+            const response = await fetch('https://ipapi.co/json/');
+            if (response.ok) {
+              const data = await response.json();
+              if (data.country_code) {
+                countryCode = data.country_code;
+                console.log("HomePage: Successfully got country code from ipapi.co:", countryCode);
+              }
+            }
+          } catch (err) {
+            console.log("HomePage: ipapi.co failed, trying ip-api.com");
+          }
+
+          // Second try: ip-api.com (fallback)
+          if (!countryCode) {
+            try {
+              const response = await fetch('https://ip-api.com/json/?fields=status,message,countryCode');
+              if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'success' && data.countryCode) {
+                  countryCode = data.countryCode;
+                  console.log("HomePage: Successfully got country code from ip-api.com:", countryCode);
+                }
+              }
+            } catch (err) {
+              console.log("HomePage: ip-api.com failed");
+            }
+          }
+
+          // Set the country code if we got one
+          if (countryCode) {
+            console.log("HomePage: Setting country code:", countryCode);
+            setUserCountryCode(countryCode);
+          } else {
+            console.warn("HomePage: Could not determine country code from any service");
+            setUserCountryCode(null);
+          }
+        } catch (err) {
+          console.error("HomePage: Error in location detection:", err);
+          setUserCountryCode(null);
+        } finally {
+          setIsLoadingLocation(false);
+          console.log("HomePage: Location detection completed");
+        }
+      };
+      fetchLocationAsync();
+    } else {
+      console.log("HomePage: User is authenticated, skipping location fetch.");
+      setIsLoadingLocation(false);
+      setUserCountryCode(null);
+    }
+  }, [isAuthenticated]);
+
+  // Effect for setting the display investment value based on location and content
+  useEffect(() => {
+    console.log("Content from API:", JSON.stringify(content?.cta?.unauthenticated));
+  console.log("Detected User Country Code:", userCountryCode);
+  console.log("Is Loading Location:", isLoadingLocation);
+    if (isAuthenticated || !content?.cta?.unauthenticated) {
+      setDisplayInvestmentValue(null);
+      return;
+    }
+
+    const { investmentValueUSD, investmentValueETB } = content.cta.unauthenticated;
+
+    // If location is still being fetched AND country code is not yet determined,
+    // default to showing the USD price string if available.
+    if (isLoadingLocation && userCountryCode === null) {
+      setDisplayInvestmentValue(investmentValueUSD || null); // Show USD or nothing if not defined
+      return;
+    }
+    
+    // If user is in Ethiopia AND an ETB price is defined, use it.
+    if (userCountryCode === ETHIOPIA_COUNTRY_CODE && investmentValueETB) {
+      setDisplayInvestmentValue(investmentValueETB);
+    } 
+    // Otherwise (not in Ethiopia, location unknown, or ETB price not defined),
+    // use the USD price if available.
+    else if (investmentValueUSD) {
+      setDisplayInvestmentValue(investmentValueUSD);
+    }
+    // As a last resort, if only ETB is defined (unlikely but good to cover)
+    else if (investmentValueETB) {
+        setDisplayInvestmentValue(investmentValueETB);
+    }
+    // If neither price is defined.
+    else {
+      setDisplayInvestmentValue(null); // Or a placeholder like "Contact for Price" if appropriate
+    }
+    
+
+  }, [content, userCountryCode, isLoadingLocation, isAuthenticated]);
 
 
   const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';
@@ -70,15 +182,15 @@ const HomePage: React.FC = () => {
   };
 
 
-  if (isLoading) {
+  if (isLoadingContent) {
     return <div className={`flex justify-center items-center min-h-screen ${lightBg} ${darkBg}`}>Loading Home Page...</div>;
   }
 
-  if (error || !content) {
+  if (errorContent || !content) {
     return (
       <div className={`flex flex-col justify-center items-center min-h-screen text-red-500 p-4 text-center ${lightBg} ${darkBg}`}>
         <p className="text-xl font-semibold">Error loading page content.</p>
-        <p>{error || "Content could not be retrieved. Please try again later."}</p>
+        <p>{errorContent || "Content could not be retrieved. Please try again later."}</p>
         <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
       </div>
     );
@@ -89,6 +201,7 @@ const HomePage: React.FC = () => {
 
   return (
     <div className={`flex flex-col min-h-screen ${lightBg} ${darkBg}`}>
+      {/* Hero Section ... (no changes here) ... */}
       <section className="w-full py-16 md:py-28 lg:py-36 bg-gradient-to-br from-[#2A0F0F] to-[#4A1F1F] dark:from-gray-900 dark:to-gray-800 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/path-to-subtle-cross-pattern.svg')] bg-repeat opacity-10 dark:opacity-5"></div>
         <div className="container relative px-4 md:px-6 z-10 mx-auto">
@@ -144,6 +257,7 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
+      {/* Program Highlights & Learning Outcomes Section ... (no changes here) ... */}
       <section className={`w-full py-16 md:py-24 lg:py-32 ${lightBg} ${darkBg}`}>
         <div className="container px-4 md:px-6 mx-auto">
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20">
@@ -194,12 +308,13 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
+      {/* Call to Action Section */}
       <section className="w-full py-16 md:py-24 lg:py-28 bg-[#2A0F0F] dark:bg-black relative text-[#FFF8F0]">
-        <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-b from-[#C5A467]/30 to-transparent"></div>
-        <div className="absolute inset-x-0 bottom-0 h-2 bg-gradient-to-t from-[#C5A467]/30 to-transparent"></div>
+        {/* ... decorative elements ... */}
         <div className="container relative px-4 md:px-6 z-10 mx-auto">
           <div className="flex flex-col items-center space-y-6 text-center animate-[fadeInUp_1s_ease-out]">
-            <img
+            {/* ... logo, title, description ... */}
+             <img
               src={heroLogoUrl}
               alt="Apostolic & Evangelical Theology Logo"
               className="h-16 w-16 md:h-20 md:w-20 mx-auto rounded-full object-cover mb-4 shadow-md border-2 border-[#C5A467]/50"
@@ -214,20 +329,32 @@ const HomePage: React.FC = () => {
                 : content.cta.unauthenticated.description}
             </p>
 
-            {!isAuthenticated && (
+            {/* MODIFIED: Payment Info for Unauthenticated Users */}
+            {!isAuthenticated && content?.cta?.unauthenticated && (content.cta.unauthenticated.investmentValueUSD || content.cta.unauthenticated.investmentValueETB) && displayInvestmentValue && (
               <div className="mt-4 p-4 bg-[#C5A467]/10 dark:bg-[#C5A467]/5 border border-[#C5A467]/30 rounded-lg shadow-inner max-w-md mx-auto">
                 <div className="flex items-center justify-center gap-2">
-                  <DollarSign className={`h-6 w-6 ${goldAccent} flex-shrink-0`} />
+                  {userCountryCode === ETHIOPIA_COUNTRY_CODE ? (
+                    <Coins className={`h-6 w-6 ${goldAccent} flex-shrink-0`} />
+                  ) : (
+                    <DollarSign className={`h-6 w-6 ${goldAccent} flex-shrink-0`} />
+                  )}
                   <p className={`text-base md:text-lg font-semibold ${goldAccent}`}>
-                    {content.cta.unauthenticated.investmentLabel} <span className="text-[#FFF8F0]">{content.cta.unauthenticated.investmentValue}</span>
+                    {content.cta.unauthenticated.investmentLabel}{' '}
+                    <span className="text-[#FFF8F0]">
+                      {userCountryCode === ETHIOPIA_COUNTRY_CODE ? 'ETB ' : '$ '}
+                      {displayInvestmentValue}
+                    </span>
                   </p>
                 </div>
-                <p className="text-xs text-[#E0D6C3]/80 mt-1">
-                  {content.cta.unauthenticated.investmentNote}
-                </p>
+                {content.cta.unauthenticated.investmentNote && (
+                  <p className="text-xs text-[#E0D6C3]/80 mt-1">
+                    {content.cta.unauthenticated.investmentNote}
+                  </p>
+                )}
               </div>
             )}
 
+            {/* ... buttons ... (no changes here) ... */}
             <div className="pt-4">
               {isAuthenticated ? (
                  <Link to="/dashboard">

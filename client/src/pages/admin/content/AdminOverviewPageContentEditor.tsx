@@ -121,7 +121,9 @@ const getInitialProgramOverviewData = (): ProgramOverviewPageContentData => ({
     title: "Ready to Begin Your Theological Journey?",
     description: "Join our next cohort and deepen your understanding of Apostolic and Evangelical theology.",
     investmentLabel: "Investment:",
-    investmentValue: "$100 Enrollment Fee",
+    // OLD: investmentValue: "$100 Enrollment Fee", // Remove or comment out
+    investmentValueUSD: "$100 USD", // Default USD value
+    investmentValueETB: "5500 ETB", // Default ETB value
     investmentNote: "A one-time fee to secure your place and begin this transformative program.",
   },
 });
@@ -666,16 +668,41 @@ const AdminProgramOverviewPageContentEditor: React.FC = () => {
                     <label htmlFor="ctaInvestLabel" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Investment Label</label>
                     <Input id="ctaInvestLabel" value={content.cta.investmentLabel} onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange('cta.investmentLabel', e.target.value)} />
                 </div>
+
+                {/* --- MODIFIED SECTION FOR INVESTMENT VALUES --- */}
                 <div>
-                    <label htmlFor="ctaInvestValue" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Investment Value</label>
-                    <Input id="ctaInvestValue" value={content.cta.investmentValue} onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange('cta.investmentValue', e.target.value)} />
+                    <label htmlFor="ctaInvestValueUSD" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Investment Value (USD)
+                    </label>
+                    <Input 
+                        id="ctaInvestValueUSD" 
+                        value={content.cta.investmentValueUSD || ''} 
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange('cta.investmentValueUSD', e.target.value)}
+                        placeholder="$100 USD"
+                    />
+                  
                 </div>
+                <div>
+                    <label htmlFor="ctaInvestValueETB" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Investment Value (ETB)
+                    </label>
+                    <Input 
+                        id="ctaInvestValueETB" 
+                        value={content.cta.investmentValueETB || ''} 
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange('cta.investmentValueETB', e.target.value)}
+                        placeholder="5500 ETB"
+                    />
+                   
+                </div>
+                {/* --- END OF MODIFIED SECTION --- */}
+
                 <div>
                     <label htmlFor="ctaInvestNote" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Investment Note</label>
                     <Textarea id="ctaInvestNote" value={content.cta.investmentNote} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => handleInputChange('cta.investmentNote', e.target.value)} />
                 </div>
             </CardContent>
         </Card>
+
 
         <CardFooter className="flex justify-end pt-6 sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-4 border-t">
           <Button type="submit" size="lg" disabled={isSaving || isLoading}>

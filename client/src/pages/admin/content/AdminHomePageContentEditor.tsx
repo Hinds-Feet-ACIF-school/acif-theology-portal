@@ -51,7 +51,8 @@ export interface HomePageContentData {
       title: string;
       description: string;
       investmentLabel: string;
-      investmentValue: string;
+      investmentValueUSD?: string;
+      investmentValueETB?: string;
       investmentNote: string;
     };
     authenticated: {
@@ -512,10 +513,33 @@ const AdminHomePageContentEditor: React.FC = () => {
                   <label htmlFor="ctaInvestLabel" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Investment Label</label>
                   <Input id="ctaInvestLabel" value={content.cta.unauthenticated.investmentLabel} onChange={e => handleInputChange('cta', 'unauthenticated.investmentLabel', e.target.value)} />
                 </div>
+                
+                {/* MODIFIED AND ADDED INPUTS FOR USD AND ETB */}
                 <div>
-                  <label htmlFor="ctaInvestValue" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Investment Value</label>
-                  <Input id="ctaInvestValue" value={content.cta.unauthenticated.investmentValue} onChange={e => handleInputChange('cta', 'unauthenticated.investmentValue', e.target.value)} />
+                  <label htmlFor="ctaInvestValueUSD" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Investment Value (USD)
+                  </label>
+                  <Input 
+                    id="ctaInvestValueUSD" 
+                    value={content.cta.unauthenticated.investmentValueUSD || ''} // Use || '' to ensure controlled component
+                    onChange={e => handleInputChange('cta', 'unauthenticated.investmentValueUSD', e.target.value)}
+                    placeholder="$100 USD or 100" 
+                  />
                 </div>
+                <div>
+                  <label htmlFor="ctaInvestValueETB" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Investment Value (ETB)
+                  </label>
+                  <Input 
+                    id="ctaInvestValueETB" 
+                    value={content.cta.unauthenticated.investmentValueETB || ''} // Use || '' to ensure controlled component
+                    onChange={e => handleInputChange('cta', 'unauthenticated.investmentValueETB', e.target.value)}
+                    placeholder="5500 Birr or 5500 ETB"
+                  />
+               
+                </div>
+                {/* END OF MODIFICATION */}
+
                 <div>
                   <label htmlFor="ctaInvestNote" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Investment Note</label>
                   <Textarea id="ctaInvestNote" value={content.cta.unauthenticated.investmentNote} onChange={e => handleInputChange('cta', 'unauthenticated.investmentNote', e.target.value)} rows={2} />

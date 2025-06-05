@@ -114,7 +114,8 @@ const defaultHomePageContentData = {
       title: "Begin Your Theological Journey",
       description: "Join our community of seekers and scholars. Enroll today and deepen your understanding of God's Word.",
       investmentLabel: "Investment:",
-      investmentValue: "$100 Enrollment Fee",
+      investmentValueUSD: "$100 USD",
+      investmentValueETB: "5500 ETB",
       investmentNote: "This one-time fee secures your place in the program.",
     },
     authenticated: {
