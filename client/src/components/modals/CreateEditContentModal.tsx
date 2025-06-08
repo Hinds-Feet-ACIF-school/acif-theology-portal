@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from "../ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Label as ShadcnLabel } from "../ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"; // Not used, can be removed
 import {
     X, Save, Loader2, AlertCircle, Plus, Trash2, Video as VideoIcon, FileText as FileTextIcon, HelpCircle,
-    ChevronDown, ChevronUp, Eye, Edit3, Image as ImageIcon, Download,
+    ChevronDown, ChevronUp, Eye, Edit3, Image as ImageIcon, Download, // ImageIcon not used
     CheckCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { MantineProvider, TextInput, Textarea, Checkbox as MantineCheckbox, Group, FileInput } from '@mantine/core';
@@ -20,11 +20,12 @@ import {
     type VideoBlockContent as ApiVideoBlockContentFromApi,
     type QuizQuestion as ApiQuizQuestionFromApi,
     type QuizQuestionOption as ApiQuizQuestionOptionFromApi,
-    type Material as ApiMaterial,
-    type ApiDocumentBlockContentForSave,
+    // type Material as ApiMaterial, // Not directly used here, createMaterial result is handled
+    type ApiDocumentBlockContentForSave, // ASSUMPTION: This type in services/api.ts is updated
+                                         // to include viewablePdfUrl and totalSlides.
 } from '../../services/api';
 
-import DocumentViewer from '../DocumentViewer';
+import DocumentViewer from '../DocumentViewer'; // Ensure this is the react-pdf based viewer
 import QuizQuestionEditor, { type ModalQuizQuestion, type ModalQuizQuestionOption } from '../QuizQuestionEditor';
 import IntegratedRichTextEditor from '../IntegratedRichTextEditor';
 
@@ -35,7 +36,7 @@ const goldAccent = 'text-[#C5A467]';
 const goldAccentHex = '#C5A467';
 const editorDarkBgHex = '#1f2937';
 const editorLightBgHex = '#ffffff';
-const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]';
+// const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]'; // Defined but also as hex, choose one
 const midBrownLightHex = '#4A1F1F';
 const midBrownDarkHex = '#E0D6C3';
 const goldBg = 'bg-[#C5A467]';
@@ -51,7 +52,7 @@ const mutedText = 'text-gray-600 dark:text-gray-400';
 const editorCardBgMantine = 'dark:bg-gray-900';
 const editorToolbarBgMantine = 'bg-gray-100 dark:bg-gray-800';
 
-const inputClasses = `block w-full px-3 py-2 border ${themedInputBorder} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${themedInputBg} text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`;
+// const inputClasses = `block w-full px-3 py-2 border ${themedInputBorder} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${themedInputBg} text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`; // Defined but not used
 
 
 const mantineInputStyles = (theme: MantineTheme) => {
@@ -95,8 +96,8 @@ interface QuizSettings {
     maxAttempts?: number;
     showCorrectAnswers: boolean;
     collectEmail: boolean;
-    requireLogin: boolean;
-    showPoints: boolean;
+    requireLogin: boolean; // Retained from original
+    showPoints: boolean; // Retained from original
 }
 
 const defaultQuizSettings: QuizSettings = {
@@ -116,18 +117,29 @@ interface ModalQuizContentData extends Omit<ApiQuizBlockContentFromApi, 'setting
         requireLogin?: boolean; showPoints?: boolean;
     };
 }
-interface ModalDocumentContentData extends ApiDocumentBlockContentForSave {
-    documentFile?: File | undefined;
-    documentObjectUrl?: string;
-    currentSlide?: number;
-    totalSlides?: number;
+
+// Updated ModalDocumentContentData
+interface ModalDocumentContentData extends Omit<ApiDocumentBlockContentForSave, 'documentFile' | 'documentObjectUrl'> {
+    id: string;
+    documentFile?: File | undefined;       // Local file object for upload
+    documentObjectUrl?: string;    // Local URL.createObjectURL for immediate preview if PDF is uploaded
+    
+    // Fields expected from API (or set after local processing for preview if possible)
+    documentUrl: string; 
+    viewablePdfUrl?: string; 
+    originalFileName?: string;
+    fileSize?: number; 
+    fileType?: string; 
+    totalSlides?: number; 
+    currentSlide?: number; 
 }
+
 
 interface ModalRichContentItem {
     id: string;
     type: 'text' | 'video' | 'quiz' | 'document';
     order: number;
-    content?: string;
+    content?: string; // For text type
     videoContent?: ModalVideoContentData;
     quizContent?: ModalQuizContentData;
     documentContent?: ModalDocumentContentData;
@@ -136,15 +148,15 @@ interface ModalRichContentItem {
 interface CreateEditContentModalProps {
     isOpen: boolean;
     onClose: () => void;
-    content: ApiContentItemFromApi | null;
+    content: ApiContentItemFromApi | null; // Content being edited, or null for new content
     onSave: (contentData: ApiContentItemFromApi) => Promise<ApiContentItemFromApi | void>;
-    sectionId: string;
-    weekIdForFileUploads: string;
+    sectionId: string; // Not directly used in this snippet but often needed for context
+    weekIdForFileUploads: string; // Crucial for `createMaterial`
 }
 
 const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
     isOpen, onClose, content: apiContentPropFromParent, onSave,
-    sectionId,
+    // sectionId, // Not directly used
     weekIdForFileUploads,
 }) => {
     const [currentContentItem, setCurrentContentItem] = useState<ApiContentItemFromApi | null>(apiContentPropFromParent);
@@ -156,7 +168,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
     const [richContent, setRichContent] = useState<ModalRichContentItem[]>([]);
     const [expandedContentIndex, setExpandedContentIndex] = useState<number | null>(null);
     const [isPreviewMode, setIsPreviewMode] = useState(false);
-    const richContentRef = useRef(richContent);
+    const richContentRef = useRef(richContent); // To access latest richContent in closures (like useEffect cleanup)
 
     const isEditingLocally = !!currentContentItem?.id;
     const generateId = useCallback(() => `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, []);
@@ -164,13 +176,38 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
 
     const mapApiBlockToModalBlock = useCallback((apiRcBlock: ApiRichContentItemBlockFromApi, index: number): ModalRichContentItem => {
         const blockId = apiRcBlock.id || generateId();
-        const blockType = apiRcBlock.type as ModalRichContentItem['type'];
+        const blockType = apiRcBlock.type as ModalRichContentItem['type']; // Trusting API type
         const modalBlockBase: Pick<ModalRichContentItem, 'id' | 'type' | 'order'> = {
             id: blockId, type: blockType, order: apiRcBlock.order ?? index,
         };
-        if (blockType === 'text') return { ...modalBlockBase, type: 'text', content: apiRcBlock.content || '<p></p>' };
-        if (blockType === 'video' && apiRcBlock.videoContent) return { ...modalBlockBase, type: 'video', videoContent: { ...(apiRcBlock.videoContent as ApiVideoBlockContentFromApi), id: apiRcBlock.videoContent.id || blockId, videoFile: undefined, thumbnail: undefined, videoObjectUrl: undefined, thumbnailObjectUrl: undefined, isRequired: apiRcBlock.videoContent.isRequired ?? false } };
-        
+
+        if (blockType === 'text') {
+            return { ...modalBlockBase, type: 'text', content: apiRcBlock.content || '<p></p>' };
+        }
+        if (blockType === 'video' && apiRcBlock.videoContent) {
+            // Ensure all required fields for ModalVideoContentData are present or defaulted
+            const vcApi = apiRcBlock.videoContent as ApiVideoBlockContentFromApi;
+            return {
+                ...modalBlockBase,
+                type: 'video',
+                videoContent: {
+                    id: vcApi.id || blockId, // Use API ID or generate
+                    title: vcApi.title || '',
+                    description: vcApi.description || '',
+                    videoUrl: vcApi.videoUrl || '',
+                    thumbnailUrl: vcApi.thumbnailUrl || '',
+                    duration: vcApi.duration || 0,
+                    isRequired: vcApi.isRequired ?? false,
+                    drmEnabled: vcApi.drmEnabled ?? false,
+                    accessControl: vcApi.accessControl || { allowDownload: true, allowSharing: true },
+                    // Local-only fields, not from API
+                    videoFile: undefined,
+                    thumbnail: undefined,
+                    videoObjectUrl: undefined,
+                    thumbnailObjectUrl: undefined,
+                }
+            };
+        }
         if (blockType === 'quiz' && apiRcBlock.quizContent) {
             const qc = apiRcBlock.quizContent as ApiQuizBlockContentFromApi;
             return {
@@ -180,12 +217,10 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                     questions: (qc.questions as ApiQuizQuestionFromApi[] || []).map((api_q): ModalQuizQuestion => {
                         const { type: apiType, ...restOfApiQ } = api_q;
                         const modalQuestionType = apiType as ModalQuizQuestion['type'];
-
                         const mappedOptions = api_q.options
                             ? (api_q.options as ApiQuizQuestionOptionFromApi[]).map(opt => ({ ...opt, id: opt.id || generateId() }))
                             : [];
-
-                        const modalQuestion: ModalQuizQuestion = {
+                        return {
                             ...restOfApiQ,
                             id: restOfApiQ.id || generateId(),
                             type: modalQuestionType,
@@ -195,7 +230,6 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                             description: restOfApiQ.description,
                             correctAnswer: restOfApiQ.correctAnswer as string | string[] | undefined,
                         };
-                        return modalQuestion;
                     }),
                     settings: { ...(qc.settings as ApiQuizBlockContentFromApi['settings']), requireLogin: qc.settings.requireLogin ?? false, showPoints: qc.settings.showPoints ?? false }
                 }
@@ -203,21 +237,25 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         }
         if (blockType === 'document' && apiRcBlock.documentContent) {
             const docContentFromApi = apiRcBlock.documentContent as ApiDocumentBlockContentForSave;
+            // docContentFromApi should now contain: id, title, description,
+            // documentUrl (original file), viewablePdfUrl (converted PDF),
+            // originalFileName, fileSize, fileType, totalSlides
             return {
                 ...modalBlockBase,
                 type: 'document',
                 documentContent: {
-                    ...docContentFromApi,
-                    id: docContentFromApi.id || blockId,
+                    ...docContentFromApi, // Spread all fields from API
+                    id: docContentFromApi.id || blockId, // Ensure ID
+                    // Local-only fields:
                     documentFile: undefined,
                     documentObjectUrl: undefined,
-                    currentSlide: 1,
-                    totalSlides: undefined,
+                    currentSlide: 1, // Always start at slide 1 when loading
+                    // totalSlides will be populated from docContentFromApi.totalSlides
                 }
             };
         }
-        console.warn("Mapping warning: Unrecognized rich content block:", apiRcBlock);
-        return { ...modalBlockBase, type: 'text', content: '<p>Corrupted block.</p>' };
+        console.warn("Mapping warning: Unrecognized or incomplete rich content block from API:", apiRcBlock);
+        return { ...modalBlockBase, type: 'text', content: '<p>Corrupted or unsupported block.</p>' }; // Fallback
     }, [generateId]);
 
     useEffect(() => {
@@ -226,33 +264,39 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
             setSuccessMessage(null);
             setIsPreviewMode(false);
             const initialContentToLoad = currentContentItem || apiContentPropFromParent;
+
             if (initialContentToLoad) {
                 setTitle(initialContentToLoad.title);
                 setIsRequired(initialContentToLoad.isRequired || false);
-                const mappedRichContent = (initialContentToLoad.richContent as ApiRichContentItemBlockFromApi[] || []).map(mapApiBlockToModalBlock);
+                const mappedRichContent = (initialContentToLoad.richContent as ApiRichContentItemBlockFromApi[] || [])
+                    .map(mapApiBlockToModalBlock)
+                    .sort((a,b) => a.order - b.order); // Ensure sorted by order
                 setRichContent(mappedRichContent);
                 setExpandedContentIndex(mappedRichContent.length > 0 ? 0 : null);
-                 if (!currentContentItem && apiContentPropFromParent) {
+                 if (!currentContentItem && apiContentPropFromParent) { // If currentContentItem was null but prop exists
                     setCurrentContentItem(apiContentPropFromParent);
                 }
-            } else {
+            } else { // Reset for new content
                 setTitle(''); setIsRequired(false); setRichContent([]); setExpandedContentIndex(null); setCurrentContentItem(null);
             }
-        } else {
-            richContentRef.current.forEach(item => {
+        } else { // Modal is closing
+            richContentRef.current.forEach(item => { // Use ref for latest state
                 if (item.videoContent?.videoObjectUrl) URL.revokeObjectURL(item.videoContent.videoObjectUrl);
                 if (item.videoContent?.thumbnailObjectUrl) URL.revokeObjectURL(item.videoContent.thumbnailObjectUrl);
                 if (item.documentContent?.documentObjectUrl) URL.revokeObjectURL(item.documentContent.documentObjectUrl);
             });
         }
-    }, [isOpen, apiContentPropFromParent, mapApiBlockToModalBlock, currentContentItem]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, apiContentPropFromParent, mapApiBlockToModalBlock]); // currentContentItem removed to prevent re-mapping if it changes internally
 
+    // Sync currentContentItem if the prop changes from parent (e.g., parent re-fetches and passes new version)
     useEffect(() => {
         if (apiContentPropFromParent && apiContentPropFromParent !== currentContentItem) {
              setCurrentContentItem(apiContentPropFromParent);
         }
     }, [apiContentPropFromParent, currentContentItem]);
 
+    // Cleanup object URLs on unmount
     useEffect(() => {
         return () => {
             richContentRef.current.forEach(item => {
@@ -266,20 +310,31 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
     const handleAddRichContent = (contentType: ModalRichContentItem['type']) => {
         const newBlockId = generateId();
         let newBlock: ModalRichContentItem = { id: newBlockId, type: contentType, order: richContent.length };
-        if (contentType === 'text') newBlock.content = '<p></p>';
-        else if (contentType === 'video') newBlock.videoContent = { id: newBlockId, title: '', description: '', videoUrl: '', thumbnailUrl: '', duration: 0, isRequired: false, drmEnabled: false, accessControl: { allowDownload: true, allowSharing: true }};
-        else if (contentType === 'quiz') newBlock.quizContent = {
-            id: newBlockId,
-            databaseQuizId: newBlockId,
-            title: '',
-            description: '',
-            questions: [],
-            settings: {
-                ...defaultQuizSettings
-            }
-        };
-        else if (contentType === 'document') newBlock.documentContent = { id: newBlockId, title: '', description: '', documentUrl: '', originalFileName: '', currentSlide: 1, totalSlides: undefined };
-        setRichContent(prev => { const updated = [...prev, newBlock].map((b,i) => ({...b, order: i})); setExpandedContentIndex(updated.length - 1); return updated; });
+
+        if (contentType === 'text') {
+            newBlock.content = '<p></p>';
+        } else if (contentType === 'video') {
+            newBlock.videoContent = { id: newBlockId, title: '', description: '', videoUrl: '', thumbnailUrl: '', duration: 0, isRequired: false, drmEnabled: false, accessControl: { allowDownload: true, allowSharing: true }};
+        } else if (contentType === 'quiz') {
+            newBlock.quizContent = {
+                id: newBlockId, databaseQuizId: newBlockId, title: '', description: '', questions: [],
+                settings: { ...defaultQuizSettings }
+            };
+        } else if (contentType === 'document') {
+            newBlock.documentContent = { 
+                id: newBlockId, title: '', description: '', 
+                documentUrl: '', // Will be original file URL after save
+                viewablePdfUrl: undefined, // Will be PDF URL after save & conversion
+                originalFileName: '',
+                currentSlide: 1, 
+                totalSlides: undefined 
+            };
+        }
+        setRichContent(prev => { 
+            const updated = [...prev, newBlock].map((b,i) => ({...b, order: i})); 
+            setExpandedContentIndex(updated.length - 1); 
+            return updated; 
+        });
         setSuccessMessage(null); setErrorModal(null);
     };
 
@@ -288,11 +343,15 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         if (itemToRemove?.videoContent?.videoObjectUrl) URL.revokeObjectURL(itemToRemove.videoContent.videoObjectUrl);
         if (itemToRemove?.videoContent?.thumbnailObjectUrl) URL.revokeObjectURL(itemToRemove.videoContent.thumbnailObjectUrl);
         if (itemToRemove?.documentContent?.documentObjectUrl) URL.revokeObjectURL(itemToRemove.documentContent.documentObjectUrl);
+        
         const indexToRemove = richContent.findIndex(item => item.id === idToRemove);
         setRichContent(prev => {
             const newRichContent = prev.filter(item => item.id !== idToRemove).map((item, idx) => ({ ...item, order: idx }));
-            if (expandedContentIndex === indexToRemove) setExpandedContentIndex(newRichContent.length > 0 ? Math.max(0, indexToRemove -1) : null);
-            else if (expandedContentIndex !== null && expandedContentIndex > indexToRemove) setExpandedContentIndex(prevIdx => prevIdx !== null ? prevIdx - 1 : null);
+            if (expandedContentIndex === indexToRemove) {
+                setExpandedContentIndex(newRichContent.length > 0 ? Math.max(0, indexToRemove - 1) : null);
+            } else if (expandedContentIndex !== null && expandedContentIndex > indexToRemove) {
+                setExpandedContentIndex(prevIdx => prevIdx !== null ? prevIdx - 1 : null);
+            }
             return newRichContent;
         });
         setSuccessMessage(null); setErrorModal(null);
@@ -303,18 +362,31 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
             prevRichContent.map(item => {
                 if (item.id === itemId) {
                     const newItem = { ...item };
-                    if (updatedFields.content !== undefined && item.type === 'text') newItem.content = updatedFields.content;
-                    if (updatedFields.videoContent && item.type === 'video' && newItem.videoContent) newItem.videoContent = { ...newItem.videoContent, ...updatedFields.videoContent };
+                    if (updatedFields.content !== undefined && item.type === 'text') {
+                        newItem.content = updatedFields.content;
+                    }
+                    if (updatedFields.videoContent && item.type === 'video' && newItem.videoContent) {
+                        newItem.videoContent = { ...newItem.videoContent, ...updatedFields.videoContent };
+                    }
                     if (updatedFields.quizContent && item.type === 'quiz' && newItem.quizContent) {
-                        const newQuizSettings = updatedFields.quizContent.settings ? { ...newItem.quizContent.settings, ...updatedFields.quizContent.settings } : newItem.quizContent.settings;
+                        const newQuizSettings = updatedFields.quizContent.settings 
+                            ? { ...newItem.quizContent.settings, ...updatedFields.quizContent.settings } 
+                            : newItem.quizContent.settings;
                         newItem.quizContent = { ...newItem.quizContent, ...updatedFields.quizContent, settings: newQuizSettings };
                     }
                     if (updatedFields.documentContent && item.type === 'document' && newItem.documentContent) {
                         const oldDocContent = newItem.documentContent;
                         newItem.documentContent = { ...newItem.documentContent, ...updatedFields.documentContent };
-                        if (updatedFields.documentContent.documentFile || updatedFields.documentContent.documentObjectUrl !== oldDocContent.documentObjectUrl) {
+                        
+                        // If a new local file is selected or local preview URL changes, reset slide state
+                        // as the viewable content has changed.
+                        const newFileSelected = updatedFields.documentContent.documentFile !== undefined; // Explicitly checking for presence
+                        const objectUrlChanged = updatedFields.documentContent.documentObjectUrl !== oldDocContent.documentObjectUrl;
+
+                        if (newFileSelected || objectUrlChanged) {
                             newItem.documentContent.currentSlide = 1;
-                            newItem.documentContent.totalSlides = undefined;
+                            newItem.documentContent.totalSlides = undefined; // Will be re-evaluated by DocumentViewer
+                            newItem.documentContent.viewablePdfUrl = undefined; // New local file, so remote PDF URL is invalid until save
                         }
                     }
                     return newItem;
@@ -326,52 +398,52 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
     }, []);
 
     const handleUpdateQuizSettings = (itemId: string, settings: Partial<QuizSettings>) => {
-        const current = richContent.find(rc => rc.id === itemId);
-        if (!current?.quizContent) return;
+        const currentItem = richContent.find(rc => rc.id === itemId);
+        if (!currentItem?.quizContent) return;
         
         const updatedSettings: QuizSettings = {
-            ...defaultQuizSettings,
-            ...current.quizContent.settings,
-            ...settings
+            ...defaultQuizSettings, // Base defaults
+            ...currentItem.quizContent.settings, // Current item's settings
+            ...settings // New partial settings
         };
         
         handleUpdateRichContentItem(itemId, {
             quizContent: {
-                ...current.quizContent,
+                ...currentItem.quizContent,
                 settings: updatedSettings
             }
         });
-        setSuccessMessage(null);
-        setErrorModal(null);
     };
 
-    const handleUpdateVideoContent = (itemId: string, videoContent: Partial<ModalVideoContentData>) => {
-        const current = richContent.find(rc => rc.id === itemId);
-        if (!current?.videoContent) return;
+    const handleUpdateVideoContent = (itemId: string, videoContentUpdate: Partial<ModalVideoContentData>) => {
+        const currentItem = richContent.find(rc => rc.id === itemId);
+        if (!currentItem?.videoContent) return;
         
         handleUpdateRichContentItem(itemId, {
             videoContent: {
-                ...current.videoContent,
-                ...videoContent,
-                id: current.videoContent.id
+                ...currentItem.videoContent,
+                ...videoContentUpdate,
+                // id: currentItem.videoContent.id // ID should not change with updates
             }
         });
-        setSuccessMessage(null);
-        setErrorModal(null);
     };
 
-    const handleDocumentLoadSuccess = (itemId: string, numPages: number) => {
+    // This is called by DocumentViewer in preview mode when a PDF successfully loads
+    const handleDocumentLoadSuccessInPreview = (itemId: string, numPages: number) => {
         setRichContent(prevRichContent =>
             prevRichContent.map(rcItem => {
                 if (rcItem.id === itemId && rcItem.documentContent) {
-                    return {
-                        ...rcItem,
-                        documentContent: {
-                            ...rcItem.documentContent,
-                            totalSlides: numPages,
-                            currentSlide: rcItem.documentContent.currentSlide || 1,
-                        },
-                    };
+                    // Only update if totalSlides is different, to avoid unnecessary re-renders
+                    if (rcItem.documentContent.totalSlides !== numPages) {
+                        return {
+                            ...rcItem,
+                            documentContent: {
+                                ...rcItem.documentContent,
+                                totalSlides: numPages,
+                                // currentSlide: rcItem.documentContent.currentSlide || 1, // Keep current slide or reset
+                            },
+                        };
+                    }
                 }
                 return rcItem;
             })
@@ -384,10 +456,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                 if (rcItem.id === itemId && rcItem.documentContent && rcItem.documentContent.currentSlide && rcItem.documentContent.currentSlide > 1) {
                     return {
                         ...rcItem,
-                        documentContent: {
-                            ...rcItem.documentContent,
-                            currentSlide: rcItem.documentContent.currentSlide - 1,
-                        },
+                        documentContent: { ...rcItem.documentContent, currentSlide: rcItem.documentContent.currentSlide - 1 },
                     };
                 }
                 return rcItem;
@@ -401,10 +470,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                 if (rcItem.id === itemId && rcItem.documentContent && rcItem.documentContent.currentSlide && rcItem.documentContent.totalSlides && rcItem.documentContent.currentSlide < rcItem.documentContent.totalSlides) {
                     return {
                         ...rcItem,
-                        documentContent: {
-                            ...rcItem.documentContent,
-                            currentSlide: rcItem.documentContent.currentSlide + 1,
-                        },
+                        documentContent: { ...rcItem.documentContent, currentSlide: rcItem.documentContent.currentSlide + 1 },
                     };
                 }
                 return rcItem;
@@ -417,97 +483,176 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         setErrorModal(null); setSuccessMessage(null);
         if (!title.trim()) { setErrorModal("Overall content title is required."); return; }
         if (richContent.length === 0) { setErrorModal("Content must have at least one block."); return; }
-        if (!weekIdForFileUploads && richContent.some(item => (item.type === 'video' && item.videoContent?.videoFile) || (item.type === 'document' && item.documentContent?.documentFile) || (item.type === 'video' && item.videoContent?.thumbnail))) {
-            setErrorModal("Cannot upload files: Week context is missing."); setIsSaving(false); return;
+        
+        const hasFileToUpload = richContent.some(item => 
+            (item.type === 'video' && (item.videoContent?.videoFile || item.videoContent?.thumbnail)) ||
+            (item.type === 'document' && item.documentContent?.documentFile)
+        );
+        if (hasFileToUpload && !weekIdForFileUploads) {
+            setErrorModal("Cannot upload new files: Week context (weekIdForFileUploads) is missing.");
+            setIsSaving(false);
+            return;
         }
+
         setIsSaving(true);
         try {
             const finalRichContentForApi: ApiRichContentItemBlockFromApi[] = await Promise.all(
                 richContent.map(async (modalRcBlock, index): Promise<ApiRichContentItemBlockFromApi> => {
-                    const baseBlock: Pick<ApiRichContentItemBlockFromApi, 'id' | 'type' | 'order'> = { id: modalRcBlock.id, type: modalRcBlock.type, order: modalRcBlock.order ?? index };
-                    if (modalRcBlock.type === 'text') return { ...baseBlock, content: modalRcBlock.content || '<p></p>' };
+                    const baseBlock: Pick<ApiRichContentItemBlockFromApi, 'id' | 'type' | 'order'> = { 
+                        id: modalRcBlock.id, 
+                        type: modalRcBlock.type, 
+                        order: modalRcBlock.order ?? index 
+                    };
+
+                    if (modalRcBlock.type === 'text') {
+                        return { ...baseBlock, content: modalRcBlock.content || '<p></p>' };
+                    }
                     if (modalRcBlock.type === 'video' && modalRcBlock.videoContent) {
                         const { videoFile, thumbnail, videoObjectUrl, thumbnailObjectUrl, ...restVideo } = modalRcBlock.videoContent;
-                        let finalVideoUrl = restVideo.videoUrl; let finalThumbnailUrl = restVideo.thumbnailUrl;
-                        if (videoFile) {
-                            const formData = new FormData(); formData.append('file', videoFile); formData.append('weekId', weekIdForFileUploads); formData.append('title', restVideo.title || `Video: ${title}`); formData.append('type', 'video_asset');
+                        let finalVideoUrl = restVideo.videoUrl; 
+                        let finalThumbnailUrl = restVideo.thumbnailUrl;
+
+                        if (videoFile && weekIdForFileUploads) { // Ensure weekIdForFileUploads for new uploads
+                            const formData = new FormData(); 
+                            formData.append('file', videoFile); 
+                            formData.append('weekId', weekIdForFileUploads); 
+                            formData.append('title', restVideo.title || `Video for: ${title}`); 
+                            formData.append('type', 'video_asset');
                             const uploadedMaterial = await createMaterial(formData);
-                            if (!uploadedMaterial?.contentUrl) throw new Error(`Video upload failed.`);
+                            if (!uploadedMaterial?.contentUrl) throw new Error(`Video upload failed for "${restVideo.title}".`);
                             finalVideoUrl = uploadedMaterial.contentUrl;
                         }
-                        if (thumbnail) {
-                            const formData = new FormData(); formData.append('file', thumbnail); formData.append('weekId', weekIdForFileUploads); formData.append('title', `Thumbnail for ${restVideo.title || title}`); formData.append('type', 'image_asset');
-                            try { const uploadedThumbnail = await createMaterial(formData); finalThumbnailUrl = uploadedThumbnail?.contentUrl || finalThumbnailUrl; } catch (e) { console.error("Thumbnail upload error:", e); }
+                        if (thumbnail && weekIdForFileUploads) { // Ensure weekIdForFileUploads for new uploads
+                            const formData = new FormData(); 
+                            formData.append('file', thumbnail); 
+                            formData.append('weekId', weekIdForFileUploads); 
+                            formData.append('title', `Thumbnail for ${restVideo.title || title}`); 
+                            formData.append('type', 'image_asset');
+                            try { 
+                                const uploadedThumbnail = await createMaterial(formData); 
+                                finalThumbnailUrl = uploadedThumbnail?.contentUrl || finalThumbnailUrl; 
+                            } catch (e) { 
+                                console.error("Thumbnail upload error:", e); 
+                                // Potentially non-critical, so we might proceed with old/no thumbnail URL
+                            }
                         }
                         return { ...baseBlock, videoContent: { ...restVideo, videoUrl: finalVideoUrl, thumbnailUrl: finalThumbnailUrl } as ApiVideoBlockContentFromApi };
                     }
                     if (modalRcBlock.type === 'quiz' && modalRcBlock.quizContent) {
                         const { questions: modalQuestions, id: quizContentId, ...restQuiz } = modalRcBlock.quizContent;
-                        
-                        const questionsForApi: ApiQuizQuestionFromApi[] = modalQuestions.map((modal_q): ApiQuizQuestionFromApi => {
-                            return {
-                                ...modal_q,
-                                id: modal_q.id || generateId(),
-                                required: modal_q.required,
-                                description: modal_q.description === null ? undefined : modal_q.description,
-                                options: (modal_q.options || []).map(opt => ({
-                                    ...opt,
-                                    id: opt.id || generateId(),
-                                })) as ApiQuizQuestionOptionFromApi[],
-                            } as ApiQuizQuestionFromApi;
-                        });
+                        const questionsForApi: ApiQuizQuestionFromApi[] = modalQuestions.map((modal_q): ApiQuizQuestionFromApi => ({
+                            ...modal_q,
+                            id: modal_q.id || generateId(),
+                            required: modal_q.required,
+                            description: modal_q.description === null ? undefined : modal_q.description, // Ensure null becomes undefined for API
+                            options: (modal_q.options || []).map(opt => ({ ...opt, id: opt.id || generateId() })) as ApiQuizQuestionOptionFromApi[],
+                        } as ApiQuizQuestionFromApi)); // Cast might be needed depending on strictness
                         
                         return {
-                            ...baseBlock,
-                            type: 'quiz',
+                            ...baseBlock, type: 'quiz',
                             quizContent: {
-                                ...restQuiz,
-                                id: quizContentId,
-                                questions: questionsForApi,
-                                settings: {
-                                    ...restQuiz.settings,
-                                    requireLogin: restQuiz.settings.requireLogin ?? false,
-                                    showPoints: restQuiz.settings.showPoints ?? false
-                                }
+                                ...restQuiz, id: quizContentId, questions: questionsForApi,
+                                settings: { ...restQuiz.settings, requireLogin: restQuiz.settings.requireLogin ?? false, showPoints: restQuiz.settings.showPoints ?? false }
                             } as ApiQuizBlockContentFromApi
                         };
                     }
                     if (modalRcBlock.type === 'document' && modalRcBlock.documentContent) {
-                        const { documentFile, documentObjectUrl, currentSlide, totalSlides, ...restDoc } = modalRcBlock.documentContent;
-                        let { documentUrl: finalDocumentUrl, originalFileName, fileSize, fileType } = restDoc;
-                        if (documentFile) {
-                            const formData = new FormData(); formData.append('file', documentFile); formData.append('weekId', weekIdForFileUploads); formData.append('title', restDoc.title || `Document: ${title}`); formData.append('type', 'document_asset');
-                            const uploadedMaterial = await createMaterial(formData);
-                            if (!uploadedMaterial?.contentUrl) throw new Error(`Document upload failed.`);
-                            finalDocumentUrl = uploadedMaterial.contentUrl; originalFileName = documentFile.name; fileSize = documentFile.size; fileType = documentFile.type;
+                        // Destructure ALL expected fields from modalRcBlock.documentContent
+                        const { documentFile, documentObjectUrl, currentSlide, id: docId, title: docTitle, description: docDesc,
+                                documentUrl, viewablePdfUrl, originalFileName, fileSize, fileType, totalSlides, 
+                                ...otherDocProps // any other properties that might be on ModalDocumentContentData but not in ApiDocumentBlockContentForSave
+                              } = modalRcBlock.documentContent;
+                    
+                        let finalDocumentUrl = documentUrl; // Existing original file URL
+                        let finalViewablePdfUrl = viewablePdfUrl; // Existing viewable PDF URL
+                        let finalTotalSlides = totalSlides;
+                        let finalOriginalFileName = originalFileName;
+                        let finalFileSize = fileSize;
+                        let finalFileType = fileType;
+                    
+                        if (documentFile && weekIdForFileUploads) { // If a new file was selected for upload
+                            const formData = new FormData(); 
+                            formData.append('file', documentFile); 
+                            formData.append('weekId', weekIdForFileUploads); 
+                            formData.append('title', docTitle || `Document for: ${title}`); 
+                            formData.append('type', 'document_asset'); // Backend uses this to trigger conversion
+                            
+                            // ASSUMPTION: backend createMaterial for 'document_asset' now returns:
+                            // { contentUrl (original), viewablePdfUrl (converted PDF), numPages, originalFileName, fileSize, fileType }
+                            const uploadedMaterial = await createMaterial(formData); 
+                            
+                            if (!uploadedMaterial?.contentUrl || !uploadedMaterial?.viewablePdfUrl) {
+                                throw new Error(`Document processing and conversion failed for "${docTitle}".`);
+                            }
+                            finalDocumentUrl = uploadedMaterial.contentUrl; // URL to original .ppt, .docx etc.
+                            finalViewablePdfUrl = uploadedMaterial.viewablePdfUrl; // URL to converted .pdf
+                            finalTotalSlides = uploadedMaterial.numPages; // Or whatever your backend calls it (e.g., totalPages)
+                            finalOriginalFileName = uploadedMaterial.originalFileName || documentFile.name; 
+                            finalFileSize = uploadedMaterial.fileSize || documentFile.size; 
+                            finalFileType = uploadedMaterial.fileType || documentFile.type;
                         }
-                        return { ...baseBlock, documentContent: { ...restDoc, id: restDoc.id, documentUrl: finalDocumentUrl || '', originalFileName, fileSize, fileType } as ApiDocumentBlockContentForSave };
+                        
+                        // Construct the object for the API, ensuring all fields of ApiDocumentBlockContentForSave are present
+                        const documentContentForApi: ApiDocumentBlockContentForSave = {
+                            id: docId,
+                            title: docTitle,
+                            description: docDesc,
+                            documentUrl: finalDocumentUrl || '', // Original file URL (must not be undefined for API)
+                            viewablePdfUrl: finalViewablePdfUrl, // Converted PDF URL (can be undefined if no conversion)
+                            originalFileName: finalOriginalFileName,
+                            fileSize: finalFileSize,
+                            fileType: finalFileType,
+                            totalSlides: finalTotalSlides,
+                            ...otherDocProps // spread any other valid properties for ApiDocumentBlockContentForSave
+                        };
+
+                        return { ...baseBlock, type: 'document', documentContent: documentContentForApi };
                     }
-                    throw new Error(`Unhandled block type: ${modalRcBlock.type}`);
+                    throw new Error(`Unhandled block type during save: ${modalRcBlock.type}`);
                 })
             );
-            let determinedType: ApiContentItemFromApi['type'] = 'text';
+
+            let determinedType: ApiContentItemFromApi['type'] = 'text'; // Default
             if (finalRichContentForApi.some(item => item.type === 'quiz')) determinedType = 'quiz_link';
             else if (finalRichContentForApi.some(item => item.type === 'video')) determinedType = 'video';
             else if (finalRichContentForApi.length === 1 && finalRichContentForApi[0].type === 'document') determinedType = 'document';
-            const payload: ApiContentItemFromApi = { ...(currentContentItem?.id && { id: currentContentItem.id }), title, isRequired, richContent: finalRichContentForApi, type: determinedType, order: currentContentItem?.order ?? 0 };
+            // Could add more sophisticated type determination if needed
+
+            const payload: ApiContentItemFromApi = { 
+                ...(currentContentItem?.id && { id: currentContentItem.id }), 
+                title, isRequired, richContent: finalRichContentForApi, 
+                type: determinedType, 
+                order: currentContentItem?.order ?? 0 
+            };
+
             const savedOrUpdatedContent = await onSave(payload);
+
             if (savedOrUpdatedContent && 'id' in savedOrUpdatedContent) {
-                setCurrentContentItem(savedOrUpdatedContent as ApiContentItemFromApi);
-                setTitle(savedOrUpdatedContent.title);
-                setIsRequired(savedOrUpdatedContent.isRequired || false);
-                const mappedRichContent = (savedOrUpdatedContent.richContent as ApiRichContentItemBlockFromApi[] || []).map(mapApiBlockToModalBlock);
+                // Successfully saved/updated, update local state with response from API
+                const apiResponseContent = savedOrUpdatedContent as ApiContentItemFromApi;
+                setCurrentContentItem(apiResponseContent); // Update the base item
+                setTitle(apiResponseContent.title);
+                setIsRequired(apiResponseContent.isRequired || false);
+                const mappedRichContent = (apiResponseContent.richContent as ApiRichContentItemBlockFromApi[] || [])
+                    .map(mapApiBlockToModalBlock)
+                    .sort((a,b) => a.order - b.order); // Ensure sorted after mapping API response
                 setRichContent(mappedRichContent);
                 setSuccessMessage(isEditingLocally ? "Changes saved successfully!" : "Content created successfully!");
-                if (!isEditingLocally) setExpandedContentIndex(mappedRichContent.length > 0 ? 0 : null);
-            } else if (!isEditingLocally) {
+                if (!isEditingLocally) { // If new content was created
+                    // Expand the first block of the newly created content, or nothing if no blocks
+                    setExpandedContentIndex(mappedRichContent.length > 0 ? 0 : null);
+                }
+            } else if (!isEditingLocally) { // New content, but onSave didn't return the full object (or void)
+                // Reset form for adding another new item
                 setTitle(''); setIsRequired(false); setRichContent([]); setExpandedContentIndex(null); setCurrentContentItem(null);
                 setSuccessMessage("Content created successfully! Add another or close.");
-            } else {
+            } else { // Editing, but onSave didn't return the full object
                  setSuccessMessage("Changes saved successfully!");
+                 // Local state might be slightly out of sync if API only returned success, not the full object.
+                 // This relies on the parent component potentially re-fetching and passing updated props.
             }
         } catch (err: any) {
-            setErrorModal(err.response?.data?.message || err.message || "Save error.");
+            setErrorModal(err.response?.data?.message || err.message || "An unexpected error occurred during save.");
             console.error("Save Error:", err.response?.data || err);
         } finally {
             setIsSaving(false);
@@ -520,6 +665,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                 <h1 className="text-2xl font-bold font-serif mb-3">{title || "Untitled Content"}</h1>
                 {isRequired && <span className="block text-xs text-red-600 dark:text-red-400 font-semibold mb-3">(Required)</span>}
                 {richContent.length === 0 && <p className={mutedText}>No content blocks to preview.</p>}
+                
                 {richContent.map((item, index) => (
                     <div key={`preview-${item.id}`} className={`mt-4 pt-4 border-t first:mt-0 first:pt-0 first:border-t-0 border-gray-200 dark:border-gray-700 ${index > 0 ? 'mt-6 pt-6' : ''}`}>
                         {item.type === 'text' && item.content && (<div dangerouslySetInnerHTML={{ __html: item.content || '' }} />)}
@@ -538,103 +684,90 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                             </div>
                         )}
                         
-                                                {item.type === 'document' && item.documentContent && (
+                        {item.type === 'document' && item.documentContent && (
                              <div className="not-prose document-block-preview space-y-2">
                                 <h3 className={`text-lg font-medium mb-1 text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`}>{item.documentContent.title || "Untitled Document"}</h3>
                                 {item.documentContent.description && <p className={`text-xs mb-1 text-[${midBrownLightHex}] dark:text-[${midBrownDarkHex}]`}>{item.documentContent.description}</p>}
+                                
                                 {(() => {
-                                    const docUrlToUse = item.documentContent.documentObjectUrl || item.documentContent.documentUrl;
-                                    const fileName = item.documentContent.originalFileName;
-                                    const fileTypeFromContent = item.documentContent.fileType;
-                                    let isViewableType = false;
-                                    const lowerFileName = fileName?.toLowerCase();
+                                    const docContent = item.documentContent;
+                                    // URL for viewer: local PDF file (documentObjectUrl) or converted PDF from server (viewablePdfUrl)
+                                    const urlForViewer = docContent.documentObjectUrl || docContent.viewablePdfUrl;
+                                    
+                                    const isPdfMimeType = docContent.fileType === 'application/pdf';
+                                    const isPdfExtension = (docContent.originalFileName || '').toLowerCase().endsWith('.pdf');
+                                    // A viewablePdfUrl implies it's a PDF ready for viewing, even if original was PPT/DOC
+                                    const isConsideredPdfForViewing = isPdfMimeType || isPdfExtension || !!docContent.viewablePdfUrl;
 
-                                    if (fileTypeFromContent) {
-                                        isViewableType = fileTypeFromContent === 'application/pdf' || 
-                                                         fileTypeFromContent.includes('powerpoint') || 
-                                                         fileTypeFromContent.includes('presentationml') || 
-                                                         fileTypeFromContent.includes('msword') || 
-                                                         fileTypeFromContent.includes('wordprocessingml');
-                                    } else if (lowerFileName) {
-                                        isViewableType = lowerFileName.endsWith('.pdf') || 
-                                                         lowerFileName.endsWith('.ppt') || 
-                                                         lowerFileName.endsWith('.pptx') || 
-                                                         lowerFileName.endsWith('.doc') || 
-                                                         lowerFileName.endsWith('.docx');
-                                    }
-
-                                    if (docUrlToUse && isViewableType) {
+                                    if (urlForViewer && isConsideredPdfForViewing) {
                                         return (
                                             <>
                                             <div className="mt-2 mb-3">
                                                 <DocumentViewer
-                                                    key={`doc-viewer-preview-${item.id}`}
-                                                    fileUrl={docUrlToUse}
-                                                    fileType={item.documentContent?.fileType}
-                                                    originalFileName={item.documentContent?.originalFileName}
-                                                    themedInputBorder={themedInputBorder}
-                                                    mutedText={mutedText}
-                                                    onLoadSuccess={(loadedPages) => {
-                                                        if (item.documentContent) {
-                                                            const newTotalSlides = loadedPages;
-                                                            if (item.documentContent.totalSlides !== newTotalSlides || item.documentContent.currentSlide !== 1) {
-                                                                handleUpdateRichContentItem(item.id, {
-                                                                    documentContent: {
-                                                                        ...item.documentContent,
-                                                                        totalSlides: newTotalSlides,
-                                                                        currentSlide: 1,
-                                                                    }
-                                                                });
-                                                            }
-                                                        }
+                                                    key={`doc-viewer-preview-${item.id}-${docContent.currentSlide}`} // Key change might force re-render if needed
+                                                    fileUrl={urlForViewer}
+                                                    pageNumber={docContent.currentSlide || 1}
+                                                    themedInputBorder={themedInputBorder} // Pass your theme classes
+                                                    mutedText={mutedText} // Pass your theme classes
+                                                    onLoadSuccess={(loadedPages) => handleDocumentLoadSuccessInPreview(item.id, loadedPages)}
+                                                    onLoadError={(error) => {
+                                                        console.warn("PDF load error in preview for item:", item.id, error);
+                                                        // Optionally clear totalSlides or show a specific message in the item state
+                                                        handleUpdateRichContentItem(item.id, { documentContent: {...docContent, totalSlides: undefined, viewablePdfUrl: undefined }});
                                                     }}
+                                                    showError={true} // Show errors in admin preview
                                                 />
                                             </div>
-                                            {item.documentContent && 
-                                             (item.documentContent.fileType === 'application/pdf' || (item.documentContent.originalFileName || '').toLowerCase().endsWith('.pdf')) && 
-                                             item.documentContent.totalSlides && 
-                                             item.documentContent.totalSlides > 1 && (
+                                            {docContent.totalSlides && docContent.totalSlides > 0 && ( // Check totalSlides > 0
                                                 <div className="flex items-center justify-center space-x-3 mt-2 mb-1">
                                                     <Button
-                                                        variant="outline"
-                                                        size="sm"
+                                                        variant="outline" size="sm"
                                                         onClick={() => goToPrevSlide(item.id)}
-                                                        disabled={item.documentContent.currentSlide === 1}
-                                                        className={`${outlineButtonClasses} h-8 w-8 p-0`}
-                                                        aria-label="Previous slide"
-                                                    >
-                                                        <ChevronLeft className="h-4 w-4" />
-                                                    </Button>
+                                                        disabled={(docContent.currentSlide || 1) === 1}
+                                                        className={`${outlineButtonClasses} h-8 w-8 p-0`} aria-label="Previous slide"
+                                                    > <ChevronLeft className="h-4 w-4" /> </Button>
                                                     <span className={`text-xs ${mutedText}`}>
-                                                        Slide {item.documentContent.currentSlide} of {item.documentContent.totalSlides}
+                                                        Slide {docContent.currentSlide || 1} of {docContent.totalSlides}
                                                     </span>
                                                     <Button
-                                                        variant="outline"
-                                                        size="sm"
+                                                        variant="outline" size="sm"
                                                         onClick={() => goToNextSlide(item.id)}
-                                                        disabled={item.documentContent.currentSlide === item.documentContent.totalSlides}
-                                                        className={`${outlineButtonClasses} h-8 w-8 p-0`}
-                                                        aria-label="Next slide"
-                                                    >
-                                                        <ChevronRight className="h-4 w-4" />
-                                                    </Button>
+                                                        disabled={(docContent.currentSlide || 1) === docContent.totalSlides}
+                                                        className={`${outlineButtonClasses} h-8 w-8 p-0`} aria-label="Next slide"
+                                                    > <ChevronRight className="h-4 w-4" /> </Button>
                                                 </div>
                                             )}
                                             </>
                                         );
-                                    } else if (docUrlToUse) {
-                                        return (<div className="my-2"><p className={`text-sm ${mutedText} mb-2`}>{isViewableType ? "Preview loading..." : "Preview not available for this file type."}</p></div>);
-                                    } else {
-                                        return (<div className={`my-2 p-3 ${editorCardBgMantine} rounded text-sm ${mutedText} border ${themedInputBorder}`}>Document missing.</div>);
+                                    } else if (docContent.documentUrl || docContent.documentObjectUrl) { // Original file exists, but not viewable as PDF in preview
+                                        return (<div className="my-2"><p className={`text-sm ${mutedText} mb-2`}>
+                                            {isConsideredPdfForViewing ? "Loading preview..." : 
+                                            "Slide preview for this file type will be available after saving and processing. You can download the original file."}
+                                        </p></div>);
+                                    } else { // No document uploaded or processed
+                                        return (<div className={`my-2 p-3 ${editorCardBgMantine} rounded text-sm ${mutedText} border ${themedInputBorder}`}>Document missing or not yet processed.</div>);
                                     }
                                 })()}
-                                {(item.documentContent.documentUrl || item.documentContent.documentObjectUrl) && (
-                                    <div><a href={item.documentContent.documentObjectUrl || item.documentContent.documentUrl!} target="_blank" rel="noopener noreferrer" download={item.documentContent.originalFileName || 'document'} className={`${primaryButtonClasses} inline-flex items-center text-xs px-2.5 py-1.5 rounded`}><Download className="h-3.5 w-3.5 mr-1.5"/>Download {item.documentContent.originalFileName || 'Document'}</a></div>
-                                )}
+                                
+                                {/* Download button - should link to original file */}
+                                {(() => {
+                                    const downloadUrl = item.documentContent?.documentObjectUrl || item.documentContent?.documentUrl;
+                                    const downloadFileName = item.documentContent?.originalFileName || 'document';
+                                    if (downloadUrl) {
+                                        return (
+                                            <div className="mt-2">
+                                                <a href={downloadUrl} target="_blank" rel="noopener noreferrer" download={downloadFileName} 
+                                                   className={`${primaryButtonClasses} inline-flex items-center text-xs px-2.5 py-1.5 rounded`}>
+                                                    <Download className="h-3.5 w-3.5 mr-1.5"/>Download {downloadFileName}
+                                                </a>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                             </div>
                         )}
-
-                        {item.type === 'quiz' && item.quizContent && (
+   {item.type === 'quiz' && item.quizContent && (
                              <div className="not-prose">
                                 <h3 className={`text-lg font-semibold mb-1.5 text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`}>{item.quizContent.title || "Quiz"}</h3>
                                 {item.quizContent.description && <p className={`text-sm mb-2 text-[${midBrownLightHex}] dark:text-[${midBrownDarkHex}]`}>{item.quizContent.description}</p>}
@@ -667,6 +800,8 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
     };
 
     if (!isOpen) return null;
+    
+    // Accepted file types for document upload input
     const documentFileAcceptTypes = ".pdf,.doc,.docx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
     return (
@@ -683,7 +818,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                         <div id="modal-title"> <CardTitle className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] font-serif text-xl`}>{isEditingLocally ? "Edit Content" : "Add New Content"}</CardTitle> </div>
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="sm" onClick={() => setIsPreviewMode(!isPreviewMode)} className={`${outlineButtonClasses} text-xs h-8 px-2.5`} aria-label={isPreviewMode ? "Switch to Edit Mode" : "Switch to Preview Mode"}> {isPreviewMode ? <><Edit3 className="h-3.5 w-3.5 mr-1.5"/>Edit</> : <><Eye className="h-3.5 w-3.5 mr-1.5"/>Preview</>} </Button>
-                            <Button variant="ghost" size="icon" onClick={onClose} className={`${midBrown} hover:bg-gray-200 dark:hover:bg-gray-700 h-8 w-8 rounded-full`} aria-label="Close modal"><X className="h-4 w-4"/></Button>
+                            <Button variant="ghost" size="icon" onClick={onClose} className={`text-${midBrownLightHex} dark:text-${midBrownDarkHex} hover:bg-gray-200 dark:hover:bg-gray-700 h-8 w-8 rounded-full`} aria-label="Close modal"><X className="h-4 w-4"/></Button>
                         </div>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
@@ -719,7 +854,10 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
 
                                     {richContent.map((item, index) => (
                                         <Card key={item.id} className={`overflow-hidden border ${themedInputBorder} ${editorCardBgMantine} ${darkCardBg}`}>
-                                            <CardHeader className={`flex flex-row items-center justify-between p-2 sm:p-3 border-b ${themedInputBorder} ${editorToolbarBgMantine} cursor-pointer`} onClick={() => setExpandedContentIndex(expandedContentIndex === index ? null : index)} >
+                                            <CardHeader 
+                                                className={`flex flex-row items-center justify-between p-2 sm:p-3 border-b ${themedInputBorder} ${editorToolbarBgMantine} cursor-pointer`} 
+                                                onClick={() => setExpandedContentIndex(expandedContentIndex === index ? null : index)} >
+                                                {/* ... CardHeader content for block type icon and title ... */}
                                                 <div className="flex items-center gap-2 min-w-0">
                                                     {item.type === 'text' && <FileTextIcon className={`h-4 w-4 ${goldAccent} shrink-0`} />}
                                                     {item.type === 'video' && <VideoIcon className={`h-4 w-4 ${goldAccent} shrink-0`} />}
@@ -733,7 +871,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                                     </ShadcnLabel>
                                                 </div>
                                                 <div className="flex items-center shrink-0">
-                                                    <Button variant="ghost" size="icon" className={`h-7 w-7 ${midBrown}`} aria-label={expandedContentIndex === index ? "Collapse block" : "Expand block"}> {expandedContentIndex === index ? <ChevronUp className="h-4 w-4"/> : <ChevronDown className="h-4 w-4"/>} </Button>
+                                                    <Button variant="ghost" size="icon" className={`h-7 w-7 text-${midBrownLightHex} dark:text-${midBrownDarkHex}`} aria-label={expandedContentIndex === index ? "Collapse block" : "Expand block"}> {expandedContentIndex === index ? <ChevronUp className="h-4 w-4"/> : <ChevronDown className="h-4 w-4"/>} </Button>
                                                     <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleRemoveRichContent(item.id); }} className={`h-7 w-7 text-red-500 hover:text-red-600`} aria-label="Remove block" disabled={isSaving}><Trash2 className="h-4 w-4"/></Button>
                                                 </div>
                                             </CardHeader>
@@ -936,7 +1074,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                                         </Card>
                                     ))}
                                 </div>
-                                <Group mt="lg"> <MantineCheckbox id="content-required" checked={isRequired} onChange={(event) => {setIsRequired(event.currentTarget.checked); setSuccessMessage(null); setErrorModal(null);}} disabled={isSaving} label={<span className={`text-[${deepBrownLightHex}] text-sm font-normal cursor-pointer`}>Mark this entire content item as required</span>} size="sm" /> </Group>
+                                <Group mt="lg"> <MantineCheckbox id="content-required" checked={isRequired} onChange={(event) => {setIsRequired(event.currentTarget.checked); setSuccessMessage(null); setErrorModal(null);}} disabled={isSaving} label={<span className={`text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}] text-sm font-normal cursor-pointer`}>Mark this entire content item as required</span>} size="sm" /> </Group>
                             </>
                         )}
                     </CardContent>

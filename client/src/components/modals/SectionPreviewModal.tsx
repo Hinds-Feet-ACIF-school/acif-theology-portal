@@ -206,14 +206,12 @@ const SectionPreviewModalComponent: React.FC<SectionPreviewModalProps> = ({
                                 return (
                                     <div className="mt-2 mb-3">
                                         <DocumentViewer
-                                            key={`modal-doc-viewer-${block.id || blockIndex}`} // ** CRITICAL: ADDED STABLE KEY **
+                                            key={`modal-doc-viewer-${block.id || blockIndex}`}
                                             fileUrl={docUrl}
-                                            fileType={fileTypeFromContent}
-                                            originalFileName={fileName}
+                                            pageNumber={1}
+                                            onLoadSuccess={() => {}}
                                             themedInputBorder={themedInputBorder}
                                             mutedText={mutedText}
-                                            // onLoadSuccess can be added if SectionPreviewModal needs to know about pages
-                                            // For now, DocumentViewer handles its own loading state.
                                         />
                                     </div>
                                 );

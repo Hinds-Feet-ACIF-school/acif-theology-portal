@@ -56,7 +56,20 @@ export interface SectionData { weekId: string; title: string; description?: stri
 export interface ContentData { type: ContentItem['type']; title: string; isRequired: boolean; content?: string; url?: string; richContent?: RichContentItemBlock[]; order: number; }
 export interface Course { id: string; title: string; description?: string; monthOrder: number; instructor?: string; instructorName?: string; ects?: number; settings?: { defaultPassingScore?: number; }; }
 export interface Week { id: string; courseId: string; weekNumber: number; title: string; description?: string; sections?: Section[]; }
-export interface Material { id: string; weekId: string; title: string; type: 'video' | 'reading' | 'resource' | 'document_asset' | 'video_asset' | 'image_asset'; contentUrl?: string; details?: string; storagePath?: string; /* Add storagePath if you save it */ } // Added asset types to Material type if createMaterial is generic
+export interface Material { 
+    id: string; 
+    weekId: string; 
+    title: string; 
+    type: 'video' | 'reading' | 'resource' | 'document_asset' | 'video_asset' | 'image_asset'; 
+    contentUrl?: string; 
+    viewablePdfUrl?: string;
+    numPages?: number;
+    originalFileName?: string;
+    fileSize?: number;
+    fileType?: string;
+    details?: string; 
+    storagePath?: string;
+}
 export interface Quiz { id: string; weekId: string; title: string; description?: string; instructions?: string; quizUrl?: string; points?: number; dueDateOffsetDays?: number | null; isGraded?: boolean; passingScore?: number; }
 export interface DashboardStat { id: string | number; title: string; value: string | number; iconName: string; change?: string; }
 export interface StudentSummary { id: string; name: string; courseName: string; progress: number; }
@@ -180,9 +193,11 @@ export interface ApiDocumentBlockContentForSave {
   title: string;
   description?: string;
   documentUrl: string;
+  viewablePdfUrl?: string;
   originalFileName?: string;
   fileSize?: number;
   fileType?: string;
+  totalSlides?: number;
 }
 
 export type DocumentBlockContent = ApiDocumentBlockContentForSave;

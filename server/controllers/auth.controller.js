@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { auth } from "../config/firebase.config.js";
 import * as UserModel from "../models/user.model.js";
+import nodemailer from 'nodemailer';
 
 // Helper function to safely convert various date/timestamp formats to a JS Date object
 function convertToDate(timestampField) {
@@ -346,28 +347,60 @@ export const getCurrentUser = async (req, res) => {
 
 
 export const requestPasswordReset = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ message: "Email is required." });
+    }
+
+    const successMessage = "If an account with that email exists, a password reset link has been sent.";
+
     try {
-        const { email } = req.body;
-        if (!email) {
-            return res.status(400).json({ message: "Email is required." });
-        }
         const actionCodeSettings = {
-            url: process.env.PASSWORD_RESET_REDIRECT_URL || 'http://localhost:5173/login?reset=true',
-            handleCodeInApp: false 
+            url: process.env.PASSWORD_RESET_REDIRECT_URL || 'http://localhost:5173/reset-password-confirm',
+            handleCodeInApp: false,
         };
-        await auth.sendPasswordResetEmail(email, actionCodeSettings);
-        res.status(200).json({
-            message: "A a password reset email has been sent.",
+
+        const resetLink = await auth.generatePasswordResetLink(email, actionCodeSettings);
+
+        const transporter = nodemailer.createTransport({
+            host: process.env.MAIL_HOST,
+            port: Number(process.env.MAIL_PORT),
+            secure: process.env.MAIL_SECURE === 'true', 
+            auth: {
+                user: process.env.MAIL_USER,
+                pass: process.env.MAIL_PASS,
+            },
         });
+
+        await transporter.sendMail({
+            from: process.env.MAIL_FROM, 
+            to: email,
+            subject: "Password Reset Request for Your App", 
+            text: `Hello, \n\nPlease click on the following link to reset your password: \n\n${resetLink}\n\nIf you did not request this, please ignore this email.`, // Plain text body
+            html: `<p>Hello,</p>
+                   <p>Please click on the button below to reset your password.</p>
+                   <a href="${resetLink}" style="background-color: #C5A467; color: white; padding: 14px 25px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; font-weight: bold;">Reset Password</a>
+                   <p>If you did not request this, please ignore this email.</p>`,
+        });
+
+        res.status(200).json({ message: successMessage });
+
     } catch (error) {
-        if (error.code === 'auth/invalid-email') {
-            return res.status(400).json({ message: "Invalid email format provided." });
-        }
+        console.error("Error in requestPasswordReset:", error);
+
         if (error.code === 'auth/user-not-found') {
-            return res.status(200).json({ message: "A password reset email has been sent." });
+            return res.status(200).json({ message: successMessage });
         }
-        console.error("Error in resetPassword:", error);
-        res.status(500).json({ message: "Failed to send password reset email due to a server error.", detail: process.env.NODE_ENV !== 'production' ? error.message : undefined });
+
+        if (error.code === 'auth/invalid-email') {
+            return res.status(400).json({ message: "The email address provided is not valid." });
+        }
+
+        res.status(500).json({
+            message: "Failed to send password reset email due to a server error.",
+            detail: process.env.NODE_ENV !== 'production' ? error.message : undefined
+        });
     }
 };
 
