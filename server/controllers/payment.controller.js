@@ -1,103 +1,201 @@
-// server/controllers/payment.controller.js
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import Stripe from 'stripe';
 import { auth } from "../config/firebase.config.js";
 import * as UserModel from "../models/user.model.js";
 import * as PendingRegistrationModel from "../models/pendingRegistration.model.js";
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
 const CHAPA_API_BASE_URL = "https://api.chapa.co/v1";
 const CHAPA_SECRET_KEY = process.env.CHAPA_SECRET_KEY;
-const REGISTRATION_FEE = parseFloat(process.env.REGISTRATION_FEE_AMOUNT || "100");
-const CURRENCY = process.env.REGISTRATION_FEE_CURRENCY || "ETB";
+const REGISTRATION_FEE_ETB = parseFloat(process.env.REGISTRATION_FEE_AMOUNT || "100");
+const CURRENCY_ETB = process.env.REGISTRATION_FEE_CURRENCY || "ETB";
 
-console.log('Environment Variables:', {
-  CHAPA_SECRET_KEY: process.env.CHAPA_SECRET_KEY,
-  CHAPA_CALLBACK_URL: process.env.CHAPA_CALLBACK_URL,
-  CHAPA_RETURN_URL: process.env.CHAPA_RETURN_URL,
-  REGISTRATION_FEE_AMOUNT: process.env.REGISTRATION_FEE_AMOUNT,
-  REGISTRATION_FEE_CURRENCY: process.env.REGISTRATION_FEE_CURRENCY,
-});
+const REGISTRATION_FEE_USD_CENTS = parseInt(process.env.REGISTRATION_FEE_USD_CENTS || "3500", 10);
+const CURRENCY_USD = "usd";
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 export const initializeRegistrationPayment = async (req, res) => {
     console.log('Request Body:', req.body);
-
     const {
-        firstName,
-        lastName,
-        email,
-        password,
-        country,
-        church,
-        selectedCohortId,
-        phoneNumber
+        firstName, lastName, email, password, country,
+        church, selectedCohortId, phoneNumber,
+        paymentMethod // The new field from the frontend
     } = req.body;
 
+    // Validate the new paymentMethod field
+    if (!paymentMethod || !['chapa', 'stripe'].includes(paymentMethod)) {
+        console.error('Missing or invalid payment method');
+        return res.status(400).json({ message: "A valid payment method (Chapa or Stripe) must be selected." });
+    }
+    
+    // Validate the other required fields
     if (!firstName || !lastName || !email || !password || !country || !selectedCohortId) {
         console.error('Missing required fields');
         return res.status(400).json({ message: "All fields including cohort selection are required." });
     }
 
-    console.log('All required fields are present.');
-
-    const tx_ref = `reg-${uuidv4()}`;
-    console.log('Generated Transaction Reference:', tx_ref);
-
     try {
-        const pendingData = {
-            firstName, lastName, email, password,
-            country, church: church || null, selectedCohortId,
-            amount: REGISTRATION_FEE, currency: CURRENCY,
-            phoneNumber: phoneNumber || null
-        };
-        console.log('Pending Registration Data:', pendingData);
+        let checkout_url;
 
-        await PendingRegistrationModel.createPendingRegistration(tx_ref, pendingData);
-        console.log('Pending registration created successfully.');
+        // --- Logic is now based on the user's selected paymentMethod ---
+        
+        if (paymentMethod === 'chapa') {
+            console.log(`Initializing payment for ${email} via selected method: Chapa.`);
+            const tx_ref = `reg-chapa-${uuidv4()}`;
+            
+            // --- FULL CHAPA LOGIC ---
+            const pendingData = {
+                firstName, lastName, email, password, country,
+                church: church || null, selectedCohortId, phoneNumber: phoneNumber || null,
+                amount: REGISTRATION_FEE_ETB, currency: CURRENCY_ETB,
+            };
+            await PendingRegistrationModel.createPendingRegistration(tx_ref, pendingData);
+            console.log('Pending registration created for Chapa:', tx_ref);
 
-        const chapaPayload = {
-            amount: REGISTRATION_FEE.toString(),
-            currency: CURRENCY,
-            email: email,
-            first_name: firstName,
-            last_name: lastName,
-            tx_ref: tx_ref,
-            callback_url: `${process.env.CHAPA_CALLBACK_URL}`,
-            return_url: `${process.env.CHAPA_RETURN_URL}?tx_ref=${tx_ref}`,
-            "customization[title]": "Program Registration Fee",
-            "customization[description]": `Payment for ${selectedCohortId} intake.`,
-        };
+            const chapaPayload = {
+                amount: REGISTRATION_FEE_ETB.toString(),
+                currency: CURRENCY_ETB,
+                email: email,
+                first_name: firstName,
+                last_name: lastName,
+                tx_ref: tx_ref,
+                callback_url: `${process.env.CHAPA_CALLBACK_URL}`, // This must be defined in .env
+                return_url: `${process.env.CHAPA_RETURN_URL}?tx_ref=${tx_ref}`, // This must be defined in .env
+                "customization[title]": "Program Registration Fee",
+                "customization[description]": `Payment for cohort: ${selectedCohortId}.`,
+            };
+            if (phoneNumber) chapaPayload.phone_number = phoneNumber;
 
-        if (phoneNumber) {
-            chapaPayload.phone_number = phoneNumber;
+            const response = await axios.post(
+                `${CHAPA_API_BASE_URL}/transaction/initialize`,
+                chapaPayload,
+                { headers: { Authorization: `Bearer ${CHAPA_SECRET_KEY}`, 'Content-Type': 'application/json' } }
+            );
+
+            if (response.data?.status !== 'success' || !response.data?.data?.checkout_url) {
+                console.error('Chapa payment initialization failed:', response.data);
+                await PendingRegistrationModel.updatePendingRegistrationStatus(tx_ref, 'init_failed', { chapaResponse: response.data });
+                return res.status(400).json({ message: response.data.message || "Chapa payment initialization failed." });
+            }
+            
+            checkout_url = response.data.data.checkout_url;
+
+        } else if (paymentMethod === 'stripe') {
+            console.log(`Initializing payment for ${email} via selected method: Stripe.`);
+
+            // --- FULL STRIPE LOGIC ---
+            const session = await stripe.checkout.sessions.create({
+                payment_method_types: ['card'],
+                mode: 'payment',
+                line_items: [{
+                    price_data: {
+                        currency: CURRENCY_USD,
+                        product_data: {
+                            name: 'Program Registration Fee',
+                            description: `Enrollment for cohort: ${selectedCohortId}.`,
+                        },
+                        unit_amount: REGISTRATION_FEE_USD_CENTS,
+                    },
+                    quantity: 1,
+                }],
+                customer_email: email,
+                metadata: {
+                    firstName, lastName, email, country, selectedCohortId,
+                    church: church || 'N/A',
+                    phoneNumber: phoneNumber || 'N/A',
+                },
+                success_url: `${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+                cancel_url: `${process.env.FRONTEND_URL}/register`,
+            });
+
+            checkout_url = session.url;
         }
-        console.log('Chapa Payload:', chapaPayload);
 
-        const response = await axios.post(
-            `${CHAPA_API_BASE_URL}/transaction/initialize`,
-            chapaPayload,
-            { headers: { Authorization: `Bearer ${CHAPA_SECRET_KEY}`, 'Content-Type': 'application/json' } }
-        );
+        res.status(200).json({ checkout_url });
 
-        console.log('Chapa API Response:', response.data);
-
-        if (response.data && response.data.status === 'success' && response.data.data && response.data.data.checkout_url) {
-            res.status(200).json({ checkout_url: response.data.data.checkout_url });
-        } else {
-            console.error('Chapa payment initialization failed:', response.data);
-            await PendingRegistrationModel.updatePendingRegistrationStatus(tx_ref, 'init_failed', { chapaResponse: response.data });
-            res.status(400).json({ message: response.data.message || "Chapa payment initialization failed." });
-        }
     } catch (error) {
-        console.error("Payment Initialization Error:", error.response ? error.response.data : error.message);
-        if (tx_ref) {
-            await PendingRegistrationModel.updatePendingRegistrationStatus(tx_ref, 'init_error', { errorDetail: error.message });
-        }
+        console.error("Payment Initialization Error:", error.message);
         res.status(500).json({ message: "Server error during payment initialization." });
     }
 };
 
+export const handleStripeWebhook = async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    let event;
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } catch (err) {
+        console.error(`Stripe Webhook signature verification failed.`, err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        console.log('Stripe checkout.session.completed event received for:', session.id);
+
+        const {
+            firstName, lastName, email, country, selectedCohortId, church, phoneNumber
+        } = session.metadata;
+        
+        const temporaryPassword = uuidv4();
+
+        let userRecord;
+        try {
+            console.log(`Stripe Webhook: Creating user for email: ${email}`);
+            
+            const existingUser = await UserModel.getUserByEmail(email);
+            if (existingUser) {
+                console.log(`Stripe Webhook: User with email ${email} already exists. Ignoring fulfillment.`);
+                return res.status(200).send("OK. User already processed.");
+            }
+            
+            userRecord = await auth.createUser({
+                email,
+                password: temporaryPassword,
+                displayName: `${firstName} ${lastName}`,
+            });
+            console.log(`Stripe Webhook: Firebase Auth user ${userRecord.uid} created.`);
+
+            const role = "student";
+            await auth.setCustomUserClaims(userRecord.uid, { role });
+            console.log(`Stripe Webhook: Custom claims set for user ${userRecord.uid}.`);
+
+            const userDataForFirestore = {
+                uid: userRecord.uid,
+                email, firstName, lastName, role, country, church, phoneNumber,
+                displayName: `${firstName} ${lastName}`,
+                enrollment: {
+                    cohortId: selectedCohortId,
+                    paymentTxRef: session.id,
+                    paymentIntentId: session.payment_intent,
+                    paymentAmount: session.amount_total / 100,
+                    paymentCurrency: session.currency,
+                    enrollmentDate: new Date(),
+                },
+                createdAt: new Date(),
+            };
+            await UserModel.createUser(userDataForFirestore);
+            console.log(`Stripe Webhook: Firestore user document created for UID: ${userRecord.uid}.`);
+
+        } catch (userCreationError) {
+            console.error(`Stripe Webhook: User creation failed for email ${email}`, userCreationError);
+            if (userRecord?.uid) {
+                console.log(`Stripe Webhook: Rolling back Firebase Auth user ${userRecord.uid}.`);
+                await auth.deleteUser(userRecord.uid).catch(delErr => console.error("Rollback failed:", delErr));
+            }
+            return res.status(200).send("OK. Processed with internal error during user creation.");
+        }
+    }
+
+    res.status(200).send("OK");
+};
+
 export const handleChapaWebhook = async (req, res) => {
-    // --- Enhanced Logging at the beginning ---
     console.log(`CHAPA CALLBACK/WEBHOOK: Entry point hit. Method: ${req.method}`);
     console.log('CHAPA CALLBACK/WEBHOOK: Query Params:', JSON.stringify(req.query));
     console.log('CHAPA CALLBACK/WEBHOOK: Body:', JSON.stringify(req.body));
@@ -110,22 +208,6 @@ export const handleChapaWebhook = async (req, res) => {
         console.warn("CHAPA CALLBACK/WEBHOOK: tx_ref or trx_ref missing.");
         return res.status(400).send("Transaction reference missing.");
     }
-    // --- End of enhanced logging ---
-
-    // --- Your existing logic starts here ---
-    // The console.log lines below were part of your original code and are fine to keep,
-    // though they are somewhat redundant with the new ones above. You can choose to keep or remove them.
-    // console.log('Chapa Webhook/Callback Received:'); // Redundant with new logs
-    // console.log('Method:', req.method); // Redundant
-    // console.log('Query:', JSON.stringify(req.query)); // Redundant
-    // console.log('Body:', JSON.stringify(req.body)); // Redundant
-
-    // if (!tx_ref) { // This check is already done above
-    //     console.warn("Chapa Webhook/Callback: tx_ref or trx_ref missing.");
-    //     return res.status(400).send("Transaction reference missing.");
-    // }
-
-    // console.log(`Chapa Webhook/Callback processing for tx_ref: ${tx_ref}`); // Redundant
 
     try {
         const verifyResponse = await axios.get(
@@ -136,7 +218,7 @@ export const handleChapaWebhook = async (req, res) => {
         if (verifyResponse.data && verifyResponse.data.status === 'success' && verifyResponse.data.data) {
             const paymentData = verifyResponse.data.data;
             if (paymentData.status === 'success') {
-                console.log(`CHAPA CALLBACK/WEBHOOK: Payment success (verified by Chapa API) for tx_ref: ${tx_ref}`); // Added context
+                console.log(`CHAPA CALLBACK/WEBHOOK: Payment success (verified by Chapa API) for tx_ref: ${tx_ref}`);
                 const pendingReg = await PendingRegistrationModel.getPendingRegistration(tx_ref);
 
                 if (!pendingReg) {
@@ -158,13 +240,13 @@ export const handleChapaWebhook = async (req, res) => {
                     console.log(`CHAPA CALLBACK/WEBHOOK: Attempting Firebase Auth user creation for email: ${pendingReg.email}, tx_ref: ${tx_ref}`);
                     userRecord = await auth.createUser({
                         email: pendingReg.email,
-                        password: pendingReg.password, // Ensure this password is secure and meets Firebase requirements
+                        password: pendingReg.password,
                         displayName: `${pendingReg.firstName} ${pendingReg.lastName}`,
                     });
                     console.log(`CHAPA CALLBACK/WEBHOOK: Firebase Auth user ${userRecord.uid} created for tx_ref: ${tx_ref}`);
 
 
-                    const role = "student"; // Or from pendingReg if applicable
+                    const role = "student";
                     await auth.setCustomUserClaims(userRecord.uid, { role });
                     console.log(`CHAPA CALLBACK/WEBHOOK: Custom claims set for user ${userRecord.uid}, tx_ref: ${tx_ref}`);
 
@@ -184,11 +266,8 @@ export const handleChapaWebhook = async (req, res) => {
                             paymentTxRef: tx_ref,
                             paymentAmount: pendingReg.amount,
                             paymentCurrency: pendingReg.currency,
-                            enrollmentDate: new Date() // Consider FieldValue.serverTimestamp() if consistency across servers is critical
+                            enrollmentDate: new Date()
                         },
-                        // It's good practice to also add createdAt/updatedAt timestamps here
-                        // createdAt: FieldValue.serverTimestamp(),
-                        // updatedAt: FieldValue.serverTimestamp(),
                     };
                     console.log(`CHAPA CALLBACK/WEBHOOK: Attempting Firestore user document creation for UID: ${userRecord.uid}, tx_ref: ${tx_ref}`);
                     await UserModel.createUser(userDataForFirestore);
@@ -205,7 +284,6 @@ export const handleChapaWebhook = async (req, res) => {
                         try { await auth.deleteUser(userRecord.uid); } catch (delErr) { console.error("CHAPA CALLBACK/WEBHOOK: Failed to rollback Firebase Auth user:", delErr); }
                     }
                     await PendingRegistrationModel.updatePendingRegistrationStatus(tx_ref, 'user_creation_failed', { errorDetail: userCreationError.message });
-                    // Still send 200 OK to Chapa as per best practice for webhooks, even if our internal processing had an issue.
                     return res.status(200).send("OK. Processed with internal error during user creation.");
                 }
             } else {
@@ -217,12 +295,10 @@ export const handleChapaWebhook = async (req, res) => {
             await PendingRegistrationModel.updatePendingRegistrationStatus(tx_ref, 'chapa_verify_failed', { chapaResponse: verifyResponse.data });
         }
     } catch (error) {
-        // Log the full error object for better diagnostics, especially for network errors from axios
         console.error(`CHAPA CALLBACK/WEBHOOK: Webhook Processing Error for tx_ref ${tx_ref}:`, error.response ? error.response.data : error.message, error.stack ? `\nStack: ${error.stack}` : '');
-        if (tx_ref) { // Ensure tx_ref is valid before trying to update status
+        if (tx_ref) {
             await PendingRegistrationModel.updatePendingRegistrationStatus(tx_ref, 'webhook_processing_error', { errorDetail: error.message });
         }
-        // Still send 200 OK to Chapa.
         return res.status(200).send("OK. Webhook processed with an internal server error.");
     }
 
@@ -267,7 +343,6 @@ export const getRegistrationStatus = async (req, res) => {
             clientStatus = 'error';
             clientMessage = 'An error occurred during registration. Please contact support.';
         } else if (pendingReg.status === 'completed_user_created' && !pendingReg.userId) {
-            // This case should ideally not happen if userId is always set upon successful creation.
             clientStatus = 'error';
             clientMessage = 'Registration seems complete but user ID is missing. Please contact support.';
         } else if (pendingReg.status === 'completed_user_created') {

@@ -6,6 +6,7 @@ import { ThemeProvider } from "./components/theme-provider";
 import UserLayout from "./components/UserLayout";
 import AdminLayout from "./components/admin/AdminLayout";
 import WeekContentPage from './pages/WeekContentPage';
+import PaymentSuccessPage from './pages/PaymentSuccessPage';
 
 // --- Fallback for lazy loading ---
 const LoadingFallback = () => (
@@ -74,6 +75,7 @@ function App() {
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/terms" element={<TermsOfUsePage />} />
             <Route path="/registration-status" element={<RegistrationStatusPage />} />
+             <Route path="/payment-success" element={<PaymentSuccessPage />} />
 
             <Route element={<ProtectedRoute />}> {/* Protects routes needing any authenticated user */}
               <Route path="/profile" element={<UserProfilePage />} />

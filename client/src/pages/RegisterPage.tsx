@@ -9,7 +9,6 @@ import { Checkbox } from "../components/ui/checkbox.js";
 import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
 import apiClient from "../services/apiClient";
 
-// --- Define Country List (Outside Component) ---
 const allCountries: string[] = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan",
   "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
@@ -37,7 +36,6 @@ const allCountries: string[] = [
   "Zambia", "Zimbabwe"
 ].sort();
 
-// --- Color Constants ---
 const accentColor = "#C5A467";
 const accentHoverColor = "#B08F55";
 const primaryTextLight = "text-[#2A0F0F]";
@@ -55,7 +53,6 @@ const cardBgDark = "dark:bg-gray-900";
 const cardBorder = `border border-[#C5A467]/20 dark:border-[#C5A467]/30`;
 const contentBgLight = "bg-white";
 const contentBgDark = "dark:bg-gray-900";
-
 
 interface Cohort {
   id: string;
@@ -79,7 +76,8 @@ const RegisterPage: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isChapaLoading, setIsChapaLoading] = useState(false);
+  const [isStripeLoading, setIsStripeLoading] = useState(false);
   const [availableCohorts, setAvailableCohorts] = useState<Cohort[]>([]);
   const navigate = useNavigate();
 
@@ -90,48 +88,27 @@ const RegisterPage: React.FC = () => {
   const buttonPrimaryClasses = `bg-[${accentColor}] hover:bg-[${accentHoverColor}] text-[#2A0F0F] font-semibold transition-colors duration-200 inline-flex items-center justify-center rounded-md text-sm ring-offset-background h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}]`;
   const buttonOutlineClasses = `border border-[#4A1F1F]/50 dark:border-[#E0D6C3]/50 ${secondaryTextLight} ${secondaryTextDark} hover:text-[${accentColor}] hover:border-[${accentColor}] dark:hover:text-[${accentColor}] dark:hover:border-[${accentColor}] hover:bg-transparent dark:hover:bg-transparent transition-colors duration-200 inline-flex items-center justify-center rounded-md text-sm ring-offset-background h-10 px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}]`;
 
-
- useEffect(() => {
-   if (apiClient && apiClient.defaults) {
-    console.log("RegisterPage.tsx: Imported apiClient.defaults.baseURL:", apiClient.defaults.baseURL); // <-- ADD THIS PRECISE LOG
-  } else {
-    console.error("RegisterPage.tsx: apiClient or apiClient.defaults is undefined!");
-  }
-
-
-  const fetchCohorts = async () => {
-    try {
-      setLoading(true);
-      setFormError(null); // Clear previous errors
-      const response = await apiClient.get<Cohort[]>('/cohorts/available');
-      console.log("Fetched cohorts:", response.data); // Log successful fetch
-      setAvailableCohorts(response.data || []); // Ensure it's an array even if data is null/undefined
-    } catch (error: any) { // Add 'any' to inspect the error
-      console.error("Failed to fetch cohorts:", error);
-      let errorMessage = "Failed to load cohorts. Please try again.";
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        console.error("Error data:", error.response.data);
-        console.error("Error status:", error.response.status);
-        errorMessage = `Error: ${error.response.data.message || error.response.statusText || 'Server error'}`;
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error("Error request:", error.request);
-        errorMessage = "No response from server. Check network or API URL.";
-      } else {
-        // Something happened in setting up the request that triggered an Error
-        console.error("Error message:", error.message);
-        errorMessage = `Error: ${error.message}`;
+  useEffect(() => {
+    const fetchCohorts = async () => {
+      try {
+        setFormError(null);
+        const response = await apiClient.get<Cohort[]>('/cohorts/available');
+        setAvailableCohorts(response.data || []);
+      } catch (error: any) {
+        let errorMessage = "Failed to load cohorts. Please try again.";
+        if (error.response) {
+          errorMessage = `Error: ${error.response.data.message || error.response.statusText || 'Server error'}`;
+        } else if (error.request) {
+          errorMessage = "No response from server. Check network or API URL.";
+        } else {
+          errorMessage = `Error: ${error.message}`;
+        }
+        setFormError(errorMessage);
+        setAvailableCohorts([]);
       }
-      setFormError(errorMessage);
-      setAvailableCohorts([]); // Set to empty array on error
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchCohorts();
-}, []);
+    };
+    fetchCohorts();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -139,7 +116,7 @@ const RegisterPage: React.FC = () => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-    if ( (name === "phoneNumber" && value && !/^(09|07)\d{8}$/.test(value)) ) {
+    if ((name === "phoneNumber" && value && !/^(09|07)\d{8}$/.test(value))) {
         setFormError("Invalid phone format (e.g., 0912345678 or 0712345678).");
     } else if (name === "phoneNumber" || (name === "country" && value) || (name === "selectedCohortId" && value)) {
          setFormError(null);
@@ -158,11 +135,8 @@ const RegisterPage: React.FC = () => {
     }
   };
 
-  const handleProceedToPayment = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handlePaymentInitiation = async (paymentMethod: 'chapa' | 'stripe') => {
     setFormError(null);
-
-    if (step !== 3) return;
 
     if (formData.password !== formData.confirmPassword) {
       setFormError("Passwords do not match");
@@ -189,8 +163,11 @@ const RegisterPage: React.FC = () => {
         return;
     }
 
-    if (loading) return;
-    setLoading(true);
+    if (paymentMethod === 'chapa') {
+      setIsChapaLoading(true);
+    } else {
+      setIsStripeLoading(true);
+    }
 
     try {
       const registrationPayload = {
@@ -202,8 +179,8 @@ const RegisterPage: React.FC = () => {
         church: formData.church || null,
         phoneNumber: formData.phoneNumber || null,
         selectedCohortId: formData.selectedCohortId,
+        paymentMethod: paymentMethod,
       };
-      console.log("Initiating Payment with Data:", registrationPayload);
 
       const response = await apiClient.post<{ checkout_url: string, message?: string }>('/payments/initialize-registration', registrationPayload);
 
@@ -215,9 +192,9 @@ const RegisterPage: React.FC = () => {
     } catch (error: any) {
       const message = error.response?.data?.message || error.message || "Payment initiation failed. Please check your details.";
       setFormError(message);
-      console.error("Payment Initiation Error:", error);
     } finally {
-      setLoading(false);
+      setIsChapaLoading(false);
+      setIsStripeLoading(false);
     }
   };
 
@@ -255,7 +232,6 @@ const RegisterPage: React.FC = () => {
     setStep((s) => Math.max(s - 1, 1));
   };
 
-
   return (
     <div className={`flex flex-col items-center min-h-screen py-12 bg-[#FFF8F0] dark:bg-gray-950 px-4`}>
       <div className="container max-w-2xl px-4 md:px-6">
@@ -286,7 +262,6 @@ const RegisterPage: React.FC = () => {
         </div>
 
         <div className="mx-auto w-full">
-          {/* STEPPER - Ensure labels are correct */}
           <div className="flex items-start justify-between mb-8 max-w-md mx-auto">
             {[1, 2, 3].map((num, index, arr) => (
               <React.Fragment key={num}>
@@ -297,7 +272,6 @@ const RegisterPage: React.FC = () => {
                     {num}
                   </div>
                   <span className="text-xs text-center font-medium">
-                    {/* Corrected Stepper Labels */}
                     {num === 1 ? "Account" : num === 2 ? "Profile & Cohort" : "Confirm & Pay"}
                   </span>
                 </div>
@@ -311,13 +285,11 @@ const RegisterPage: React.FC = () => {
           </div>
 
           <Card className={`${cardBgLight} ${cardBgDark} ${cardBorder} shadow-lg max-w-md mx-auto`}>
-            <form onSubmit={handleProceedToPayment} noValidate>
-
-              {/* STEP 1: ACCOUNT */}
+            <form noValidate>
               {step === 1 && (
                 <>
                   <CardHeader>
-<CardTitle className={`${primaryTextLight} ${primaryTextDark} font-serif`}>Create Your Account</CardTitle>
+                    <CardTitle className={`${primaryTextLight} ${primaryTextDark} font-serif`}>Create Your Account</CardTitle>
                     <CardDescription className={`${secondaryTextLight} ${secondaryTextDark}`}>
                       Enter your details to create your student account
                     </CardDescription>
@@ -413,10 +385,8 @@ const RegisterPage: React.FC = () => {
                 </>
               )}
 
-              {/* STEP 2: PROFILE & COHORT SELECTION */}
               {step === 2 && (
                 <>
-                  {/* Corrected CardHeader for Step 2 */}
                   <CardHeader>
                     <CardTitle className={`${primaryTextLight} ${primaryTextDark} font-serif`}>Your Profile & Cohort</CardTitle>
                     <CardDescription className={`${secondaryTextLight} ${secondaryTextDark}`}>Tell us more and choose your intake</CardDescription>
@@ -446,12 +416,11 @@ const RegisterPage: React.FC = () => {
                       <Label htmlFor="church" className={`${primaryTextLight} ${primaryTextDark} text-sm font-medium`}>Church Affiliation <span className="text-xs text-gray-400">(Optional)</span></Label>
                       <Input id="church" name="church" value={formData.church} onChange={handleChange} placeholder="Your local church or ministry" className={inputClasses} />
                     </div>
-                    {/* THIS IS THE COHORT SELECTION DROPDOWN */}
                     <div className="space-y-1.5">
                       <Label htmlFor="selectedCohortId" className={`${primaryTextLight} ${primaryTextDark} text-sm font-medium`}>Select Cohort</Label>
                       <Select value={formData.selectedCohortId} onValueChange={(value: string) => handleSelectChange("selectedCohortId", value)} required>
-                        <SelectTrigger id="selectedCohortId" className={selectTriggerClasses} aria-required="true" disabled={loading || availableCohorts.length === 0}>
-                          <SelectValue placeholder={loading ? "Loading cohorts..." : "Select your preferred intake"} />
+                        <SelectTrigger id="selectedCohortId" className={selectTriggerClasses} aria-required="true" disabled={isChapaLoading || isStripeLoading || availableCohorts.length === 0}>
+                          <SelectValue placeholder={(isChapaLoading || isStripeLoading) ? "Loading cohorts..." : "Select your preferred intake"} />
                         </SelectTrigger>
                         <SelectContent className={selectContentClasses}>
                           {availableCohorts.length > 0 ? availableCohorts.map((cohort) => (
@@ -473,8 +442,8 @@ const RegisterPage: React.FC = () => {
                        className={buttonPrimaryClasses}
                        disabled={
                          !formData.country ||
-                         !formData.selectedCohortId || // Ensure cohort is selected
-                         loading ||
+                         !formData.selectedCohortId ||
+                         isChapaLoading || isStripeLoading ||
                          (formData.phoneNumber !== "" && !/^(09|07)\d{8}$/.test(formData.phoneNumber))
                        }
                     >
@@ -484,13 +453,11 @@ const RegisterPage: React.FC = () => {
                 </>
               )}
 
-              {/* STEP 3: CONFIRM & PAY */}
               {step === 3 && (
                 <>
-                  {/* Corrected CardHeader for Step 3 */}
                   <CardHeader>
-                    <CardTitle className={`${primaryTextLight} ${primaryTextDark} font-serif`}>Confirm & Proceed to Payment</CardTitle>
-                    <CardDescription className={`${secondaryTextLight} ${secondaryTextDark}`}>Review your information before payment</CardDescription>
+                    <CardTitle className={`${primaryTextLight} ${primaryTextDark} font-serif`}>Confirm & Choose Payment Method</CardTitle>
+                    <CardDescription className={`${secondaryTextLight} ${secondaryTextDark}`}>Review your information and select how you'd like to pay.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className={`text-sm ${primaryTextLight} ${primaryTextDark}`}><strong>Full Name:</strong> {formData.firstName} {formData.lastName}</div>
@@ -498,7 +465,6 @@ const RegisterPage: React.FC = () => {
                     <div className={`text-sm ${primaryTextLight} ${primaryTextDark}`}><strong>Country:</strong> {formData.country}</div>
                     {formData.phoneNumber && <div className={`text-sm ${primaryTextLight} ${primaryTextDark}`}><strong>Phone:</strong> {formData.phoneNumber}</div>}
                     <div className={`text-sm ${primaryTextLight} ${primaryTextDark}`}><strong>Church:</strong> {formData.church || 'N/A'}</div>
-                    {/* CORRECTLY DISPLAYING SELECTED COHORT */}
                     <div className={`text-sm ${primaryTextLight} ${primaryTextDark}`}>
                       <strong>Selected Cohort:</strong> {availableCohorts.find(c => c.id === formData.selectedCohortId)?.name || formData.selectedCohortId || 'N/A'}
                     </div>
@@ -530,25 +496,43 @@ const RegisterPage: React.FC = () => {
                     </div>
                     {formError && <p role="alert" className="text-red-600 dark:text-red-400 text-sm font-medium pt-2">{formError}</p>}
                   </CardContent>
-                  <CardFooter className="flex justify-between pt-6">
-                    <Button variant="outline" type="button" onClick={prevStep} className={buttonOutlineClasses}>
+                  <CardFooter className="flex flex-col sm:flex-row justify-between pt-6 gap-4">
+                    <Button variant="outline" type="button" onClick={prevStep} className={`${buttonOutlineClasses} w-full sm:w-auto`}>
                       Back
                     </Button>
-                    {/* Corrected Button Text for Step 3 */}
-                    <Button
-                      type="submit"
-                      className={buttonPrimaryClasses}
-                      disabled={loading || !formData.agreeTerms}
-                    >
-                      {loading ? (
-                         <span className="flex items-center">
-                           <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#2A0F0F]" />
-                           Processing...
-                         </span>
-                      ) : (
-                         "Proceed to Payment"
-                      )}
-                    </Button>
+                    
+                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                      <Button
+                        type="button"
+                        onClick={() => handlePaymentInitiation('chapa')}
+                        className={`${buttonPrimaryClasses} w-full`}
+                        disabled={!formData.agreeTerms || isChapaLoading || isStripeLoading}
+                      >
+                        {isChapaLoading ? (
+                          <span className="flex items-center">
+                            <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                            Processing...
+                          </span>
+                        ) : (
+                          "Pay with Chapa"
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => handlePaymentInitiation('stripe')}
+                        className={`${buttonPrimaryClasses} w-full`}
+                        disabled={!formData.agreeTerms || isChapaLoading || isStripeLoading}
+                      >
+                        {isStripeLoading ? (
+                          <span className="flex items-center">
+                            <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                            Processing...
+                          </span>
+                        ) : (
+                          "Pay with Stripe"
+                        )}
+                      </Button>
+                    </div>
                   </CardFooter>
                 </>
               )}

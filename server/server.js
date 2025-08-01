@@ -1,3 +1,5 @@
+// server/app.js
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -6,7 +8,10 @@ import dotenv from "dotenv";
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import router from "./routes/router.js";
+
+// --- IMPORT YOUR ROUTERS ---
+import paymentRoutes from './routes/payment.routes.js'; // This is handled FIRST
+import mainRouter from "./routes/router.js";            // This handles everything else
 
 dotenv.config();
 
@@ -35,21 +40,35 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 
-// Apply middleware
+// Apply general middleware THAT DOES NOT parse the body
 app.use(cors(corsOptions));
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(morgan("dev"));
+app.use(cookieParser());
+
+
+// =================== CRITICAL CHANGE ===================
+//
+// Handle the payment routes BEFORE the global express.json() parser.
+// This allows the Stripe webhook route inside 'paymentRoutes' to receive the
+// raw request body it needs for signature verification.
+//
+app.use("/api/payments", paymentRoutes);
+//
+// =======================================================
+
+
+// Apply JSON and URL-encoded body parsers for all OTHER routes that come after.
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
 
 // Serve static files from the uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Mount the main router at '/api'
-app.use("/api", router);
+// Mount the MAIN router for all non-payment routes
+app.use("/api", mainRouter);
 
 // Default route for the root path
 app.get("/", (req, res) => {
@@ -75,4 +94,4 @@ app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
-export default app;
+export default app; 
