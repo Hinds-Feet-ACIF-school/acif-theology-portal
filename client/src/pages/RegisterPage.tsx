@@ -9,6 +9,8 @@ import { Checkbox } from "../components/ui/checkbox.js";
 import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
 import apiClient from "../services/apiClient";
 
+
+//countries
 const allCountries: string[] = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan",
   "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
