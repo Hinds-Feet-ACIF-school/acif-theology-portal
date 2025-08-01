@@ -14,10 +14,10 @@ const router = express.Router();
 // global express.json(), we add the middleware here specifically.
 router.post('/initialize-registration', express.json(), initializeRegistrationPayment);
 
-// Route for the Chapa webhook/callback.
+// Route for the Chapa webhook/callback
 router.route('/chapa-webhook')
   .get(handleChapaWebhook)
-  .post(express.json(), handleChapaWebhook); // The POST needs a JSON parser.
+  .post(express.json(), handleChapaWebhook); // The POST needs a JSON parser
 
 // Route for checking registration status.
 router.get('/registration-status', getRegistrationStatus);
