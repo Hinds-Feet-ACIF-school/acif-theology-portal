@@ -1,12 +1,12 @@
 import { BookOpen, Users, FileText, CheckCircle2, HelpCircle } from "lucide-react";
-import * as AdminStyles from '../styles/adminStyles'; // We'll create this next
+import * as AdminStyles from '../styles/adminStyles'; 
 
 export const IconMap = {
   Users,
   BookOpen,
   CheckCircle2,
   FileText,
-  HelpCircle, // Fallback
+  HelpCircle,
 };
 
 export const getStatusBadgeClasses = (status: string) => {

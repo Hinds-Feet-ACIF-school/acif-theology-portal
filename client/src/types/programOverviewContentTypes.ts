@@ -1,5 +1,3 @@
-// src/types/programOverviewContentTypes.ts
-
 export interface ContentListItem {
   id: string; // Unique ID for React keys and stable editing
   text: string;
@@ -9,7 +7,6 @@ export interface CTAContentData {
   title: string;
   description: string;
   investmentLabel: string;
-  // OLD: investmentValue: string; // This line should have already been removed/commented
   investmentValueUSD?: string; // For USD price string
   investmentValueETB?: string; // For ETB price string
   investmentNote: string;
@@ -33,7 +30,6 @@ export interface CourseContentData {
   ects: number;
 }
 
-// THIS IS THE ONLY DEFINITION of ProgramOverviewPageContentData that should remain
 export interface ProgramOverviewPageContentData {
   _id?: string; // From MongoDB/Firestore if applicable
   identifier?: string; // For identifying the page content, e.g., "programOverview"
@@ -72,10 +68,9 @@ export interface ProgramOverviewPageContentData {
     details: ContentListItem[];
     quote: string;
   };
-  cta: CTAContentData; // CORRECT: Uses the updated CTAContentData interface
+  cta: CTAContentData; 
 
   createdAt?: string | Date; // Or Firebase Timestamp
   updatedAt?: string | Date; // Or Firebase Timestamp
 }
 
-// DELETE THE DUPLICATE ProgramOverviewPageContentData DEFINITION THAT WAS HERE

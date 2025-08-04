@@ -1,4 +1,3 @@
-// src/components/modals/StudentDetailsModal.tsx
 import React from 'react';
 import { Button } from "../ui/button.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card.js";

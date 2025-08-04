@@ -1,10 +1,9 @@
-// src/pages/ContactUsPage.tsx
-import React, { useState, useEffect } from 'react'; // Added useEffect
-import { Button } from '../components/ui/button'; // Removed .js
-import { Input } from '../components/ui/input';   // Removed .js
-import { Textarea } from '../components/ui/textarea'; // Removed .js
-import { Label } from '../components/ui/label';     // Removed .js
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card'; // Removed .js
+import React, { useState, useEffect } from 'react';
+import { Button } from '../components/ui/button'; 
+import { Input } from '../components/ui/input';  
+import { Textarea } from '../components/ui/textarea'; 
+import { Label } from '../components/ui/label';     
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card'; 
 import { Mail, Send, Loader2, CheckCircle } from 'lucide-react';
 import * as apiService from '../services/api';
 
@@ -128,7 +127,6 @@ const ContactUsPage: React.FC = () => {
     );
   }
   
-  // Default content if pageContent is null after loading attempt (e.g. network error but we want to show form)
   const heroTitle = pageContent?.hero?.title || "Contact Us";
   const heroSubtitle = pageContent?.hero?.subtitle || "We'd love to hear from you! Reach out with any questions or inquiries.";
   const getInTouchTitle = pageContent?.getInTouch?.title || "Get in Touch";

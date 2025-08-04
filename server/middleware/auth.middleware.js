@@ -1,4 +1,3 @@
-// server/middleware/auth.middleware.js
 
 import jwt from 'jsonwebtoken';
 // import { auth } from "../config/firebase.config.js"; // Keep if used elsewhere, but not directly in these middlewares

@@ -1,4 +1,3 @@
-// src/pages/admin/content/AdminProgramOverviewPageContentEditor.tsx
 import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -127,9 +126,7 @@ const getInitialProgramOverviewData = (): ProgramOverviewPageContentData => ({
     investmentNote: "A one-time fee to secure your place and begin this transformative program.",
   },
 });
-// --- END INITIAL/FALLBACK DATA ---
 
-// --- REAL API FUNCTIONS ---
 const fetchProgramOverviewContentFromAPI = async (): Promise<ProgramOverviewPageContentData | null> => {
   console.log("Attempting to fetch program overview page content from API...");
   try {
@@ -171,7 +168,6 @@ const saveProgramOverviewContent = async (content: ProgramOverviewPageContentDat
   }
   return response.json();
 };
-// --- END REAL API FUNCTIONS ---
 
 const AdminProgramOverviewPageContentEditor: React.FC = () => {
   const [content, setContent] = useState<ProgramOverviewPageContentData | null>(null);

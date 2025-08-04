@@ -1,4 +1,3 @@
-// server/routes/userCourseAccess.routes.js
 import express from 'express';
 import { getUserCourseAccessState } from '../controllers/userCourseAccess.controller.js';
 import { checkOptionalAuth } from '../middleware/auth.middleware.js';

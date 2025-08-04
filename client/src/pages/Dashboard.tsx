@@ -1,4 +1,3 @@
-// src/pages/DashboardPage.tsx
 import React, { useState, useEffect, useMemo, MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
@@ -14,11 +13,10 @@ import { DashboardPageContentData } from '../types/dashboardPageContentTypes'; /
 
 // Interfaces specific to this page for clarity or if they diverge from apiService types
 export interface AccessibleContentWeekItemDetails {
-  type: string; // e.g., "section_completion", "quiz_score", "video", "reading"
-  status?: "completed" | "in_progress" | "not_started"; // For sections or generic items
-  progressPercent?: number; // For items like video watched percentage
-  score?: number | null; // For quizzes
-  // Potentially add other fields like 'title', 'url' if items become directly linkable from dashboard
+  type: string; 
+  status?: "completed" | "in_progress" | "not_started"; 
+  progressPercent?: number; 
+  score?: number | null; 
 }
 
 export interface AccessibleContentWeek {

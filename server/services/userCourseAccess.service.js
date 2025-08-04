@@ -1,4 +1,3 @@
-// server/services/userCourseAccess.service.js
 import { db } from "../config/firebase.config.js";
 
 const usersCollection = db.collection("users");

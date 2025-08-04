@@ -1,4 +1,3 @@
-// server/controllers/course.controller.js
 import * as CourseModel from "../models/course.model.js";
 import * as WeekModel from "../models/week.model.js";
 import * as MaterialModel from "../models/material.model.js";

@@ -24,24 +24,24 @@ export interface QuizBlockContent {
 }
 export interface RichContentItemBlock {
   id: string;
-  type: 'text' | 'video' | 'quiz' | 'document'; // <<< 1. ADD 'document' TO THIS UNION
+  type: 'text' | 'video' | 'quiz' | 'document';
   order?: number;
   content?: string;
   videoContent?: VideoBlockContent;
   quizContent?: QuizBlockContent;
-  documentContent?: ApiDocumentBlockContentForSave; // <<< 2. ADD THIS OPTIONAL PROPERTY
+  documentContent?: ApiDocumentBlockContentForSave;
 }
 export interface AssignmentDetails { id: string; weekId: string; title: string; description?: string; instructions?: string; type?: string; points?: number; dueDateOffsetDays?: number | null; order?: number; createdBy?: string; createdAt?: any; updatedAt?: any; weekNumber?: number; courseTitle?: string; courseId?: string; }
 export interface Section { id: string; weekId: string; title: string; description?: string; order: number; content: ContentItem[]; createdAt?: Date; updatedAt?: Date; }
 export interface DiscussionTopic { id: string; courseId: string; weekId?: string; sectionId?: string; title: string; description?: string; content?: string; createdAt?: Date; updatedAt?: Date; }
 export interface ContentItem { 
   id?: string;
-  type: 'text' | 'video' | 'quiz_link' | 'document'; // <<< 3. ADD 'document' TO THIS UNION
+  type: 'text' | 'video' | 'quiz_link' | 'document';
   title: string;
   isRequired: boolean;
   content?: string;
   url?: string;
-  richContent: RichContentItemBlock[]; // This will now use the updated RichContentItemBlock
+  richContent: RichContentItemBlock[]; 
   order?: number;
   createdAt?: Date;
   updatedAt?: Date;
@@ -49,7 +49,7 @@ export interface ContentItem {
 
 interface CreateMaterialResponse {
     message: string;
-    material: Material; // Using your existing Material type
+    material: Material;
 }
 
 export interface SectionData { weekId: string; title: string; description?: string; order: number; }
@@ -105,19 +105,14 @@ export interface ContactFormData {
     message: string;
   }
 
-  export async function sendContactEmail(data: ContactFormData): Promise<any> { // You can refine Promise<any> to a more specific response type if your backend returns one
+  export async function sendContactEmail(data: ContactFormData): Promise<any> { 
     try {
-      // Replace '/contact-form' with the actual endpoint path on your backend
-      // e.g., if your backend base URL is https://acif-theology-portal.onrender.com/api
-      // and your contact endpoint is /contact, then use '/contact'
-      // If your contact endpoint is /api/contact-form and base is just the domain, use '/api/contact-form'
+
       const response = await apiClient.post('/contact-form', data); 
-      return response.data; // Or handle the response as needed (e.g., check for a success message)
+      return response.data; 
     } catch (error) {
-      // The error will be an AxiosError if it's from the API call
-      // You can use getErrorMessage or handle it specifically here
       console.error('Error in sendContactEmail service:', getErrorMessage(error)); 
-      throw error; // Re-throw the error so it can be caught by the component
+      throw error; 
     }
   }
   
@@ -126,7 +121,7 @@ export interface QuizScore {
   title: string;
   score: number;
   passed: boolean;
-  submittedAt: string | null; // Allow null for submittedAt
+  submittedAt: string | null; 
 }
 
 export interface MonthlyProgress {

@@ -1,4 +1,3 @@
-// src/pages/admin/content/AdminUserDashboardPageContentEditor.tsx
 import React, { useState, useEffect, FormEvent, ChangeEvent, useRef } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -12,8 +11,6 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-// --- REAL API FUNCTIONS (fetchDashboardPageContentFromAPI, saveDashboardPageContentToAPI, uploadFileApi) ---
-// ... (These functions remain the same as in the previous version) ...
 const fetchDashboardPageContentFromAPI = async (): Promise<DashboardPageContentData | null> => {
   console.log("Fetching user dashboard page content from API...");
   try {
@@ -40,10 +37,9 @@ const fetchDashboardPageContentFromAPI = async (): Promise<DashboardPageContentD
 const saveDashboardPageContentToAPI = async (content: DashboardPageContentData): Promise<DashboardPageContentData> => {
   console.log("Saving user dashboard page content to API:", content);
   const token = localStorage.getItem('token');
-  // Prepare data: if videoUrl is an empty string, consider removing it or setting to null based on backend preference
   const contentToSaveCleaned = JSON.parse(JSON.stringify(content)); // Deep clone
   if (contentToSaveCleaned.guidanceSection && contentToSaveCleaned.guidanceSection.videoUrl === "") {
-    delete contentToSaveCleaned.guidanceSection.videoUrl; // Or set to null: contentToSaveCleaned.guidanceSection.videoUrl = null;
+    delete contentToSaveCleaned.guidanceSection.videoUrl;
   }
   const { _id, identifier, createdAt, updatedAt, ...finalDataToSave } = contentToSaveCleaned;
 
@@ -72,8 +68,7 @@ const uploadFileApi = async (file: File): Promise<{ url: string }> => {
 
   if (!token) {
     console.error('[UPLOAD] No token found in localStorage. Admin might not be logged in or token key is wrong.');
-    // Optionally, you could throw an error here or alert the user
-    // throw new Error("Authentication token not found. Please log in again.");
+
   }
 
   const response = await fetch(`${API_BASE_URL}/upload`, {
@@ -169,8 +164,7 @@ const AdminUserDashboardPageContentEditor: React.FC = () => {
     clearMessages();
     if (event.target.files && event.target.files[0]) {
       setGuidanceVideoFile(event.target.files[0]);
-      // When a file is selected, we anticipate it will replace any manual URL upon upload.
-      // No need to clear videoUrl here; upload will overwrite it.
+
     } else {
       setGuidanceVideoFile(null);
     }

@@ -1,4 +1,3 @@
-// src/pages/AdminCourseManagementPage.tsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Section } from '../types/courseTypes'; // Ensure this path is correct
 import SectionPreviewModal from '../components/modals/SectionPreviewModal'; // Ensure this path is correct
@@ -29,7 +28,7 @@ const dummySections: Section[] = [
         weekId: "week1", 
         description: "Exploring divine attributes.", 
         contentUrl: "https://example.com/nature-of-god",
-        content: [] // Added required content property
+        content: [] 
     },
     { 
         id: "sec3", 
@@ -41,7 +40,7 @@ const dummySections: Section[] = [
             {id: "mat1", title: "Video on Hermeneutics", type: "video", url: "https://youtube.com/embed/somevideo"},
             {id: "mat2", title: "Reading: Chapter 1", type: "reading"},
         ],
-        content: [] // Added required content property
+        content: [] 
     },
 ];
 
@@ -49,31 +48,7 @@ export default function AdminCourseManagementPage() {
     const [showSectionPreviewModal, setShowSectionPreviewModal] = useState(false);
     const [sectionToPreview, setSectionToPreview] = useState<Section | null>(null);
 
-    // You would likely have state for courses, weeks, and sections fetched from your API
-    // For example:
-    // const [courses, setCourses] = useState<Course[]>([]);
-    // const [isLoading, setIsLoading] = useState(true);
-    // const [error, setError] = useState<string | null>(null);
-
-    // useEffect(() => {
-    //   // Fetch your courses and their sections here
-    //   const fetchAdminCourseData = async () => {
-    //     try {
-    //       // const data = await apiService.getAllCoursesWithDetailsForAdmin();
-    //       // setCourses(data);
-    //     } catch (err) {
-    //       // setError(err.message);
-    //     } finally {
-    //       // setIsLoading(false);
-    //     }
-    //   };
-    //   fetchAdminCourseData();
-    // }, []);
-
-
-    // Memoize the section object passed to the modal if sectionToPreview changes.
-    // This can help prevent unnecessary re-renders of the modal if its props are complex
-    // and it's not already memoized internally.
+    
     const memoizedSectionToPreview = useMemo(() => {
         // console.log("[AdminPage] Memoizing sectionToPreview. Current value:", sectionToPreview ? sectionToPreview.id : 'null');
         return sectionToPreview;
@@ -91,18 +66,12 @@ export default function AdminCourseManagementPage() {
         setSectionToPreview(null); // Clear the section data. Important for memoizedSectionToPreview to update if same section is clicked again.
     }, []); // Empty dependency array: this function's reference will not change
 
-    // if (isLoading) return <div className={`p-6 ${lightBg} ${darkBg} min-h-screen text-center ${primaryTextLight} ${primaryTextDark}`}>Loading course data...</div>;
-    // if (error) return <div className={`p-6 ${lightBg} ${darkBg} min-h-screen text-center text-red-500`}>Error: {error}</div>;
-
+  
     return (
         <div className={`p-4 md:p-6 lg:p-8 ${lightBg} ${darkBg} min-h-screen`}>
             <h1 className={`text-2xl font-bold mb-6 ${primaryTextLight} ${primaryTextDark}`}>Course & Section Management</h1>
             
-            {/* 
-                Your UI for listing courses, weeks, and sections would go here.
-                Each section item would have a button/link to trigger `openSectionPreview(sectionData)`.
-            */}
-
+           
             <div className="space-y-4">
                 <h2 className={`text-xl font-semibold ${primaryTextLight} ${primaryTextDark}`}>Dummy Sections (Replace with actual data)</h2>
                 {dummySections.map(section => (
@@ -120,11 +89,6 @@ export default function AdminCourseManagementPage() {
             </div>
 
 
-            {/* The Modal: Rendered conditionally */}
-            {/* 
-                The modal itself is likely controlled internally by its 'isOpen' prop.
-                We ensure that when isOpen is true, memoizedSectionToPreview also has data.
-            */}
             {showSectionPreviewModal && memoizedSectionToPreview && (
                 <SectionPreviewModal
                     isOpen={showSectionPreviewModal} // Controls visibility

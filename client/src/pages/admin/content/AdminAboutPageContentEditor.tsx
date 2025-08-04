@@ -1,4 +1,3 @@
-// src/pages/admin/content/AdminAboutPageContentEditor.tsx
 import React, { useState, useEffect, FormEvent, ChangeEvent, useRef } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -13,7 +12,6 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-// --- REAL API FUNCTIONS ---
 const fetchAboutPageContentFromAPI = async (): Promise<AboutPageContentData | null> => {
   console.log("Attempting to fetch About Us page content from API...");
   try {
@@ -29,12 +27,11 @@ const fetchAboutPageContentFromAPI = async (): Promise<AboutPageContentData | nu
       return data;
     } else {
       console.warn("API returned data not in the expected AboutPageContentData format, or it was empty/null.");
-      return null; // Or potentially return a default structure if that's desired
+      return null; 
     }
   } catch (error) {
     console.error("Network or JSON parsing error during fetchAboutPageContentFromAPI:", error);
-    // Propagate the error or return null to be handled by the caller
-    throw error; // It's often better to let the caller handle UI for errors
+    throw error; 
   }
 };
 
@@ -58,7 +55,6 @@ const saveAboutPageContentToAPI = async (content: AboutPageContentData): Promise
   return response.json();
 };
 
-// --- IMAGE UPLOAD API FUNCTION ---
 const uploadImageApi = async (file: File): Promise<{ url: string }> => {
   const formData = new FormData();
   formData.append('file', file);
@@ -76,10 +72,9 @@ const uploadImageApi = async (file: File): Promise<{ url: string }> => {
 };
 
 
-// --- FALLBACK/INITIAL DATA (if API fetch fails or returns null) ---
 const getInitialAboutUsPageData = (): AboutPageContentData => ({
   hero: {
-    logoUrl: "", // Default empty logo URL
+    logoUrl: "", 
     title: "About Our Program",
     subtitle: "Equipping believers for faithful understanding and service through theological education rooted in Apostolic and Evangelical traditions.",
   },
@@ -125,8 +120,7 @@ const AdminAboutPageContentEditor: React.FC = () => {
         if (fetchedContentFromApi) {
           setContent(fetchedContentFromApi);
         } else {
-          // This case might indicate an API issue or empty data from API,
-          // but for robustness, we fall back to initial data.
+        
           console.warn("API returned null or malformed data for About Us content, using initial fallback data.");
           setContent(getInitialAboutUsPageData());
         }
@@ -156,8 +150,7 @@ const AdminAboutPageContentEditor: React.FC = () => {
 
         for (let i = 0; i < keys.length; i++) {
             const keyPart = keys[i];
-            // No array match needed here as About Us page structure doesn't have arrays directly at path keys
-            // All arrays are nested like 'coreValues.items'
+           
 
             if (i === keys.length - 1) { // Last key in path, assign value
                 currentLevel[keyPart] = value;
@@ -246,11 +239,10 @@ const AdminAboutPageContentEditor: React.FC = () => {
                 currentObject = currentObject[keyPart];
             } else { 
                 console.error("Invalid path in removeListItemByPath (parent navigation)", listPath);
-                return prev; /* Invalid path */ 
+                return prev; 
             }
         }
         
-        // Remove from the array
         const listName = keys[keys.length - 1];
         if (Array.isArray(currentObject[listName])) {
             currentObject[listName] = currentObject[listName].filter((_: any, idx: number) => idx !== indexToRemove);

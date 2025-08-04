@@ -1,4 +1,3 @@
-// src/components/modals/CreateEditQuizModal.tsx
 import React, { useState, useEffect, ChangeEvent } from 'react'; // Added ChangeEvent
 import { Button } from "../ui/button.js";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card.js";

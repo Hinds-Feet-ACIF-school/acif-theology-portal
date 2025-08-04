@@ -1,4 +1,3 @@
-// src/pages/admin/content/AdminContactPageContentEditor.tsx
 import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -8,12 +7,10 @@ import { CheckCircle, AlertCircle } from 'lucide-react'; // For messages
 
 import {
   ContactPageContentData,
-  // ContactInfoItemData, // Not directly used as a list type here, but emailInfo matches its structure
-} from '../../../types/contactPageContentTypes'; // Adjust path as needed
+} from '../../../types/contactPageContentTypes';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-// --- REAL API FUNCTIONS ---
 const fetchContactPageContentFromAPI = async (): Promise<ContactPageContentData | null> => {
   console.log("Attempting to fetch Contact Us page content from API...");
   try {
@@ -57,7 +54,6 @@ const saveContactPageContentToAPI = async (content: ContactPageContentData): Pro
   return response.json();
 };
 
-// --- FALLBACK/INITIAL DATA ---
 const getInitialContactUsPageData = (): ContactPageContentData => ({
   hero: {
     title: "Contact Us",

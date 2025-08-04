@@ -514,7 +514,6 @@ const AdminHomePageContentEditor: React.FC = () => {
                   <Input id="ctaInvestLabel" value={content.cta.unauthenticated.investmentLabel} onChange={e => handleInputChange('cta', 'unauthenticated.investmentLabel', e.target.value)} />
                 </div>
                 
-                {/* MODIFIED AND ADDED INPUTS FOR USD AND ETB */}
                 <div>
                   <label htmlFor="ctaInvestValueUSD" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Investment Value (USD)

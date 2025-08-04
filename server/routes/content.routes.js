@@ -1,4 +1,3 @@
-// src/routes/content.routes.js
 import express from 'express';
 import {
   getHomePageContent,

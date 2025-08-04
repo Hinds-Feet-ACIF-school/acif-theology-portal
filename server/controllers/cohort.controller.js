@@ -1,4 +1,3 @@
-// server/controllers/cohort.controller.js
 import { getAvailableCohorts as getCohortsUtil } from '../utils/cohortHelper.js';
 
 export const getAvailableCohorts = (req, res) => {

@@ -1,4 +1,3 @@
-    // server/routes/course.routes.js
 
     import express from "express";
     import * as CourseController from "../controllers/course.controller.js";

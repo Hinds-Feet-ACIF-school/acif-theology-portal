@@ -1,5 +1,4 @@
-// src/App.tsx
-import React, { Suspense, lazy } from "react"; // <--- IMPORT lazy and Suspense
+import React, { Suspense, lazy } from "react"; 
 import { Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./components/theme-provider";
 
@@ -11,7 +10,6 @@ import PaymentSuccessPage from './pages/PaymentSuccessPage';
 // --- Fallback for lazy loading ---
 const LoadingFallback = () => (
   <div className="flex justify-center items-center h-screen w-screen">
-    {/* You can put a spinner component here if you have one */}
     Loading page...
   </div>
 );
@@ -33,14 +31,12 @@ const AboutUsPage = lazy(() => import("./pages/AboutUsPage"));
 const ContactUsPage = lazy(() => import("./pages/ContactUsPage"));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordConfirmPage = lazy(() => import('./pages/ResetPasswordConfirmPage'));
-// const NotFoundPage = lazy(() => import('./pages/NotFoundPage')); // Good to have a general 404
 
 // --- Admin Pages (Lazy Loaded) ---
-const AdminPage = lazy(() => import("./pages/AdminPage")); // Admin Dashboard
+const AdminPage = lazy(() => import("./pages/AdminPage")); 
 const AdminCourseManagementPage = lazy(() => import("./pages/admin/CourseManagementPage"));
 const AdminStudentManagementPage = lazy(() => import("./pages/admin/StudentManagementPage"));
 const AdminReportsPage = lazy(() => import("./pages/admin/ReportsPage"));
-// AdminSettingsPage might be for general settings, or you can remove it if /admin/settings/branding is the only settings page
 const AdminSettingsPage = lazy(() => import("./pages/admin/SettingsPage")); 
 
 // --- Admin Page Content Editor Pages (Lazy Loaded) ---
@@ -49,13 +45,11 @@ const AdminOverviewPageContentEditor = lazy(() => import("./pages/admin/content/
 const AdminAboutPageContentEditor = lazy(() => import("./pages/admin/content/AdminAboutPageContentEditor"));
 const AdminContactPageContentEditor = lazy(() => import("./pages/admin/content/AdminContactPageContentEditor"));
 const AdminUserDashboardPageContentEditor = lazy(() => import("./pages/admin/content/AdminUserDashboardPageContentEditor"));
-// const AdminFooterContentEditor = lazy(() => import("./pages/admin/content/AdminFooterContentEditor")); // REMOVED - Replaced by SiteBranding
 const AdminSiteBrandingEditor = lazy(() => import('./pages/admin/content/AdminSiteBrandingEditor')); 
-// const AdminNotFoundPage = lazy(() => import('./pages/admin/AdminNotFoundPage')); // Good for unmatched admin routes
 
 console.log("VITE_API_BASE_URL from env:", import.meta.env.VITE_API_BASE_URL);
 
-import ProtectedRoute from "./components/ProtectedRoute"; // Ensure this component is correctly implemented
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
@@ -89,7 +83,6 @@ function App() {
               <Route path="/discussions/:courseId" element={<DiscussionForumPage />} />
               <Route path="/courses/:courseId/week/:weekId" element={<WeekContentPage />} />
             </Route>
-            {/* Add a catch-all 404 for user routes if needed: <Route path="*" element={<NotFoundPage />} /> */}
           </Route>
 
           {/* Admin Routes */}
@@ -107,27 +100,19 @@ function App() {
                 <Route path="about" element={<AdminAboutPageContentEditor />} />
                 <Route path="contact" element={<AdminContactPageContentEditor />} />
                 <Route path="user-dashboard" element={<AdminUserDashboardPageContentEditor />} />
-                {/* <Route path="footer" element={<AdminFooterContentEditor />} />  REMOVED, now part of site branding */}
               </Route>
 
               {/* Grouping Site Settings - including branding */}
               <Route path="settings"> {/* Base path: /admin/settings */}
                 <Route path="branding" element={<AdminSiteBrandingEditor />} /> {/* /admin/settings/branding */}
                 <Route path="general" element={<AdminSettingsPage />} /> {/* /admin/settings/general - if AdminSettingsPage is for other settings */}
-                {/* If AdminSettingsPage was meant to be just /admin/settings, you can do:
-                    <Route path="/admin/settings" element={<AdminSettingsPage />} /> outside the nested "settings" group,
-                    or make AdminSettingsPage the index of /admin/settings:
-                    <Route index element={<AdminSettingsPage />} />
-                */}
+               
               </Route>
               
-              {/* <Route path="*" element={<AdminNotFoundPage />} /> {/* Catch-all for unmatched admin sub-routes */}
             </Route>
           </Route>
           
-          {/* General catch-all 404 page at the end if no other route matches */}
-          {/* <Route path="*" element={<NotFoundPage />} /> */}
-
+       
         </Routes>
       </Suspense>
     </ThemeProvider>

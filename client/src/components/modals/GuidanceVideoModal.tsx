@@ -1,4 +1,3 @@
-// Example: src/components/modals/GuidanceVideoModal.tsx
 import React from 'react';
 import ReactPlayer from 'react-player';
 import { Button } from '../ui/button'; // Adjust path

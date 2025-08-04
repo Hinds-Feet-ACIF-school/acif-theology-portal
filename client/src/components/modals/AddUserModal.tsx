@@ -1,4 +1,3 @@
-// src/components/modals/AddUserModal.tsx (or wherever it is)
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog.js';
 import { Button } from '../ui/button.js';
@@ -7,7 +6,6 @@ import { Label } from '../ui/label.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select.js';
 import { Loader2, AlertCircle, X } from 'lucide-react';
 import * as apiService from '../../services/api';
-// import { AdminManagedUser } from '../../pages/admin/StudentManagementPage.js'; // Not used in this component
 
 const deepBrown = 'text-[#2A0F0F] dark:text-[#FFF8F0]';
 const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]';
@@ -81,7 +79,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess 
                 email: formData.email,
                 password: formData.password,
                 country: formData.country,
-                church: formData.church || undefined, // Send undefined if empty, backend might prefer this over null
+                church: formData.church || undefined, 
                 role: formData.role,
             };
             await apiService.createUserAdmin(userData);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "../../components/ui/button"; // Adjusted path assuming standard structure
+import { Button } from "../../components/ui/button"; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import {
@@ -21,8 +21,8 @@ import {
   Section,
   Course,
   Week,
-  Material, // Make sure Material is exported from api.ts if you use it here
-  Quiz,     // Make sure Quiz is exported from api.ts if you use it here
+  Material, 
+  Quiz,    
   type SectionData as ApiSectionData,
   type ContentData as ApiContentData,
 } from "../../services/api";
@@ -145,7 +145,7 @@ export default function AdminCourseManagementPage() {
             setContentDetails(prev => ({ ...prev, [weekId]: { sections: prev[weekId]?.sections || [], loading: false, error: errorMessage || 'Failed to load details' } }));
         }
     }
-  }, [contentDetails]); // Keep contentDetails in dependency array
+  }, [contentDetails]); 
 
   const fetchWeeksAndDetailsForCourse = useCallback(async (courseId: string) => {
       setIsLoadingWeeks(true); setCourseWeeks([]); setContentDetails({}); setError(null);
@@ -155,8 +155,8 @@ export default function AdminCourseManagementPage() {
           setCourseWeeks(sortedWeeks);
 
           if (sortedWeeks.length > 0) {
-            for (const week of sortedWeeks) { // Use for...of for async/await in loop
-                await fetchWeekDetails(week.id, true); // Force refresh for all weeks of a new course
+            for (const week of sortedWeeks) { 
+                await fetchWeekDetails(week.id, true); 
             }
           }
       } catch (err: any) { setError((err as Error).message || `Failed to fetch weeks`); }
@@ -244,9 +244,7 @@ export default function AdminCourseManagementPage() {
       setCurrentWeekIdForContentFileUploads(undefined); // Reset this new state
     } catch (err: any) {
       console.error("Error saving content:", err);
-      // Let the modal display the error by re-throwing or setting its own error state
-      // If the modal doesn't handle its own error display from onSave, set error here.
-      // setError( (err as Error).message || "Failed to save content.");
+    
       throw err; // This allows the modal to catch and display the error
     }
   };

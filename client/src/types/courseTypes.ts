@@ -1,11 +1,9 @@
-// src/types/courseTypes.ts (or a relevant types file)
-export interface SectionMaterial { // If sections have materials
+export interface SectionMaterial {
     id: string;
     title: string;
-    type: 'video' | 'reading' | 'quiz_reference'; // Example types
-    url?: string; // For video/reading
-    quizId?: string; // For quiz reference
-    // ... other material properties
+    type: 'video' | 'reading' | 'quiz_reference'; 
+    url?: string; 
+    quizId?: string; 
 }
 
 export interface Section {
@@ -13,12 +11,11 @@ export interface Section {
     title: string;
     description?: string;
     order: number;
-    weekId: string; // Or courseId if sections are not tied to weeks
-    contentUrl?: string; // If section content is a URL (e.g., external article, video)
-    textContent?: string; // If section content is rich text stored directly
+    weekId: string; 
+    contentUrl?: string; 
+    textContent?: string; 
     materials?: SectionMaterial[];
-    content: ContentItem[]; // Updated to match api.ts
-    // ... any other properties a section might have
+    content: ContentItem[]; 
 }
 
 // Add ContentItem interface to match api.ts

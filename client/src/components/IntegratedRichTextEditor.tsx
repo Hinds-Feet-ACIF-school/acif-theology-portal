@@ -1,4 +1,3 @@
-// src/components/IntegratedRichTextEditor.tsx
 
 import React, { useRef, useEffect, useCallback } from 'react';
 import { RichTextEditor as MantineRTE, Link as TiptapLinkExtension } from '@mantine/tiptap';
@@ -112,9 +111,9 @@ const IntegratedRichTextEditor: React.FC<IntegratedRichTextEditorProps> = React.
                 ref={imageUploadInputRef}
                 onChange={handleImageUpload}
                 accept="image/*"
-                className="visually-hidden" // Use CSS class instead of inline style
-                aria-label="Upload image file" // Add aria-label for accessibility
-                tabIndex={-1} // Make it non-focusable
+                className="visually-hidden"
+                aria-label="Upload image file" 
+                tabIndex={-1}
             />
             <MantineRTE editor={editor} styles={(theme: MantineTheme) => {
                 const isDarkMode = document.documentElement.classList.contains('dark');

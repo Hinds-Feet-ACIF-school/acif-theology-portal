@@ -1,5 +1,3 @@
-// src/components/modals/SectionPreviewModal.tsx
-
 import React, { Component, ErrorInfo, ReactNode, useEffect, useCallback, useMemo } from 'react';
 import { Button } from "../ui/button"; // Ensure .js is not needed if using TypeScript/bundler resolution
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";

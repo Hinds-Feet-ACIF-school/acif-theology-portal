@@ -1,11 +1,10 @@
-// src/pages/AboutUsPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import {
     BookOpen, Users, Target, ShieldCheck, HeartHandshake, GraduationCap, LucideIcon, UploadCloud
 } from 'lucide-react';
-import logoPlaceholder from "../assets/logo.jpg"; // Renamed for clarity, this is your fallback
+import logoPlaceholder from "../assets/logo.jpg"; 
 
 import { AboutPageContentData, CoreValueItemData } from '../types/aboutPageContentTypes';
 
@@ -21,7 +20,7 @@ const fetchPublicAboutUsPageContent = async (): Promise<AboutPageContentData> =>
 };
 
 const accentColor = "#C5A467";
-const accentHoverColor = "#B08F55"; // Not used after CTA removal
+const accentHoverColor = "#B08F55"; 
 const primaryTextLight = "text-[#2A0F0F]";
 const secondaryTextLight = "text-[#4A1F1F]";
 const primaryTextDark = "dark:text-[#FFF8F0]";
@@ -30,7 +29,7 @@ const sectionBgLight = "bg-[#FFF8F0]";
 const sectionBgDark = "dark:bg-gray-950";
 const altSectionBgLight = "bg-[#F4EDE4]";
 const altSectionBgDark = "dark:bg-gray-900";
-const goldBg = `bg-[${accentColor}]`; // Not used after CTA removal
+const goldBg = `bg-[${accentColor}]`; 
 const goldBgHover = `hover:bg-[${accentHoverColor}]`;
 const goldAccentBgLight = `bg-[${accentColor}]/10 dark:bg-[${accentColor}]/20`;
 

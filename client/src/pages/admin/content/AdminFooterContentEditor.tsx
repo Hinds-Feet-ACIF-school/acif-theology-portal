@@ -1,11 +1,9 @@
-// src/pages/admin/content/AdminFooterContentEditor.tsx
 import React, { useState, useEffect, FormEvent, ChangeEvent, useRef } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
-// import { Textarea } from '../../../components/ui/textarea'; // Textarea not strictly needed for current fields
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../../components/ui/card';
-import { CheckCircle, AlertCircle, UploadCloud, Image as ImageIcon, Trash2, X } from 'lucide-react'; // Added X for close button
-import { cn } from "../../../lib/utils"; // Assuming you have a utility for cn
+import { CheckCircle, AlertCircle, UploadCloud, Image as ImageIcon, Trash2, X } from 'lucide-react'; 
+import { cn } from "../../../lib/utils"; 
 
 import { FooterContentData } from '../../../types/footerContentTypes'; // Adjust path if needed
 
@@ -21,7 +19,6 @@ const fetchFooterContentFromAPI = async (): Promise<FooterContentData | null> =>
       throw new Error(errorData.message || `API Error: ${response.status}`);
     }
     const data = await response.json();
-    // Basic validation: check if at least siteName exists, indicating valid data structure
     return (data && data.siteName !== undefined) ? data : null;
   } catch (error) {
     console.error("Error fetching footer content:", error);
@@ -31,13 +28,10 @@ const fetchFooterContentFromAPI = async (): Promise<FooterContentData | null> =>
 
 const saveFooterContentToAPI = async (content: FooterContentData): Promise<FooterContentData> => {
   console.log("Saving footer content to API:", content);
-  const token = localStorage.getItem('token'); // Ensure this key is correct
+  const token = localStorage.getItem('token'); 
   
-  // Create a deep copy to modify before sending
   const contentToSaveCleaned = JSON.parse(JSON.stringify(content));
 
-  // If logoUrl is an empty string, remove the property before saving
-  // This ensures that if a logo is removed, the field is not saved as ""
   if (contentToSaveCleaned.hasOwnProperty('logoUrl') && contentToSaveCleaned.logoUrl === "") {
     delete contentToSaveCleaned.logoUrl;
   }
@@ -78,7 +72,7 @@ const getInitialFooterData = (): FooterContentData => ({
   siteName: "Apostolic Theology",
   copyrightText: "International Apostolic Church. All rights reserved.",
   tagline: '"Study to shew thyself approved unto God..." - 2 Timothy 2:15',
-  logoUrl: "", // Initialize as empty string for controlled input behavior
+  logoUrl: "", 
 });
 
 const AdminFooterContentEditor: React.FC = () => {

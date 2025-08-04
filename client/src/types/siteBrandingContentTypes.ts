@@ -1,4 +1,3 @@
-// src/types/siteBrandingContentTypes.ts
 export interface HeaderBrandingData {
     siteName: string;    // e.g., "Apostolic Theology" (used in Header)
     siteLogoUrl?: string; // URL for the main site logo (used in Header)

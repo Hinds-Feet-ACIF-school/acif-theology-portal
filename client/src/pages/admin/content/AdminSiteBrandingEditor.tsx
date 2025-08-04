@@ -1,4 +1,3 @@
-// src/pages/admin/content/AdminSiteBrandingEditor.tsx
 import React, { useState, useEffect, FormEvent, ChangeEvent, useRef } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';

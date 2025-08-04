@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"; // Adjust path
-import { useAuth } from "../context/AuthContext"; // Adjust path
-import * as apiService from "../services/api"; // Adjust path
-import { IconMap } from "../utils/adminUtils"; // Adjust path
-import * as AdminStyles from "../styles/adminStyles"; // Adjust path
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"; 
+import { useAuth } from "../context/AuthContext";
+import * as apiService from "../services/api"; 
+import { IconMap } from "../utils/adminUtils"; 
+import * as AdminStyles from "../styles/adminStyles"; 
 
 // Import types
 import {
@@ -16,13 +16,13 @@ import {
 } from "../types/admin"; // Adjust path
 
 // Import common components
-import { AdminPageHeader } from "../components/admin/common/AdminPageHeader"; // Adjust path
+import { AdminPageHeader } from "../components/admin/common/AdminPageHeader"; 
 
 // Import Dashboard components
-import { DashboardStatsGrid } from "../components/admin/dashboard/DashboardStatsGrid"; // Adjust path
-import { RecentStudentsCard } from "../components/admin/dashboard/RecentStudentsCard"; // Adjust path
-import { DashboardCourseStatusCard } from "../components/admin/dashboard/DashboardCourseStatusCard"; // Adjust path
-import { DashboardQuizzesOverviewCard } from "../components/admin/dashboard/DashboardQuizzesOverviewCard"; // Adjust path
+import { DashboardStatsGrid } from "../components/admin/dashboard/DashboardStatsGrid"; 
+import { RecentStudentsCard } from "../components/admin/dashboard/RecentStudentsCard"; 
+import { DashboardCourseStatusCard } from "../components/admin/dashboard/DashboardCourseStatusCard"; 
+import { DashboardQuizzesOverviewCard } from "../components/admin/dashboard/DashboardQuizzesOverviewCard"; 
 
 
 export default function AdminPage() {

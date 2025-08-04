@@ -1,4 +1,3 @@
-// src/pages/ForgotPasswordPage.tsx
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
@@ -7,7 +6,6 @@ import { Label } from "../components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "../components/ui/card";
 import { ArrowLeft, Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
 
-// --- KEY CHANGE: Import from Firebase Client SDK ---
 import { getAuth, sendPasswordResetEmail } from "firebase/auth";
 import { app as firebaseClientApp } from "../config/firebaseClient.config";
 

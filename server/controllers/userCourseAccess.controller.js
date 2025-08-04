@@ -1,4 +1,3 @@
-// server/controllers/userCourseAccess.controller.js
 import * as userCourseAccessService from '../services/userCourseAccess.service.js';
 
 export const getUserCourseAccessState = async (req, res) => {

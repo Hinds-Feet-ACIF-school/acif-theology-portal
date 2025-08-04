@@ -1,9 +1,8 @@
-// src/context/AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext, useCallback, ReactNode } from "react";
 import { initializeApp, FirebaseApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, signOut as firebaseSignOut, Auth } from "firebase/auth";
-import * as apiService from "../services/api"; // Assuming .js, adjust if it's .ts
-import { getToken } from "../services/api";   // Assuming .js
+import * as apiService from "../services/api"; 
+import { getToken } from "../services/api";   
 import { Loader2 } from "lucide-react";
 
 export interface AppUser {
@@ -17,14 +16,13 @@ export interface AppUser {
     church?: string | null;
     enrollment?: {
         cohortId: string;
-        enrollmentDate: Date; // Or string if you receive it as string
-        // cohortStartDate?: string; // Consider if this is needed in AppUser directly or fetched separately
+        enrollmentDate: Date; 
     } | null;
     profileComplete?: boolean;
     profilePicture?: string | null;
     bio?: string | null;
-    createdAt?: Date | string | null; // Allow string if backend sends it as ISO string
-    updatedAt?: Date | string | null; // Allow string
+    createdAt?: Date | string | null; 
+    updatedAt?: Date | string | null; 
 }
 
 interface AuthContextType {
@@ -32,29 +30,29 @@ interface AuthContextType {
     loading: boolean;
     error: string | null;
     login: (email: string, password: string) => Promise<AppUser | null>;
-    register: (userData: any) => Promise<AppUser | null>; // Consider defining a more specific type for registration userData
+    register: (userData: any) => Promise<AppUser | null>; 
     logout: () => Promise<void>;
     updateProfile: (userData: Partial<Pick<AppUser, 'firstName' | 'lastName' | 'country' | 'church'>>) => Promise<AppUser | null>; // More specific for current form
     isAuthenticated: boolean;
     isAdmin: boolean;
     isInstructor: boolean;
     isStudent: boolean;
-    fetchCurrentUser: () => Promise<AppUser | null>; // Renamed from refreshUser for clarity
-    updateUserContextProfile: (updatedProfileData: Partial<AppUser>) => void; // New function
+    fetchCurrentUser: () => Promise<AppUser | null>;
+    updateUserContextProfile: (updatedProfileData: Partial<AppUser>) => void; 
 }
 
 const firebaseConfig = {
-    apiKey: "AIzaSyDxTr1s-l6CQc7OBA4Vr_8l2eVrGiN-BEg", // YOUR ACTUAL KEY
-    authDomain: "acif-theology-school.firebaseapp.com",  // YOUR ACTUAL DOMAIN
-    projectId: "acif-theology-school",               // YOUR ACTUAL PROJECT ID
-    storageBucket: "acif-theology-school.appspot.com", // YOUR ACTUAL BUCKET
-    messagingSenderId: "990145954838",                // YOUR ACTUAL SENDER ID
-    appId: "1:990145954838:web:49fcb99ea88b0fd900e137", // YOUR ACTUAL APP ID
-    measurementId: "G-SW5S5FRPM0"                     // YOUR ACTUAL MEASUREMENT ID
+    apiKey: "AIzaSyDxTr1s-l6CQc7OBA4Vr_8l2eVrGiN-BEg", 
+    authDomain: "acif-theology-school.firebaseapp.com",  
+    projectId: "acif-theology-school",              
+    storageBucket: "acif-theology-school.appspot.com",
+    messagingSenderId: "990145954838",                
+    appId: "1:990145954838:web:49fcb99ea88b0fd900e137", 
+    measurementId: "G-SW5S5FRPM0"                   
 };
 
 const app: FirebaseApp = initializeApp(firebaseConfig);
-const authInstance: Auth = getAuth(app); // Renamed to authInstance to avoid conflict with auth in signInWithEmailAndPassword
+const authInstance: Auth = getAuth(app);
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -83,7 +81,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setCurrentUser(null);
                 return null;
             }
-            const userData: AppUser = await apiService.getCurrentUser(); // Changed from getUserProfile to getCurrentUser based on api.ts
+            const userData: AppUser = await apiService.getCurrentUser();
             // console.log("AuthContext: User profile fetched:", userData?.uid);
             setCurrentUser(userData);
             setError(null);
@@ -136,14 +134,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setLoading(true);
         setError(null);
         try {
-            await apiService.registerUser(userData); // registerUser returns { message, userId }
-            // After successful registration, log the user in or prompt them to log in.
-            // For simplicity, let's assume they need to log in separately.
-            // Or, if your backend auto-logs in or returns enough data:
-            // const newUserProfile = await fetchCurrentUser(); // Fetch fresh profile
-            // setCurrentUser(newUserProfile);
-            // return newUserProfile;
-            // For now, let's return null and they have to log in.
+            await apiService.registerUser(userData); 
             setError("Registration successful! Please log in."); // Or a success message
             return null; // Indicate they need to log in
         } catch (err: any) {

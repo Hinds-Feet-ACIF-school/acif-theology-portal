@@ -1,28 +1,24 @@
-// src/components/Footer.tsx
 import React, { useState, useEffect } from 'react';
 import { Link } from "react-router-dom";
-import defaultStaticLogo from "../assets/logo.jpg"; // Your static fallback logo
+import defaultStaticLogo from "../assets/logo.jpg"; 
 
-// Import the new unified data type
-import { SiteBrandingContentData } from '../types/siteBrandingContentTypes'; // Adjust path if needed
+import { SiteBrandingContentData } from '../types/siteBrandingContentTypes'; 
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-// Fetch function for the unified site branding content
 const fetchPublicSiteBrandingContent = async (): Promise<SiteBrandingContentData | null> => {
   console.log("Footer: Fetching site branding content from API...");
   try {
     const response = await fetch(`${API_BASE_URL}/content/site-branding`); // Updated endpoint
     if (!response.ok) {
         console.warn("Footer: Failed to fetch site branding content, status:", response.status);
-        // Try to get error message from response if possible
         try {
             const errorData = await response.json();
             console.error("Footer: API error data:", errorData.message || response.statusText);
         } catch (e) {
             console.error("Footer: Could not parse error response as JSON. Status:", response.statusText);
         }
-        return null; // Return null on error to use fallbacks
+        return null;
     }
     const data = await response.json();
     // Basic validation
@@ -52,8 +48,7 @@ export default function Footer() {
     loadContent();
   }, []);
 
-  // Provide fallbacks if content is loading or fails to load
-  // Accessing content within brandingContent.footer
+  
   const footerSiteName = isLoading 
     ? "Loading..." 
     : (brandingContent?.footer?.footerSiteName || "Apostolic Theology");

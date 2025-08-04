@@ -1,8 +1,3 @@
-// src/types/contactPageContentTypes.ts
-
-// This interface describes the structure of a single contact information item.
-// While the current page only has one (email), this structure allows for future expansion (phone, address etc.)
-// For the admin editor, we'll directly edit the fields of the single emailInfo object.
 export interface ContactInfoItemData {
   id: string; // e.g., "email1"
   type: "Email" | "Phone" | "Address"; // Helps determine icon/display logic on public page
@@ -20,12 +15,9 @@ export interface ContactPageContentData {
   };
   getInTouch: {
     title: string;
-    // Currently, we only have one email. If you want a list of contact methods:
-    // items: ContactInfoItemData[];
-    // For simplicity with the current page, we'll keep it as a single object:
-    emailInfo: ContactInfoItemData; // The admin will edit this specific object's fields
+    emailInfo: ContactInfoItemData;
   };
-  sendMessage: { // For the section title above the contact form
+  sendMessage: { 
     title: string;
   };
 

@@ -1,4 +1,3 @@
-// src/components/AdminRoute.tsx
 import { jsx as _jsx } from "react/jsx-runtime";
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';

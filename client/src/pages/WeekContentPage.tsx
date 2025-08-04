@@ -1,5 +1,3 @@
-// src/pages/WeekContentPage.tsx
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button.js';
@@ -22,7 +20,6 @@ const editorCardBg = 'dark:bg-gray-800/50';
 const primaryButtonClasses = `bg-[#C5A467] hover:bg-[#B08F55] text-[#2A0F0F] font-semibold`;
 const outlineButtonClasses = `border-[#C5A467] text-[#C5A467] hover:bg-[#C5A467]/10 dark:hover:bg-[#C5A467]/15 hover:text-[#A07F44] dark:hover:text-[#E0D6C3]`;
 
-// Define a global default passing score
 const DEFAULT_PASSING_SCORE = 70;
 
 interface UserProgress {
@@ -36,11 +33,9 @@ interface LoadingSubmissionsState {
     [databaseQuizId: string]: boolean;
 }
 
-// Assuming Week type might include a course-level default passing score
-// This is a hypothetical extension to the existing Week type for the purpose of this change.
-// The actual Week type from api.ts would need to support this.
+
 interface WeekWithCourseDefaults extends Week {
-    defaultCoursePassingScore?: number; // Example field for course-level default
+    defaultCoursePassingScore?: number; 
 }
 
 
@@ -52,7 +47,6 @@ const WeekContentPage: React.FC = () => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
 
-    // Use the extended Week type if applicable, or cast where weekData is used for the new field.
     const [weekData, setWeekData] = useState<WeekWithCourseDefaults | null>(null);
     const [currentSection, setCurrentSection] = useState<Section | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -75,9 +69,8 @@ const WeekContentPage: React.FC = () => {
             setInitialSubmissions({}); 
             setLoadingSubmissions({});
             try {
-                // Assuming getWeekWithDetails might return data conforming to WeekWithCourseDefaults
                 const [fetchedWeek, fetchedProgress] = await Promise.all([
-                    apiService.getWeekWithDetails(weekId) as Promise<WeekWithCourseDefaults>, // Cast if necessary
+                    apiService.getWeekWithDetails(weekId) as Promise<WeekWithCourseDefaults>, 
                     apiService.getUserWeekProgress(weekId)
                 ]);
                 if (fetchedWeek && Array.isArray(fetchedWeek.sections)) {
@@ -204,9 +197,7 @@ const WeekContentPage: React.FC = () => {
                 );
             }
 
-            // Apply the passing score logic
-            // Assumes weekData might have a field like 'defaultCoursePassingScore'
-            // and quizContent (QuizBlockContent) has 'settings.passingScore'
+           
             const effectivePassingScore = 
                 weekData?.defaultCoursePassingScore ?? 
                 quizContent.settings?.passingScore ?? 
@@ -322,7 +313,6 @@ const WeekContentPage: React.FC = () => {
         return <div key={blockKey} className="text-sm text-red-500">Unsupported block type: {block.type} or missing content. Check console.</div>;
     };
 
-    // ... (rest of the component remains the same)
     if (isLoading || !courseId || !weekId) {
         return (
             <div className="flex flex-col md:flex-row min-h-screen">

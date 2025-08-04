@@ -1,4 +1,3 @@
-// src/pages/ProgramOverviewPage.tsx
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
@@ -7,13 +6,12 @@ import {
   GraduationCap, LucideIcon, DollarSign, Coins, LayoutDashboard,
 } from "lucide-react";
 import { useAuth } from '../context/AuthContext';
-// Import the data type from your types file
 import {
   ProgramOverviewPageContentData,
   CourseContentData as PageCourseData,
   ProgramStructureItemData,
   ContentListItem
-} from '../types/programOverviewContentTypes'; // Ensure this path is correct and interface is updated
+} from '../types/programOverviewContentTypes'; 
 
 interface ProgramStructureItemDisplay {
     icon: LucideIcon;

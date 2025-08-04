@@ -30,11 +30,7 @@ export interface AdminManagedUser {
     disabled?: boolean;
 }
 
-interface StudentGradeInfo { /* ... keep as is ... */ }
-// --- End Interfaces ---
 
-// --- Theme Constants (keep as is) ---
-/* ... your theme constants ... */
 const accentColor = "#C5A467";
 const accentHoverColor = "#B08F55";
 const lightBg = 'bg-[#FFF8F0]';
@@ -71,7 +67,6 @@ const warningColor = "text-yellow-700 dark:text-yellow-400";
 const warningBg = "bg-yellow-100 dark:bg-yellow-900/30";
 const inactiveColor = mutedText;
 const inactiveBg = "bg-gray-100 dark:bg-gray-700/30";
-// --- End Theme Constants ---
 
 export default function AdminStudentManagementPage() {
     const [activeTab, setActiveTab] = useState("users"); // Default tab
@@ -106,7 +101,6 @@ export default function AdminStudentManagementPage() {
     useEffect(() => {
         fetchUsers();
     }, []);
-    // --- End Fetch Users Data ---
 
     // --- Filtering Logic ---
     const filteredUsers = allUsersData.filter(user => {
@@ -119,7 +113,6 @@ export default function AdminStudentManagementPage() {
         const roleMatch = userRoleFilter === "all" || user.role === userRoleFilter;
         return searchMatch && roleMatch;
     });
-    // --- End Filtering Logic ---
 
 
     // --- Status Badge Logic (Unchanged, applies to any user type) ---
@@ -174,7 +167,6 @@ export default function AdminStudentManagementPage() {
     const handleAddUserSuccess = () => {
         setShowAddUserModal(false);
         fetchUsers(); // Refresh user list after adding
-        // Optionally show a success toast/message here
     };
 
     // --- Export Handler ---
@@ -216,7 +208,6 @@ export default function AdminStudentManagementPage() {
             // Optionally show an error toast/message
         }
     };
-    // --- End Handlers ---
 
 
     const inputClasses = `h-9 rounded-md px-3 text-sm ${lightCardBg} ${darkCardBg} ${inputBorder} ${deepBrown} ${focusRing} placeholder:text-gray-400 dark:placeholder:text-gray-500`;
@@ -264,7 +255,7 @@ export default function AdminStudentManagementPage() {
                                     <Search className={`absolute left-2.5 top-2.5 h-4 w-4 ${mutedText}`} />
                                     <Input placeholder="Search by name or email..." className={`pl-8 ${inputClasses}`} value={userSearch} onChange={e => setUserSearch(e.target.value)} />
                                 </div>
-                                {/* --- Updated Select for Role Filter --- */}
+                                {/* --- Role Filter --- */}
                                 <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
                                     <SelectTrigger className={selectTriggerClasses}>
                                         <SelectValue placeholder="Filter by role" />
@@ -273,10 +264,8 @@ export default function AdminStudentManagementPage() {
                                         <SelectItem value="all">All Users</SelectItem>
                                         <SelectItem value="student">Students Only</SelectItem>
                                         <SelectItem value="admin">Admins Only</SelectItem>
-                                        {/* Add other roles like 'instructor' if needed */}
                                     </SelectContent>
                                 </Select>
-                                {/* --- End Updated Select --- */}
                             </div>
                             <div className="flex gap-2">
                                 <Button variant="outline" className={outlineButtonClasses} onClick={handleExport}> {/* <-- Attach export handler */}
@@ -327,10 +316,7 @@ export default function AdminStudentManagementPage() {
                                                                         <span className="sr-only">View User</span>
                                                                         <Eye className="h-4 w-4" />
                                                                     </Button>
-                                                                    {/* You might want an Edit button here eventually */}
-                                                                    {/* <Button variant="ghost" size="icon" className={`${ghostButtonClasses} h-8 w-8`} onClick={() => handleEditRequest(user)}>
-                                                                        <Edit className="h-4 w-4" />
-                                                                    </Button> */}
+                                                                  
                                                                     <Button variant="ghost" size="icon" className={`${ghostButtonClasses} hover:text-red-600 h-8 w-8`} onClick={() => handleDeleteRequest(user)}>
                                                                         <span className="sr-only">Delete User</span>
                                                                         <Trash2 className="h-4 w-4" />

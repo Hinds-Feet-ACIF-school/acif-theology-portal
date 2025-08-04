@@ -1,4 +1,3 @@
-// src/pages/ResetPasswordConfirmPage.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
@@ -7,7 +6,6 @@ import { Label } from "../components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Eye, EyeOff, ArrowLeft, Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
 
-// Import Firebase client SDK modules
 import { getAuth, verifyPasswordResetCode, confirmPasswordReset as firebaseConfirmPasswordReset } from "firebase/auth";
 import { app as firebaseClientApp } from "../config/firebaseClient.config"; // Your client Firebase app instance
 
@@ -38,11 +36,11 @@ export default function ResetPasswordConfirmPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [oobCode, setOobCode] = useState<string | null>(null);
-  const [isVerifyingCode, setIsVerifyingCode] = useState(true); // For initial code verification
+  const [isVerifyingCode, setIsVerifyingCode] = useState(true); 
   const [isCodeValid, setIsCodeValid] = useState(false);
-  const [emailForReset, setEmailForReset] = useState<string | null>(null); // Store email from verified code
+  const [emailForReset, setEmailForReset] = useState<string | null>(null); 
 
-  const [loading, setLoading] = useState(false); // For password reset submission
+  const [loading, setLoading] = useState(false); 
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,7 +89,7 @@ export default function ResetPasswordConfirmPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null); // Clear previous errors
+    setError(null); 
     setMessage(null);
 
     if (newPassword.length < 6) {

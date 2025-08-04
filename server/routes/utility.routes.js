@@ -1,9 +1,6 @@
-// server/routes/utility.routes.js
 import express from "express";
 import nodemailer from "nodemailer";
-// Ensure dotenv is configured in your main app.js/server.js if not already globally.
-// import dotenv from 'dotenv';
-// dotenv.config(); // Usually done once in the main app file
+
 
 const router = express.Router();
 

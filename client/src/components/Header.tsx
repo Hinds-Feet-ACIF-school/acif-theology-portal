@@ -1,14 +1,12 @@
-// src/components/Header.tsx
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Button } from "./ui/button"; // Assuming .js is not needed if your build handles it
+import { Button } from "./ui/button";
 import { Menu, X, LogOut, UserCircle2 as UserIcon, Sun, Moon } from "lucide-react";
-import defaultStaticLogo from "../assets/logo.jpg"; // Your static fallback logo (renamed for clarity)
-import { useAuth } from "../context/AuthContext"; // Assuming .js is not needed
-import { useTheme } from "./theme-provider";    // Assuming .js is not needed
+import defaultStaticLogo from "../assets/logo.jpg";
+import { useAuth } from "../context/AuthContext"; 
+import { useTheme } from "./theme-provider";  
 
-// Import the new unified data type
-import { SiteBrandingContentData } from '../types/siteBrandingContentTypes'; // Adjust path if needed
+import { SiteBrandingContentData } from '../types/siteBrandingContentTypes'; 
 
 interface NavItem {
   name: string;
@@ -18,11 +16,10 @@ interface NavItem {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-// Fetch function for the unified site branding content
 const fetchPublicSiteBrandingContent = async (): Promise<SiteBrandingContentData | null> => {
   console.log("Header: Fetching site branding content from API...");
   try {
-    const response = await fetch(`${API_BASE_URL}/content/site-branding`); // Updated endpoint
+    const response = await fetch(`${API_BASE_URL}/content/site-branding`);
     if (!response.ok) {
         console.warn("Header: Failed to fetch site branding content, status:", response.status);
         try {
@@ -34,7 +31,7 @@ const fetchPublicSiteBrandingContent = async (): Promise<SiteBrandingContentData
         return null;
     }
     const data = await response.json();
-    if (data && data.header && data.header.siteName !== undefined) { // Check for expected structure
+    if (data && data.header && data.header.siteName !== undefined) {
         return data;
     } else {
         console.warn("Header: Fetched site branding data is not in the expected format:", data);
@@ -57,12 +54,10 @@ export default function Header() {
   const { theme, setTheme } = useTheme();
   const [currentClientTheme, setCurrentClientTheme] = useState<string | undefined>(undefined); // Init undefined for SSR safety
 
-  // State for global site branding content (logo, site name)
   const [brandingContent, setBrandingContent] = useState<SiteBrandingContentData | null>(null);
   const [isLoadingBranding, setIsLoadingBranding] = useState(true);
 
   useEffect(() => {
-    // This useEffect is specifically for client-side theme determination to avoid hydration issues.
     setCurrentClientTheme(theme);
   }, [theme]);
   
@@ -100,12 +95,10 @@ export default function Header() {
       navigate("/");
     } catch (error) {
       console.error("Logout failed:", error);
-      // Optionally, show an error message to the user
     }
   };
 
-  // Determine site name and logo URL with fallbacks
-  // Accessing content within brandingContent.header
+
   const siteNameToDisplay = isLoadingBranding 
     ? "Loading..." 
     : (brandingContent?.header?.siteName || "Apostolic Theology"); // Fallback site name

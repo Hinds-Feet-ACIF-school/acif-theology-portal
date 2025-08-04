@@ -1,5 +1,3 @@
-// src/components/QuizQuestionEditor.tsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "./ui/button" 
 import { Card } from "./ui/card";     // Adjust path if necessary
@@ -9,9 +7,6 @@ import { X, Plus, Trash2 } from 'lucide-react';
 import { TextInput, Textarea, Checkbox as MantineCheckbox, Radio, Tooltip as MantineTooltip, Group } from '@mantine/core';
 import { type MantineTheme } from '@mantine/core';
 
-// Assuming these types are defined in a shared types file or passed down correctly
-// For now, let's define them here based on your main file.
-// Ideally, these would come from your API service types or a shared types definition.
 interface ApiQuizQuestionOptionFromApi {
     id: string;
     text: string;
@@ -26,34 +21,32 @@ interface ApiQuizQuestionFromApi {
     question: string;
     description?: string | null;
     options?: ApiQuizQuestionOptionFromApi[];
-    correctAnswer?: string | string[]; // For short_answer/paragraph or as an alternative way to store correct options
+    correctAnswer?: string | string[]; 
     points?: number;
     required?: boolean;
-    feedback?: string | null; // General feedback for the question
+    feedback?: string | null; 
     order?: number;
 }
 
-// Prop types for QuizQuestionEditor
-// Using the more specific names from your main file's type definitions for clarity
+
 export interface ModalQuizQuestionOption extends ApiQuizQuestionOptionFromApi {}
 export interface ModalQuizQuestion extends ApiQuizQuestionFromApi {
-    options?: ModalQuizQuestionOption[]; // Ensure options are of ModalQuizQuestionOption type
+    options?: ModalQuizQuestionOption[]; 
     required: boolean; 
 }
 
-// Style constants and functions - these would ideally be imported from a shared util/theme file
-// For simplicity here, I'm redefining a few. In a real app, centralize these.
+
 const goldAccentHex = '#C5A467';
 const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]';
-const editorDarkBgHex = '#1f2937'; // Example, ensure it matches your main file
-const editorLightBgHex = '#ffffff'; // Example
-const deepBrownDarkHex = '#FFF8F0'; // Example
-const deepBrownLightHex = '#2A0F0F'; // Example
+const editorDarkBgHex = '#1f2937'; 
+const editorLightBgHex = '#ffffff';
+const deepBrownDarkHex = '#FFF8F0'; 
+const deepBrownLightHex = '#2A0F0F'; 
 const themedInputBorder = `border-gray-300 dark:border-gray-700`;
-const editorCardBgMantine = 'dark:bg-gray-900'; // Example
-const outlineButtonClasses = `border-[#C5A467] text-[#C5A467] hover:bg-[#C5A467]/10 dark:hover:bg-[#C5A467]/15 hover:text-[#A07F44] dark:hover:text-[#E0D6C3]`; // Simplified from main file
-const selectTriggerClasses = `h-9 rounded-md px-3 py-2 text-sm w-full bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-[#2A0F0F] dark:text-[#FFF8F0] flex items-center justify-between`; // Simplified
-const selectContentClasses = `border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-[#2A0F0F] dark:text-[#FFF8F0] z-[110] shadow-lg`; // Simplified
+const editorCardBgMantine = 'dark:bg-gray-900'; 
+const outlineButtonClasses = `border-[#C5A467] text-[#C5A467] hover:bg-[#C5A467]/10 dark:hover:bg-[#C5A467]/15 hover:text-[#A07F44] dark:hover:text-[#E0D6C3]`; 
+const selectTriggerClasses = `h-9 rounded-md px-3 py-2 text-sm w-full bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-[#2A0F0F] dark:text-[#FFF8F0] flex items-center justify-between`; 
+const selectContentClasses = `border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-[#2A0F0F] dark:text-[#FFF8F0] z-[110] shadow-lg`; 
 
 const mantineInputStyles = (theme: MantineTheme) => {
     const isDarkMode = document.documentElement.classList.contains('dark');
@@ -73,7 +66,6 @@ const mantineInputStyles = (theme: MantineTheme) => {
 };
 
 
-// --- OptionInput (Also a good candidate for its own file, but included here for now) ---
 interface OptionInputProps {
     optionId: string;
     initialText: string;
@@ -118,14 +110,13 @@ const OptionInput: React.FC<OptionInputProps> = React.memo(({ optionId, initialT
     );
 });
 OptionInput.displayName = 'OptionInput';
-// --- End of OptionInput ---
 
 
 interface QuizQuestionEditorProps {
     question: ModalQuizQuestion;
     onUpdate: (updatedQuestion: ModalQuizQuestion) => void;
     onRemove: () => void;
-    generateId: () => string; // Pass generateId as a prop
+    generateId: () => string; 
 }
 
 const QuizQuestionEditor: React.FC<QuizQuestionEditorProps> = React.memo(({ question, onUpdate, onRemove, generateId }) => {
@@ -138,7 +129,7 @@ const QuizQuestionEditor: React.FC<QuizQuestionEditorProps> = React.memo(({ ques
         if (question.question !== localQuestionText) setLocalQuestionText(question.question);
         const desc = question.description || '';
         if (desc !== localDescription) setLocalDescription(desc);
-    }, [question.question, question.description]);  // localQuestionText, localDescription removed from deps
+    }, [question.question, question.description]);  
 
     useEffect(() => {
         const currentLength = question.options?.length ?? 0;
@@ -169,7 +160,6 @@ const QuizQuestionEditor: React.FC<QuizQuestionEditorProps> = React.memo(({ ques
                 return { ...opt, isCorrect: isCorrectFlag };
             }
             if (question.type === 'multiple_choice' && isCorrectFlag) {
-                // If multiple choice and marking this one correct, unmark others
                 return { ...opt, isCorrect: false };
             }
             return opt;
@@ -252,13 +242,11 @@ const QuizQuestionEditor: React.FC<QuizQuestionEditorProps> = React.memo(({ ques
                                     }
                                     return {...opt, isCorrect: false};
                                 });
-                                // If no correct option was found (e.g., all were false), mark the first one
                                 if (!foundFirstCorrect && newOptionsState.length > 0) {
-                                    // This part is tricky; for now, let's not auto-mark. User should pick.
-                                    // Or, if you prefer, newOptionsState[0].isCorrect = true;
+                                  
                                 }
                             } else {
-                                newOptionsState = currentOptions; // Keep existing options for checkbox->checkbox or mc->checkbox
+                                newOptionsState = currentOptions; 
                             }
                         }
                     }

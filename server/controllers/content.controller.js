@@ -1,4 +1,3 @@
-// src/controllers/content.controller.js
 import { db } from '../config/firebase.config.js';
 import { FieldValue } from 'firebase-admin/firestore';
 

@@ -1,4 +1,3 @@
-// server/utils/cohortHelper.js
 export function getAvailableCohorts() {
   const now = new Date();
   const currentYear = now.getFullYear();

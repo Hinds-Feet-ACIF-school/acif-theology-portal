@@ -10,7 +10,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 
 // Constants for currency localization
 const ETHIOPIA_COUNTRY_CODE = 'ET';
-// const USD_TO_ETB_RATE = 57.0; // No longer needed for direct conversion
 
 const fetchPublicHomePageContent = async (): Promise<HomePageContentData> => {
   const response = await fetch(`${API_BASE_URL}/content/home`);

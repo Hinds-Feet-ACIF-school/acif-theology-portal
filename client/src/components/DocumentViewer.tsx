@@ -1,24 +1,21 @@
-// src/components/DocumentViewer.tsx (or SlideViewer.tsx)
 import React, { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 import { Loader2, AlertCircle } from 'lucide-react';
 
-// Configure worker
-// You can copy the worker file from 'pdfjs-dist/build/pdf.worker.entry.js' to your public folder
-// Or use a CDN:
+
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface DocumentViewerProps {
-    fileUrl?: string; // This should be the URL to the CONVERTED PDF
+    fileUrl?: string;
     pageNumber: number;
     onLoadSuccess: (numPages: number) => void;
     onLoadError?: (error: Error) => void;
     themedInputBorder?: string;
     mutedText?: string;
     containerClassName?: string;
-    showError?: boolean; // New prop to control error display
+    showError?: boolean; 
 }
 
 const DocumentViewer: React.FC<DocumentViewerProps> = ({
@@ -47,7 +44,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     };
 
     if (!fileUrl) {
-        if (!showError) return null; // Don't render anything if no fileUrl and showError is false
+        if (!showError) return null; 
         return (
             <div className={`${containerClassName} border ${themedInputBorder} flex items-center justify-center rounded-md`}>
                 <p className={`text-sm ${mutedText}`}>No document selected or URL is missing.</p>
@@ -68,7 +65,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     </div>
                 }
                 error={ 
-                    showError && loadError && ( // Only show error if showError is true
+                    showError && loadError && ( 
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-50 dark:bg-red-900/20 p-4">
                             <AlertCircle className="h-8 w-8 text-red-500" />
                             <p className={`text-xs mt-2 text-red-600 dark:text-red-400 text-center`}>
@@ -82,10 +79,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             >
                 <Page
                     pageNumber={pageNumber}
-                    width={Math.min(window.innerWidth * 0.8, 800)} // Responsive width
+                    width={Math.min(window.innerWidth * 0.8, 800)} 
                     renderTextLayer={true}
                     renderAnnotationLayer={true}
-                    className="flex justify-center" // Center page content
+                    className="flex justify-center" 
                 />
             </Document>
         </div>

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from "../ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Label as ShadcnLabel } from "../ui/label";
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"; // Not used, can be removed
 import {
     X, Save, Loader2, AlertCircle, Plus, Trash2, Video as VideoIcon, FileText as FileTextIcon, HelpCircle,
     ChevronDown, ChevronUp, Eye, Edit3, Image as ImageIcon, Download, // ImageIcon not used
@@ -20,12 +19,11 @@ import {
     type VideoBlockContent as ApiVideoBlockContentFromApi,
     type QuizQuestion as ApiQuizQuestionFromApi,
     type QuizQuestionOption as ApiQuizQuestionOptionFromApi,
-    // type Material as ApiMaterial, // Not directly used here, createMaterial result is handled
-    type ApiDocumentBlockContentForSave, // ASSUMPTION: This type in services/api.ts is updated
-                                         // to include viewablePdfUrl and totalSlides.
+    type ApiDocumentBlockContentForSave, 
+                                         
 } from '../../services/api';
 
-import DocumentViewer from '../DocumentViewer'; // Ensure this is the react-pdf based viewer
+import DocumentViewer from '../DocumentViewer'; 
 import QuizQuestionEditor, { type ModalQuizQuestion, type ModalQuizQuestionOption } from '../QuizQuestionEditor';
 import IntegratedRichTextEditor from '../IntegratedRichTextEditor';
 
@@ -36,7 +34,6 @@ const goldAccent = 'text-[#C5A467]';
 const goldAccentHex = '#C5A467';
 const editorDarkBgHex = '#1f2937';
 const editorLightBgHex = '#ffffff';
-// const midBrown = 'text-[#4A1F1F] dark:text-[#E0D6C3]'; // Defined but also as hex, choose one
 const midBrownLightHex = '#4A1F1F';
 const midBrownDarkHex = '#E0D6C3';
 const goldBg = 'bg-[#C5A467]';
@@ -52,7 +49,6 @@ const mutedText = 'text-gray-600 dark:text-gray-400';
 const editorCardBgMantine = 'dark:bg-gray-900';
 const editorToolbarBgMantine = 'bg-gray-100 dark:bg-gray-800';
 
-// const inputClasses = `block w-full px-3 py-2 border ${themedInputBorder} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${themedInputBg} text-[${deepBrownLightHex}] dark:text-[${deepBrownDarkHex}]`; // Defined but not used
 
 
 const mantineInputStyles = (theme: MantineTheme) => {
@@ -96,8 +92,8 @@ interface QuizSettings {
     maxAttempts?: number;
     showCorrectAnswers: boolean;
     collectEmail: boolean;
-    requireLogin: boolean; // Retained from original
-    showPoints: boolean; // Retained from original
+    requireLogin: boolean; 
+    showPoints: boolean; 
 }
 
 const defaultQuizSettings: QuizSettings = {
@@ -118,13 +114,11 @@ interface ModalQuizContentData extends Omit<ApiQuizBlockContentFromApi, 'setting
     };
 }
 
-// Updated ModalDocumentContentData
 interface ModalDocumentContentData extends Omit<ApiDocumentBlockContentForSave, 'documentFile' | 'documentObjectUrl'> {
     id: string;
-    documentFile?: File | undefined;       // Local file object for upload
-    documentObjectUrl?: string;    // Local URL.createObjectURL for immediate preview if PDF is uploaded
+    documentFile?: File | undefined;    
+    documentObjectUrl?: string;    
     
-    // Fields expected from API (or set after local processing for preview if possible)
     documentUrl: string; 
     viewablePdfUrl?: string; 
     originalFileName?: string;
@@ -139,7 +133,7 @@ interface ModalRichContentItem {
     id: string;
     type: 'text' | 'video' | 'quiz' | 'document';
     order: number;
-    content?: string; // For text type
+    content?: string;
     videoContent?: ModalVideoContentData;
     quizContent?: ModalQuizContentData;
     documentContent?: ModalDocumentContentData;
@@ -148,15 +142,14 @@ interface ModalRichContentItem {
 interface CreateEditContentModalProps {
     isOpen: boolean;
     onClose: () => void;
-    content: ApiContentItemFromApi | null; // Content being edited, or null for new content
+    content: ApiContentItemFromApi | null; 
     onSave: (contentData: ApiContentItemFromApi) => Promise<ApiContentItemFromApi | void>;
-    sectionId: string; // Not directly used in this snippet but often needed for context
-    weekIdForFileUploads: string; // Crucial for `createMaterial`
+    sectionId: string; 
+    weekIdForFileUploads: string; 
 }
 
 const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
     isOpen, onClose, content: apiContentPropFromParent, onSave,
-    // sectionId, // Not directly used
     weekIdForFileUploads,
 }) => {
     const [currentContentItem, setCurrentContentItem] = useState<ApiContentItemFromApi | null>(apiContentPropFromParent);
@@ -168,7 +161,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
     const [richContent, setRichContent] = useState<ModalRichContentItem[]>([]);
     const [expandedContentIndex, setExpandedContentIndex] = useState<number | null>(null);
     const [isPreviewMode, setIsPreviewMode] = useState(false);
-    const richContentRef = useRef(richContent); // To access latest richContent in closures (like useEffect cleanup)
+    const richContentRef = useRef(richContent);
 
     const isEditingLocally = !!currentContentItem?.id;
     const generateId = useCallback(() => `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, []);
@@ -176,7 +169,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
 
     const mapApiBlockToModalBlock = useCallback((apiRcBlock: ApiRichContentItemBlockFromApi, index: number): ModalRichContentItem => {
         const blockId = apiRcBlock.id || generateId();
-        const blockType = apiRcBlock.type as ModalRichContentItem['type']; // Trusting API type
+        const blockType = apiRcBlock.type as ModalRichContentItem['type']; 
         const modalBlockBase: Pick<ModalRichContentItem, 'id' | 'type' | 'order'> = {
             id: blockId, type: blockType, order: apiRcBlock.order ?? index,
         };
@@ -185,13 +178,12 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
             return { ...modalBlockBase, type: 'text', content: apiRcBlock.content || '<p></p>' };
         }
         if (blockType === 'video' && apiRcBlock.videoContent) {
-            // Ensure all required fields for ModalVideoContentData are present or defaulted
             const vcApi = apiRcBlock.videoContent as ApiVideoBlockContentFromApi;
             return {
                 ...modalBlockBase,
                 type: 'video',
                 videoContent: {
-                    id: vcApi.id || blockId, // Use API ID or generate
+                    id: vcApi.id || blockId,
                     title: vcApi.title || '',
                     description: vcApi.description || '',
                     videoUrl: vcApi.videoUrl || '',
@@ -200,7 +192,6 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                     isRequired: vcApi.isRequired ?? false,
                     drmEnabled: vcApi.drmEnabled ?? false,
                     accessControl: vcApi.accessControl || { allowDownload: true, allowSharing: true },
-                    // Local-only fields, not from API
                     videoFile: undefined,
                     thumbnail: undefined,
                     videoObjectUrl: undefined,
@@ -237,9 +228,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         }
         if (blockType === 'document' && apiRcBlock.documentContent) {
             const docContentFromApi = apiRcBlock.documentContent as ApiDocumentBlockContentForSave;
-            // docContentFromApi should now contain: id, title, description,
-            // documentUrl (original file), viewablePdfUrl (converted PDF),
-            // originalFileName, fileSize, fileType, totalSlides
+       
             return {
                 ...modalBlockBase,
                 type: 'document',
@@ -378,8 +367,6 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                         const oldDocContent = newItem.documentContent;
                         newItem.documentContent = { ...newItem.documentContent, ...updatedFields.documentContent };
                         
-                        // If a new local file is selected or local preview URL changes, reset slide state
-                        // as the viewable content has changed.
                         const newFileSelected = updatedFields.documentContent.documentFile !== undefined; // Explicitly checking for presence
                         const objectUrlChanged = updatedFields.documentContent.documentObjectUrl !== oldDocContent.documentObjectUrl;
 
@@ -402,9 +389,9 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
         if (!currentItem?.quizContent) return;
         
         const updatedSettings: QuizSettings = {
-            ...defaultQuizSettings, // Base defaults
-            ...currentItem.quizContent.settings, // Current item's settings
-            ...settings // New partial settings
+            ...defaultQuizSettings,
+            ...currentItem.quizContent.settings, 
+            ...settings 
         };
         
         handleUpdateRichContentItem(itemId, {
@@ -423,7 +410,6 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
             videoContent: {
                 ...currentItem.videoContent,
                 ...videoContentUpdate,
-                // id: currentItem.videoContent.id // ID should not change with updates
             }
         });
     };
@@ -577,8 +563,7 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
                             formData.append('title', docTitle || `Document for: ${title}`); 
                             formData.append('type', 'document_asset'); // Backend uses this to trigger conversion
                             
-                            // ASSUMPTION: backend createMaterial for 'document_asset' now returns:
-                            // { contentUrl (original), viewablePdfUrl (converted PDF), numPages, originalFileName, fileSize, fileType }
+
                             const uploadedMaterial = await createMaterial(formData); 
                             
                             if (!uploadedMaterial?.contentUrl || !uploadedMaterial?.viewablePdfUrl) {
@@ -616,7 +601,6 @@ const CreateEditContentModal: React.FC<CreateEditContentModalProps> = ({
             if (finalRichContentForApi.some(item => item.type === 'quiz')) determinedType = 'quiz_link';
             else if (finalRichContentForApi.some(item => item.type === 'video')) determinedType = 'video';
             else if (finalRichContentForApi.length === 1 && finalRichContentForApi[0].type === 'document') determinedType = 'document';
-            // Could add more sophisticated type determination if needed
 
             const payload: ApiContentItemFromApi = { 
                 ...(currentContentItem?.id && { id: currentContentItem.id }), 
