@@ -13,6 +13,45 @@ const ETHIOPIA_COUNTRY_CODE = 'ET';
 
 const CONTENT_CACHE_KEY = 'acif_home_content_v1';
 
+const DEFAULT_CONTENT: HomePageContentData = {
+  hero: {
+    title: "Apostolic & Evangelical Theology",
+    subtitle: "A comprehensive online certificate program grounded in Scripture and apostolic doctrine.",
+  },
+  programHighlights: {
+    title: "Program Highlights",
+    description: "Our program is designed to equip believers with deep theological knowledge and practical ministry skills.",
+    items: [
+      { id: "ph1", text: "6 courses covering core theological disciplines" },
+      { id: "ph2", text: "Two intakes per year — January and July" },
+      { id: "ph3", text: "Certificate of completion with ECTS credits" },
+      { id: "ph4", text: "Mentorship and community support" },
+    ],
+  },
+  learningOutcomes: {
+    title: "What You Will Learn",
+    description: "Graduate with a thorough understanding of biblical foundations and the ability to apply them in ministry.",
+    items: [
+      { id: "lo1", text: "Biblical hermeneutics and exegesis" },
+      { id: "lo2", text: "Apostolic and evangelical theology" },
+      { id: "lo3", text: "Church history and doctrinal development" },
+      { id: "lo4", text: "Practical ministry and leadership" },
+    ],
+  },
+  cta: {
+    unauthenticated: {
+      title: "Begin Your Theological Journey",
+      description: "Join our next cohort and deepen your understanding of Scripture and apostolic faith.",
+      investmentLabel: "Program Investment:",
+      investmentNote: "Payment plans available. Contact us for details.",
+    },
+    authenticated: {
+      title: "Continue Your Studies",
+      description: "Access your courses and keep growing in knowledge and faith.",
+    },
+  },
+};
+
 const fetchPublicHomePageContent = async (): Promise<HomePageContentData> => {
   const cached = sessionStorage.getItem(CONTENT_CACHE_KEY);
   if (cached) {
@@ -115,7 +154,7 @@ const HomePage: React.FC = () => {
       return;
     }
 
-    const { investmentValueUSD, investmentValueETB } = content.cta.unauthenticated;
+    const { investmentValueUSD, investmentValueETB } = content!.cta.unauthenticated;
 
     // If location is still being fetched AND country code is not yet determined,
     // default to showing the USD price string if available.
@@ -173,17 +212,9 @@ const HomePage: React.FC = () => {
   };
 
 
-  if (!isLoadingContent && (errorContent || !content)) {
-    return (
-      <div className={`flex flex-col justify-center items-center min-h-screen text-red-500 p-4 text-center ${lightBg} ${darkBg}`}>
-        <p className="text-xl font-semibold">Error loading page content.</p>
-        <p>{errorContent || "Content could not be retrieved. Please try again later."}</p>
-        <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
-      </div>
-    );
-  }
+  const displayContent = content ?? (!isLoadingContent ? DEFAULT_CONTENT : null);
 
-  const heroLogoUrl = content?.hero.logoUrl || logoPlaceholder;
+  const heroLogoUrl = displayContent?.hero.logoUrl || logoPlaceholder;
 
   const SkeletonLine = ({ w = 'w-64', h = 'h-6' }: { w?: string; h?: string }) => (
     <div className={`${h} ${w} bg-white/20 animate-pulse rounded`} />
@@ -215,10 +246,10 @@ const HomePage: React.FC = () => {
               ) : (
                 <>
                   <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-bold tracking-tight text-[#FFF8F0] drop-shadow-md animate-[fadeInDown_1s_ease-out] font-serif">
-                    {content!.hero.title}
+                    {displayContent!.hero.title}
                   </h1>
                   <p className="mx-auto max-w-[750px] text-[#E0D6C3] text-lg md:text-xl lg:text-2xl animate-[fadeInUp_1.2s_ease-out]">
-                    {content!.hero.subtitle}
+                    {displayContent!.hero.subtitle}
                   </p>
                 </>
               )}
@@ -271,7 +302,7 @@ const HomePage: React.FC = () => {
                   <SkeletonText w="w-48" h="h-9" />
                 ) : (
                   <h2 className={`text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight font-serif ${deepBrown}`}>
-                    {content!.programHighlights.title}
+                    {displayContent!.programHighlights.title}
                   </h2>
                 )}
               </div>
@@ -282,7 +313,7 @@ const HomePage: React.FC = () => {
                 </div>
               ) : (
                 <p className={`${midBrown} text-lg md:text-xl`}>
-                  {content!.programHighlights.description}
+                  {displayContent!.programHighlights.description}
                 </p>
               )}
               <ul className="space-y-3 pt-2">
@@ -294,7 +325,7 @@ const HomePage: React.FC = () => {
                     </li>
                   ))
                 ) : (
-                  content!.programHighlights.items.map((item, index) => {
+                  displayContent!.programHighlights.items.map((item, index) => {
                     const IconComponent = getHighlightIcon(item.text);
                     return (
                       <li key={item.id || `ph-${index}`} className="flex items-center gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm justify-center lg:justify-start">
@@ -313,7 +344,7 @@ const HomePage: React.FC = () => {
                   <SkeletonText w="w-48" h="h-9" />
                 ) : (
                   <h2 className={`text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight font-serif ${deepBrown}`}>
-                    {content!.learningOutcomes.title}
+                    {displayContent!.learningOutcomes.title}
                   </h2>
                 )}
               </div>
@@ -324,7 +355,7 @@ const HomePage: React.FC = () => {
                 </div>
               ) : (
                 <p className={`${midBrown} text-lg md:text-xl`}>
-                  {content!.learningOutcomes.description}
+                  {displayContent!.learningOutcomes.description}
                 </p>
               )}
               <ul className="space-y-3 pt-2">
@@ -336,7 +367,7 @@ const HomePage: React.FC = () => {
                     </li>
                   ))
                 ) : (
-                  content!.learningOutcomes.items.map((item, index) => (
+                  displayContent!.learningOutcomes.items.map((item, index) => (
                     <li key={item.id || `lo-${index}`} className="flex items-start gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm text-left">
                       <div className={`mt-1 flex-shrink-0 rounded-full ${goldBg} text-[#2A0F0F] h-6 w-6 flex items-center justify-center text-sm font-semibold`}>
                         {index + 1}
@@ -371,18 +402,18 @@ const HomePage: React.FC = () => {
             ) : (
               <>
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight font-serif">
-                  {isAuthenticated ? content!.cta.authenticated.title : content!.cta.unauthenticated.title}
+                  {isAuthenticated ? displayContent!.cta.authenticated.title : displayContent!.cta.unauthenticated.title}
                 </h2>
                 <p className="mx-auto max-w-[700px] text-[#E0D6C3] text-lg md:text-xl lg:text-2xl">
                   {isAuthenticated
-                    ? content!.cta.authenticated.description
-                    : content!.cta.unauthenticated.description}
+                    ? displayContent!.cta.authenticated.description
+                    : displayContent!.cta.unauthenticated.description}
                 </p>
               </>
             )}
 
             {/* Payment Info for Unauthenticated Users */}
-            {!isLoadingContent && !isAuthenticated && content?.cta?.unauthenticated && (content.cta.unauthenticated.investmentValueUSD || content.cta.unauthenticated.investmentValueETB) && displayInvestmentValue && (
+            {!isLoadingContent && !isAuthenticated && displayContent?.cta?.unauthenticated && (displayContent.cta.unauthenticated.investmentValueUSD || displayContent.cta.unauthenticated.investmentValueETB) && displayInvestmentValue && (
               <div className="mt-4 p-4 bg-[#C5A467]/10 dark:bg-[#C5A467]/5 border border-[#C5A467]/30 rounded-lg shadow-inner max-w-md mx-auto">
                 <div className="flex items-center justify-center gap-2">
                   {userCountryCode === ETHIOPIA_COUNTRY_CODE ? (
@@ -391,16 +422,16 @@ const HomePage: React.FC = () => {
                     <DollarSign className={`h-6 w-6 ${goldAccent} flex-shrink-0`} />
                   )}
                   <p className={`text-base md:text-lg font-semibold ${goldAccent}`}>
-                    {content.cta.unauthenticated.investmentLabel}{' '}
+                    {displayContent.cta.unauthenticated.investmentLabel}{' '}
                     <span className="text-[#FFF8F0]">
                       {userCountryCode === ETHIOPIA_COUNTRY_CODE ? 'ETB ' : '$ '}
                       {displayInvestmentValue}
                     </span>
                   </p>
                 </div>
-                {content.cta.unauthenticated.investmentNote && (
+                {displayContent.cta.unauthenticated.investmentNote && (
                   <p className="text-xs text-[#E0D6C3]/80 mt-1">
-                    {content.cta.unauthenticated.investmentNote}
+                    {displayContent.cta.unauthenticated.investmentNote}
                   </p>
                 )}
               </div>
