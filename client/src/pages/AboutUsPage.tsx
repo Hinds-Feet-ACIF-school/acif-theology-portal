@@ -68,21 +68,8 @@ const AboutUsPage: React.FC = () => {
     loadContent();
   }, []);
 
-  if (isLoading) {
-    return <div className={`flex justify-center items-center min-h-screen ${sectionBgLight} ${sectionBgDark}`}>Loading About Us Page...</div>;
-  }
 
-  if (error || !content) {
-    return (
-      <div className={`flex flex-col justify-center items-center min-h-screen text-red-500 p-4 text-center ${sectionBgLight} ${sectionBgDark}`}>
-        <p className="text-xl font-semibold">Error loading page content.</p>
-        <p>{error || "About Us content could not be retrieved. Please try again later."}</p>
-        <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
-      </div>
-    );
-  }
-
-  const heroEffectiveLogoUrl = content.hero.logoUrl || logoPlaceholder;
+  const heroEffectiveLogoUrl = content?.hero?.logoUrl || logoPlaceholder;
 
   return (
     <div className={`flex flex-col min-h-screen ${sectionBgLight} ${sectionBgDark}`}>
@@ -97,10 +84,10 @@ const AboutUsPage: React.FC = () => {
             />
             <div className="space-y-2">
               <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-serif tracking-tight text-white`}>
-                {content.hero.title}
+                {content?.hero?.title}
               </h1>
               <p className={`mx-auto max-w-[700px] text-base sm:text-lg md:text-xl lg:text-xl xl:text-2xl text-white`}>
-                {content.hero.subtitle}
+                {content?.hero?.subtitle}
               </p>
             </div>
           </div>
@@ -111,15 +98,15 @@ const AboutUsPage: React.FC = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid gap-10 md:gap-12 lg:grid-cols-2 lg:gap-16">
             <div className="space-y-4 text-center lg:text-left">
-              <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>{content.missionVision.missionTitle}</h2>
+              <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>{content?.missionVision?.missionTitle}</h2>
               <p className={`text-base md:text-lg ${secondaryTextLight} ${secondaryTextDark}`}>
-                {content.missionVision.missionDescription}
+                {content?.missionVision?.missionDescription}
               </p>
             </div>
             <div className="space-y-4 text-center lg:text-left">
-              <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>{content.missionVision.visionTitle}</h2>
+              <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-bold font-serif tracking-tight ${primaryTextLight} ${primaryTextDark}`}>{content?.missionVision?.visionTitle}</h2>
               <p className={`text-base md:text-lg ${secondaryTextLight} ${secondaryTextDark}`}>
-                {content.missionVision.visionDescription}
+                {content?.missionVision?.visionDescription}
               </p>
             </div>
           </div>
@@ -128,9 +115,9 @@ const AboutUsPage: React.FC = () => {
 
        <section className={`w-full py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 ${altSectionBgLight} ${altSectionBgDark}`}>
          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-           <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold font-serif tracking-tight text-center mb-10 md:mb-12 lg:mb-16 ${primaryTextLight} ${primaryTextDark}`}>{content.coreValues.title}</h2>
+           <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold font-serif tracking-tight text-center mb-10 md:mb-12 lg:mb-16 ${primaryTextLight} ${primaryTextDark}`}>{content?.coreValues?.title}</h2>
            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-             {(content.coreValues.items || []).map((item: CoreValueItemData) => {
+             {(content?.coreValues?.items || []).map((item: CoreValueItemData) => {
                const IconComponent = getCoreValueIcon(item.title);
                return (
                  <div key={item.id} className="flex flex-col items-center text-center p-4">

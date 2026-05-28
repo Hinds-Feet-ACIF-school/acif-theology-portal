@@ -113,20 +113,6 @@ const ContactUsPage: React.FC = () => {
   const textareaClasses = `${inputClasses} min-h-[100px]`;
   const buttonPrimaryClasses = `bg-[${accentColor}] hover:bg-[${accentHoverColor}] text-[#2A0F0F] font-semibold transition-colors duration-200 inline-flex items-center justify-center rounded-md text-sm ring-offset-background h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-[${accentColor}]`;
 
-  if (!isContentLoaded && !contentError) {
-    return <div className={`flex justify-center items-center min-h-screen ${sectionBgLight} ${sectionBgDark}`}>Loading Contact Page...</div>;
-  }
-
-  if (contentError && !pageContent) { // Only show critical error if pageContent couldn't be loaded at all
-    return (
-      <div className={`flex flex-col justify-center items-center min-h-screen text-red-500 p-4 text-center ${sectionBgLight} ${sectionBgDark}`}>
-        <p className="text-xl font-semibold">Error loading page information.</p>
-        <p>{contentError}</p>
-        <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
-      </div>
-    );
-  }
-  
   const heroTitle = pageContent?.hero?.title || "Contact Us";
   const heroSubtitle = pageContent?.hero?.subtitle || "We'd love to hear from you! Reach out with any questions or inquiries.";
   const getInTouchTitle = pageContent?.getInTouch?.title || "Get in Touch";

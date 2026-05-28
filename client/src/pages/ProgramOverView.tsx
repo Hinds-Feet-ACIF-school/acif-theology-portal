@@ -193,21 +193,9 @@ const ProgramOverviewPage: React.FC = () => {
     return BookOpen;
   };
 
-  if (isLoadingContent) {
-    return <div className={`flex justify-center items-center min-h-screen ${sectionBgLight} ${sectionBgDark}`}>Loading Program Overview...</div>;
-  }
+  const showSkeletons = isLoadingContent || (!content && !!errorContent);
 
-  if (errorContent || !content) {
-    return (
-      <div className={`flex flex-col justify-center items-center min-h-screen text-red-500 p-4 text-center ${sectionBgLight} ${sectionBgDark}`}>
-        <p className="text-xl font-semibold">Error loading page content.</p>
-        <p>{errorContent || "Program overview content could not be retrieved. Please try again later."}</p>
-        <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
-      </div>
-    );
-  }
-
-  const programStructureItemsDisplay: ProgramStructureItemDisplay[] = (content.programStructure?.items || []).map((item: ProgramStructureItemData) => ({
+  const programStructureItemsDisplay: ProgramStructureItemDisplay[] = (content?.programStructure?.items || []).map((item: ProgramStructureItemData) => ({
     icon: getProgramStructureIcon(item.title),
     title: item.title,
     desc: item.desc,
@@ -222,10 +210,10 @@ const ProgramOverviewPage: React.FC = () => {
           <div className="flex flex-col items-center space-y-4 text-center">
             <div className="space-y-3">
               <h1 className={`text-4xl ${headerTextLight} ${headerTextDark} font-bold font-serif tracking-tight sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl/none`}>
-                {content.hero?.title}
+                {content?.hero?.title}
               </h1>
               <p className={`mx-auto max-w-[750px] ${ctaSubText} text-lg md:text-xl lg:text-xl xl:text-2xl`}>
-                {content.hero?.subtitle}
+                {content?.hero?.subtitle}
               </p>
             </div>
           </div>
@@ -404,10 +392,10 @@ const ProgramOverviewPage: React.FC = () => {
         <div className="container relative px-4 md:px-6 z-10 mx-auto">
           <div className="flex flex-col items-center space-y-6 text-center animate-[fadeInUp_1s_ease-out]">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight font-serif">
-              {content.cta.title}
+              {content?.cta?.title}
             </h2>
             <p className="mx-auto max-w-[700px] text-[#E0D6C3] text-lg md:text-xl lg:text-2xl">
-              {content.cta.description}
+              {content?.cta?.description}
             </p>
 
             {/* Payment Info */}
@@ -420,14 +408,14 @@ const ProgramOverviewPage: React.FC = () => {
                     <DollarSign className={`h-6 w-6 ${goldAccent} flex-shrink-0`} />
                   )}
                   <p className={`text-base md:text-lg font-semibold ${goldAccent}`}>
-                    {content.cta.investmentLabel}{' '}
+                    {content?.cta?.investmentLabel}{' '}
                     <span className="text-[#FFF8F0]">
                       {userCountryCode === ETHIOPIA_COUNTRY_CODE ? 'ETB ' : '$ '}
                       {displayInvestmentValue}
                     </span>
                   </p>
                 </div>
-                {content.cta.investmentNote && (
+                {content?.cta?.investmentNote && (
                   <p className="text-xs text-[#E0D6C3]/80 mt-1">
                     {content.cta.investmentNote}
                   </p>
