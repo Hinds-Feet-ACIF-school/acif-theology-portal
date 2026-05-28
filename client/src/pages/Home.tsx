@@ -13,44 +13,6 @@ const ETHIOPIA_COUNTRY_CODE = 'ET';
 
 const CONTENT_CACHE_KEY = 'acif_home_content_v1';
 
-const DEFAULT_CONTENT: HomePageContentData = {
-  hero: {
-    title: "Apostolic & Evangelical Theology",
-    subtitle: "A comprehensive online certificate program grounded in Scripture and apostolic doctrine.",
-  },
-  programHighlights: {
-    title: "Program Highlights",
-    description: "Our program is designed to equip believers with deep theological knowledge and practical ministry skills.",
-    items: [
-      { id: "ph1", text: "6 courses covering core theological disciplines" },
-      { id: "ph2", text: "Two intakes per year — January and July" },
-      { id: "ph3", text: "Certificate of completion with ECTS credits" },
-      { id: "ph4", text: "Mentorship and community support" },
-    ],
-  },
-  learningOutcomes: {
-    title: "What You Will Learn",
-    description: "Graduate with a thorough understanding of biblical foundations and the ability to apply them in ministry.",
-    items: [
-      { id: "lo1", text: "Biblical hermeneutics and exegesis" },
-      { id: "lo2", text: "Apostolic and evangelical theology" },
-      { id: "lo3", text: "Church history and doctrinal development" },
-      { id: "lo4", text: "Practical ministry and leadership" },
-    ],
-  },
-  cta: {
-    unauthenticated: {
-      title: "Begin Your Theological Journey",
-      description: "Join our next cohort and deepen your understanding of Scripture and apostolic faith.",
-      investmentLabel: "Program Investment:",
-      investmentNote: "Payment plans available. Contact us for details.",
-    },
-    authenticated: {
-      title: "Continue Your Studies",
-      description: "Access your courses and keep growing in knowledge and faith.",
-    },
-  },
-};
 
 const fetchPublicHomePageContent = async (): Promise<HomePageContentData> => {
   const cached = sessionStorage.getItem(CONTENT_CACHE_KEY);
@@ -212,9 +174,10 @@ const HomePage: React.FC = () => {
   };
 
 
-  const displayContent = content ?? (!isLoadingContent ? DEFAULT_CONTENT : null);
+  // If content failed to load, keep showing skeletons rather than an error screen
+  const showSkeletons = isLoadingContent || (!content && !!errorContent);
 
-  const heroLogoUrl = displayContent?.hero.logoUrl || logoPlaceholder;
+  const heroLogoUrl = content?.hero.logoUrl || logoPlaceholder;
 
   const SkeletonLine = ({ w = 'w-64', h = 'h-6' }: { w?: string; h?: string }) => (
     <div className={`${h} ${w} bg-white/20 animate-pulse rounded`} />
@@ -238,7 +201,7 @@ const HomePage: React.FC = () => {
                   onError={(e) => { (e.target as HTMLImageElement).src = logoPlaceholder; }}
                 />
           <div className="space-y-3 flex flex-col items-center">
-              {isLoadingContent ? (
+              {showSkeletons ? (
                 <>
                   <SkeletonLine w="w-[480px] max-w-full" h="h-12 md:h-16" />
                   <SkeletonLine w="w-80 max-w-full" h="h-7" />
@@ -246,10 +209,10 @@ const HomePage: React.FC = () => {
               ) : (
                 <>
                   <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-bold tracking-tight text-[#FFF8F0] drop-shadow-md animate-[fadeInDown_1s_ease-out] font-serif">
-                    {displayContent!.hero.title}
+                    {content!.hero.title}
                   </h1>
                   <p className="mx-auto max-w-[750px] text-[#E0D6C3] text-lg md:text-xl lg:text-2xl animate-[fadeInUp_1.2s_ease-out]">
-                    {displayContent!.hero.subtitle}
+                    {content!.hero.subtitle}
                   </p>
                 </>
               )}
@@ -298,26 +261,26 @@ const HomePage: React.FC = () => {
             <div className="space-y-5 animate-[fadeInRight_1s_ease-out] text-center lg:text-left">
               <div className="flex items-center gap-3 mb-4 justify-center lg:justify-start">
                 <div className={`h-1 w-12 ${goldBg}`}></div>
-                {isLoadingContent ? (
+                {showSkeletons ? (
                   <SkeletonText w="w-48" h="h-9" />
                 ) : (
                   <h2 className={`text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight font-serif ${deepBrown}`}>
-                    {displayContent!.programHighlights.title}
+                    {content!.programHighlights.title}
                   </h2>
                 )}
               </div>
-              {isLoadingContent ? (
+              {showSkeletons ? (
                 <div className="space-y-2">
                   <SkeletonText w="w-full" h="h-5" />
                   <SkeletonText w="w-4/5" h="h-5" />
                 </div>
               ) : (
                 <p className={`${midBrown} text-lg md:text-xl`}>
-                  {displayContent!.programHighlights.description}
+                  {content!.programHighlights.description}
                 </p>
               )}
               <ul className="space-y-3 pt-2">
-                {isLoadingContent ? (
+                {showSkeletons ? (
                   [1, 2, 3].map(i => (
                     <li key={i} className="flex items-center gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm">
                       <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full flex-shrink-0" />
@@ -325,7 +288,7 @@ const HomePage: React.FC = () => {
                     </li>
                   ))
                 ) : (
-                  displayContent!.programHighlights.items.map((item, index) => {
+                  content!.programHighlights.items.map((item, index) => {
                     const IconComponent = getHighlightIcon(item.text);
                     return (
                       <li key={item.id || `ph-${index}`} className="flex items-center gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm justify-center lg:justify-start">
@@ -340,26 +303,26 @@ const HomePage: React.FC = () => {
             <div className="space-y-5 animate-[fadeInLeft_1s_ease-out] text-center lg:text-left">
               <div className="flex items-center gap-3 mb-4 justify-center lg:justify-start">
                 <div className={`h-1 w-12 ${goldBg}`}></div>
-                {isLoadingContent ? (
+                {showSkeletons ? (
                   <SkeletonText w="w-48" h="h-9" />
                 ) : (
                   <h2 className={`text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight font-serif ${deepBrown}`}>
-                    {displayContent!.learningOutcomes.title}
+                    {content!.learningOutcomes.title}
                   </h2>
                 )}
               </div>
-              {isLoadingContent ? (
+              {showSkeletons ? (
                 <div className="space-y-2">
                   <SkeletonText w="w-full" h="h-5" />
                   <SkeletonText w="w-3/4" h="h-5" />
                 </div>
               ) : (
                 <p className={`${midBrown} text-lg md:text-xl`}>
-                  {displayContent!.learningOutcomes.description}
+                  {content!.learningOutcomes.description}
                 </p>
               )}
               <ul className="space-y-3 pt-2">
-                {isLoadingContent ? (
+                {showSkeletons ? (
                   [1, 2, 3].map(i => (
                     <li key={i} className="flex items-start gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm">
                       <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full flex-shrink-0 mt-1" />
@@ -367,7 +330,7 @@ const HomePage: React.FC = () => {
                     </li>
                   ))
                 ) : (
-                  displayContent!.learningOutcomes.items.map((item, index) => (
+                  content!.learningOutcomes.items.map((item, index) => (
                     <li key={item.id || `lo-${index}`} className="flex items-start gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm text-left">
                       <div className={`mt-1 flex-shrink-0 rounded-full ${goldBg} text-[#2A0F0F] h-6 w-6 flex items-center justify-center text-sm font-semibold`}>
                         {index + 1}
@@ -394,7 +357,7 @@ const HomePage: React.FC = () => {
               className="h-16 w-16 md:h-20 md:w-20 mx-auto rounded-full object-cover mb-4 shadow-md border-2 border-[#C5A467]/50"
               onError={(e) => { (e.target as HTMLImageElement).src = logoPlaceholder; }}
             />
-            {isLoadingContent ? (
+            {showSkeletons ? (
               <>
                 <SkeletonLine w="w-96 max-w-full" h="h-10 md:h-12" />
                 <SkeletonLine w="w-72 max-w-full" h="h-6" />
@@ -402,18 +365,18 @@ const HomePage: React.FC = () => {
             ) : (
               <>
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight font-serif">
-                  {isAuthenticated ? displayContent!.cta.authenticated.title : displayContent!.cta.unauthenticated.title}
+                  {isAuthenticated ? content!.cta.authenticated.title : content!.cta.unauthenticated.title}
                 </h2>
                 <p className="mx-auto max-w-[700px] text-[#E0D6C3] text-lg md:text-xl lg:text-2xl">
                   {isAuthenticated
-                    ? displayContent!.cta.authenticated.description
-                    : displayContent!.cta.unauthenticated.description}
+                    ? content!.cta.authenticated.description
+                    : content!.cta.unauthenticated.description}
                 </p>
               </>
             )}
 
             {/* Payment Info for Unauthenticated Users */}
-            {!isLoadingContent && !isAuthenticated && displayContent?.cta?.unauthenticated && (displayContent.cta.unauthenticated.investmentValueUSD || displayContent.cta.unauthenticated.investmentValueETB) && displayInvestmentValue && (
+            {!showSkeletons && !isAuthenticated && content?.cta?.unauthenticated && (content!.cta.unauthenticated.investmentValueUSD || content!.cta.unauthenticated.investmentValueETB) && displayInvestmentValue && (
               <div className="mt-4 p-4 bg-[#C5A467]/10 dark:bg-[#C5A467]/5 border border-[#C5A467]/30 rounded-lg shadow-inner max-w-md mx-auto">
                 <div className="flex items-center justify-center gap-2">
                   {userCountryCode === ETHIOPIA_COUNTRY_CODE ? (
@@ -422,16 +385,16 @@ const HomePage: React.FC = () => {
                     <DollarSign className={`h-6 w-6 ${goldAccent} flex-shrink-0`} />
                   )}
                   <p className={`text-base md:text-lg font-semibold ${goldAccent}`}>
-                    {displayContent.cta.unauthenticated.investmentLabel}{' '}
+                    {content!.cta.unauthenticated.investmentLabel}{' '}
                     <span className="text-[#FFF8F0]">
                       {userCountryCode === ETHIOPIA_COUNTRY_CODE ? 'ETB ' : '$ '}
                       {displayInvestmentValue}
                     </span>
                   </p>
                 </div>
-                {displayContent.cta.unauthenticated.investmentNote && (
+                {content!.cta.unauthenticated.investmentNote && (
                   <p className="text-xs text-[#E0D6C3]/80 mt-1">
-                    {displayContent.cta.unauthenticated.investmentNote}
+                    {content!.cta.unauthenticated.investmentNote}
                   </p>
                 )}
               </div>
