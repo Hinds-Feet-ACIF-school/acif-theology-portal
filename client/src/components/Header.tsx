@@ -55,7 +55,7 @@ export default function Header() {
   const [currentClientTheme, setCurrentClientTheme] = useState<string | undefined>(undefined); // Init undefined for SSR safety
 
   const [brandingContent, setBrandingContent] = useState<SiteBrandingContentData | null>(null);
-  const [isLoadingBranding, setIsLoadingBranding] = useState(true);
+  const [isLoadingBranding, setIsLoadingBranding] = useState(false);
 
   useEffect(() => {
     setCurrentClientTheme(theme);

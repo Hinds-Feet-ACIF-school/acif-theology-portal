@@ -11,13 +11,21 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 // Constants for currency localization
 const ETHIOPIA_COUNTRY_CODE = 'ET';
 
+const CONTENT_CACHE_KEY = 'acif_home_content_v1';
+
 const fetchPublicHomePageContent = async (): Promise<HomePageContentData> => {
+  const cached = sessionStorage.getItem(CONTENT_CACHE_KEY);
+  if (cached) {
+    return JSON.parse(cached);
+  }
   const response = await fetch(`${API_BASE_URL}/content/home`);
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: "Failed to fetch home page content" }));
     throw new Error(errorData.message || "Failed to fetch home page content");
   }
-  return response.json();
+  const data = await response.json();
+  sessionStorage.setItem(CONTENT_CACHE_KEY, JSON.stringify(data));
+  return data;
 };
 
 
@@ -51,63 +59,50 @@ const HomePage: React.FC = () => {
   // Effect for fetching user location
   useEffect(() => {
     if (!isAuthenticated) {
-      console.log("HomePage: Attempting to fetch location because user is not authenticated.");
       setIsLoadingLocation(true);
+      const fetchWithTimeout = (url: string, ms: number) =>
+        Promise.race([
+          fetch(url),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), ms)
+          ),
+        ]);
+
       const fetchLocationAsync = async () => {
-        console.log("HomePage: fetchLocationAsync started.");
         try {
-          // Try multiple geolocation services in sequence
-          let countryCode = null;
-          
-          // First try: ipapi.co (more reliable)
+          let countryCode: string | null = null;
+
           try {
-            const response = await fetch('https://ipapi.co/json/');
+            const response = await fetchWithTimeout('https://ipapi.co/json/', 3000);
             if (response.ok) {
               const data = await response.json();
-              if (data.country_code) {
-                countryCode = data.country_code;
-                console.log("HomePage: Successfully got country code from ipapi.co:", countryCode);
-              }
+              if (data.country_code) countryCode = data.country_code;
             }
-          } catch (err) {
-            console.log("HomePage: ipapi.co failed, trying ip-api.com");
+          } catch {
+            // ipapi.co timed out or failed — try fallback
           }
 
-          // Second try: ip-api.com (fallback)
           if (!countryCode) {
             try {
-              const response = await fetch('https://ip-api.com/json/?fields=status,message,countryCode');
+              const response = await fetchWithTimeout('https://ip-api.com/json/?fields=status,message,countryCode', 3000);
               if (response.ok) {
                 const data = await response.json();
-                if (data.status === 'success' && data.countryCode) {
-                  countryCode = data.countryCode;
-                  console.log("HomePage: Successfully got country code from ip-api.com:", countryCode);
-                }
+                if (data.status === 'success' && data.countryCode) countryCode = data.countryCode;
               }
-            } catch (err) {
-              console.log("HomePage: ip-api.com failed");
+            } catch {
+              // fallback also failed
             }
           }
 
-          // Set the country code if we got one
-          if (countryCode) {
-            console.log("HomePage: Setting country code:", countryCode);
-            setUserCountryCode(countryCode);
-          } else {
-            console.warn("HomePage: Could not determine country code from any service");
-            setUserCountryCode(null);
-          }
-        } catch (err) {
-          console.error("HomePage: Error in location detection:", err);
+          setUserCountryCode(countryCode);
+        } catch {
           setUserCountryCode(null);
         } finally {
           setIsLoadingLocation(false);
-          console.log("HomePage: Location detection completed");
         }
       };
       fetchLocationAsync();
     } else {
-      console.log("HomePage: User is authenticated, skipping location fetch.");
       setIsLoadingLocation(false);
       setUserCountryCode(null);
     }
@@ -115,9 +110,6 @@ const HomePage: React.FC = () => {
 
   // Effect for setting the display investment value based on location and content
   useEffect(() => {
-    console.log("Content from API:", JSON.stringify(content?.cta?.unauthenticated));
-  console.log("Detected User Country Code:", userCountryCode);
-  console.log("Is Loading Location:", isLoadingLocation);
     if (isAuthenticated || !content?.cta?.unauthenticated) {
       setDisplayInvestmentValue(null);
       return;
@@ -181,11 +173,7 @@ const HomePage: React.FC = () => {
   };
 
 
-  if (isLoadingContent) {
-    return <div className={`flex justify-center items-center min-h-screen ${lightBg} ${darkBg}`}>Loading Home Page...</div>;
-  }
-
-  if (errorContent || !content) {
+  if (!isLoadingContent && (errorContent || !content)) {
     return (
       <div className={`flex flex-col justify-center items-center min-h-screen text-red-500 p-4 text-center ${lightBg} ${darkBg}`}>
         <p className="text-xl font-semibold">Error loading page content.</p>
@@ -195,7 +183,14 @@ const HomePage: React.FC = () => {
     );
   }
 
-  const heroLogoUrl = content.hero.logoUrl || logoPlaceholder;
+  const heroLogoUrl = content?.hero.logoUrl || logoPlaceholder;
+
+  const SkeletonLine = ({ w = 'w-64', h = 'h-6' }: { w?: string; h?: string }) => (
+    <div className={`${h} ${w} bg-white/20 animate-pulse rounded`} />
+  );
+  const SkeletonText = ({ w = 'w-48', h = 'h-5' }: { w?: string; h?: string }) => (
+    <div className={`${h} ${w} bg-gray-200 dark:bg-gray-700 animate-pulse rounded`} />
+  );
 
 
   return (
@@ -211,13 +206,22 @@ const HomePage: React.FC = () => {
                   className="h-16 w-16 md:h-20 md:w-20 mx-auto rounded-full object-cover mb-4 shadow-md border-2 border-[#C5A467]/50"
                   onError={(e) => { (e.target as HTMLImageElement).src = logoPlaceholder; }}
                 />
-          <div className="space-y-3">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-bold tracking-tight text-[#FFF8F0] drop-shadow-md animate-[fadeInDown_1s_ease-out] font-serif">
-                {content.hero.title}
-              </h1>
-              <p className="mx-auto max-w-[750px] text-[#E0D6C3] text-lg md:text-xl lg:text-2xl animate-[fadeInUp_1.2s_ease-out]">
-                {content.hero.subtitle}
-              </p>
+          <div className="space-y-3 flex flex-col items-center">
+              {isLoadingContent ? (
+                <>
+                  <SkeletonLine w="w-[480px] max-w-full" h="h-12 md:h-16" />
+                  <SkeletonLine w="w-80 max-w-full" h="h-7" />
+                </>
+              ) : (
+                <>
+                  <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-bold tracking-tight text-[#FFF8F0] drop-shadow-md animate-[fadeInDown_1s_ease-out] font-serif">
+                    {content!.hero.title}
+                  </h1>
+                  <p className="mx-auto max-w-[750px] text-[#E0D6C3] text-lg md:text-xl lg:text-2xl animate-[fadeInUp_1.2s_ease-out]">
+                    {content!.hero.subtitle}
+                  </p>
+                </>
+              )}
             </div>
             <div className="flex flex-col items-center sm:flex-row sm:justify-center gap-4 pt-4 animate-[fadeInUp_1.5s_ease-out]">
               <Link to="/program-overview">
@@ -263,44 +267,84 @@ const HomePage: React.FC = () => {
             <div className="space-y-5 animate-[fadeInRight_1s_ease-out] text-center lg:text-left">
               <div className="flex items-center gap-3 mb-4 justify-center lg:justify-start">
                 <div className={`h-1 w-12 ${goldBg}`}></div>
-                <h2 className={`text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight font-serif ${deepBrown}`}>
-                  {content.programHighlights.title}
-                </h2>
+                {isLoadingContent ? (
+                  <SkeletonText w="w-48" h="h-9" />
+                ) : (
+                  <h2 className={`text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight font-serif ${deepBrown}`}>
+                    {content!.programHighlights.title}
+                  </h2>
+                )}
               </div>
-              <p className={`${midBrown} text-lg md:text-xl`}>
-                {content.programHighlights.description}
-              </p>
+              {isLoadingContent ? (
+                <div className="space-y-2">
+                  <SkeletonText w="w-full" h="h-5" />
+                  <SkeletonText w="w-4/5" h="h-5" />
+                </div>
+              ) : (
+                <p className={`${midBrown} text-lg md:text-xl`}>
+                  {content!.programHighlights.description}
+                </p>
+              )}
               <ul className="space-y-3 pt-2">
-                {content.programHighlights.items.map((item, index) => {
-                  const IconComponent = getHighlightIcon(item.text);
-                  return (
-                    <li key={item.id || `ph-${index}`} className="flex items-center gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm justify-center lg:justify-start">
-                      <IconComponent className={`h-6 w-6 ${goldAccent} flex-shrink-0`} />
-                      <span className={`text-[#4A1F1F] dark:text-gray-300 text-base md:text-lg`}>{item.text}</span>
+                {isLoadingContent ? (
+                  [1, 2, 3].map(i => (
+                    <li key={i} className="flex items-center gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm">
+                      <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full flex-shrink-0" />
+                      <SkeletonText w="w-48" h="h-5" />
                     </li>
-                  );
-                })}
+                  ))
+                ) : (
+                  content!.programHighlights.items.map((item, index) => {
+                    const IconComponent = getHighlightIcon(item.text);
+                    return (
+                      <li key={item.id || `ph-${index}`} className="flex items-center gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm justify-center lg:justify-start">
+                        <IconComponent className={`h-6 w-6 ${goldAccent} flex-shrink-0`} />
+                        <span className={`text-[#4A1F1F] dark:text-gray-300 text-base md:text-lg`}>{item.text}</span>
+                      </li>
+                    );
+                  })
+                )}
               </ul>
             </div>
             <div className="space-y-5 animate-[fadeInLeft_1s_ease-out] text-center lg:text-left">
               <div className="flex items-center gap-3 mb-4 justify-center lg:justify-start">
                 <div className={`h-1 w-12 ${goldBg}`}></div>
-                <h2 className={`text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight font-serif ${deepBrown}`}>
-                  {content.learningOutcomes.title}
-                </h2>
+                {isLoadingContent ? (
+                  <SkeletonText w="w-48" h="h-9" />
+                ) : (
+                  <h2 className={`text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight font-serif ${deepBrown}`}>
+                    {content!.learningOutcomes.title}
+                  </h2>
+                )}
               </div>
-              <p className={`${midBrown} text-lg md:text-xl`}>
-                {content.learningOutcomes.description}
-              </p>
+              {isLoadingContent ? (
+                <div className="space-y-2">
+                  <SkeletonText w="w-full" h="h-5" />
+                  <SkeletonText w="w-3/4" h="h-5" />
+                </div>
+              ) : (
+                <p className={`${midBrown} text-lg md:text-xl`}>
+                  {content!.learningOutcomes.description}
+                </p>
+              )}
               <ul className="space-y-3 pt-2">
-                {content.learningOutcomes.items.map((item, index) => (
-                   <li key={item.id || `lo-${index}`} className="flex items-start gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm text-left">
-                    <div className={`mt-1 flex-shrink-0 rounded-full ${goldBg} text-[#2A0F0F] h-6 w-6 flex items-center justify-center text-sm font-semibold`}>
-                      {index + 1}
-                    </div>
-                    <span className={`text-[#4A1F1F] dark:text-gray-300 text-base md:text-lg`}>{item.text}</span>
-                  </li>
-                ))}
+                {isLoadingContent ? (
+                  [1, 2, 3].map(i => (
+                    <li key={i} className="flex items-start gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm">
+                      <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full flex-shrink-0 mt-1" />
+                      <SkeletonText w="w-48" h="h-5" />
+                    </li>
+                  ))
+                ) : (
+                  content!.learningOutcomes.items.map((item, index) => (
+                    <li key={item.id || `lo-${index}`} className="flex items-start gap-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg shadow-sm text-left">
+                      <div className={`mt-1 flex-shrink-0 rounded-full ${goldBg} text-[#2A0F0F] h-6 w-6 flex items-center justify-center text-sm font-semibold`}>
+                        {index + 1}
+                      </div>
+                      <span className={`text-[#4A1F1F] dark:text-gray-300 text-base md:text-lg`}>{item.text}</span>
+                    </li>
+                  ))
+                )}
               </ul>
             </div>
           </div>
@@ -319,17 +363,26 @@ const HomePage: React.FC = () => {
               className="h-16 w-16 md:h-20 md:w-20 mx-auto rounded-full object-cover mb-4 shadow-md border-2 border-[#C5A467]/50"
               onError={(e) => { (e.target as HTMLImageElement).src = logoPlaceholder; }}
             />
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight font-serif">
-              {isAuthenticated ? content.cta.authenticated.title : content.cta.unauthenticated.title}
-            </h2>
-            <p className="mx-auto max-w-[700px] text-[#E0D6C3] text-lg md:text-xl lg:text-2xl">
-              {isAuthenticated
-                ? content.cta.authenticated.description
-                : content.cta.unauthenticated.description}
-            </p>
+            {isLoadingContent ? (
+              <>
+                <SkeletonLine w="w-96 max-w-full" h="h-10 md:h-12" />
+                <SkeletonLine w="w-72 max-w-full" h="h-6" />
+              </>
+            ) : (
+              <>
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight font-serif">
+                  {isAuthenticated ? content!.cta.authenticated.title : content!.cta.unauthenticated.title}
+                </h2>
+                <p className="mx-auto max-w-[700px] text-[#E0D6C3] text-lg md:text-xl lg:text-2xl">
+                  {isAuthenticated
+                    ? content!.cta.authenticated.description
+                    : content!.cta.unauthenticated.description}
+                </p>
+              </>
+            )}
 
-            {/* MODIFIED: Payment Info for Unauthenticated Users */}
-            {!isAuthenticated && content?.cta?.unauthenticated && (content.cta.unauthenticated.investmentValueUSD || content.cta.unauthenticated.investmentValueETB) && displayInvestmentValue && (
+            {/* Payment Info for Unauthenticated Users */}
+            {!isLoadingContent && !isAuthenticated && content?.cta?.unauthenticated && (content.cta.unauthenticated.investmentValueUSD || content.cta.unauthenticated.investmentValueETB) && displayInvestmentValue && (
               <div className="mt-4 p-4 bg-[#C5A467]/10 dark:bg-[#C5A467]/5 border border-[#C5A467]/30 rounded-lg shadow-inner max-w-md mx-auto">
                 <div className="flex items-center justify-center gap-2">
                   {userCountryCode === ETHIOPIA_COUNTRY_CODE ? (
